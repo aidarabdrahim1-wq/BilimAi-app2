@@ -1,10 +1,10 @@
+"use client";
+
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
-  ArrowUpRight, 
   Target, 
   Clock, 
   TrendingUp, 
@@ -13,12 +13,22 @@ import {
   BookMarked
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export default function Dashboard() {
+  const { profile } = useAuth();
+
+  // Calculate percentage to target
+  const currentScore = profile?.currentScore || 0;
+  const targetScore = profile?.targetScore || 140;
+  const progressToTarget = Math.round((currentScore / targetScore) * 100);
+
   return (
     <AppShell>
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">Сәлем, Арман! 👋</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-headline">
+          Сәлем, {profile?.fullName?.split(' ')[0] || "Оқушы"}! 👋
+        </h1>
         <p className="text-muted-foreground">Бүгін сіздің оқу жоспарыңыз бойынша 4 тапсырма бар.</p>
       </div>
 
@@ -29,7 +39,7 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 opacity-70" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">124</div>
+            <div className="text-3xl font-bold">{currentScore}</div>
             <p className="text-xs opacity-70 mt-1">
               +12 өткен аптадан бері
             </p>
@@ -45,12 +55,12 @@ export default function Dashboard() {
             <Target className="h-4 w-4 opacity-70" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">135</div>
+            <div className="text-3xl font-bold">{targetScore}</div>
             <p className="text-xs opacity-70 mt-1">
-              88% жетістік
+              {progressToTarget}% жетістік
             </p>
             <div className="mt-4">
-              <Progress value={88} className="h-2 bg-white/20" />
+              <Progress value={progressToTarget} className="h-2 bg-white/20" />
             </div>
           </CardContent>
         </Card>
@@ -129,17 +139,13 @@ export default function Dashboard() {
               <CardDescription>Жедел назар аудару керек</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {[
-                { subject: "Математика", topic: "Логарифмдік теңдеулер", score: 42 },
-                { subject: "Физика", topic: "Кванттық физика", score: 55 },
-                { subject: "Биология", topic: "Генетика негіздері", score: 61 },
-              ].map((item, i) => (
+              {(profile?.weakTopics?.length ? profile.weakTopics.slice(0, 3) : ["Логарифмдік теңдеулер", "Кванттық физика", "Генетика негіздері"]).map((topic, i) => (
                 <div key={i} className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="font-medium">{item.subject}: {item.topic}</span>
-                    <span className="text-destructive font-bold">{item.score}%</span>
+                    <span className="font-medium">{topic}</span>
+                    <span className="text-destructive font-bold">{40 + (i * 10)}%</span>
                   </div>
-                  <Progress value={item.score} className="h-1.5" />
+                  <Progress value={40 + (i * 10)} className="h-1.5" />
                 </div>
               ))}
               <Button variant="link" className="w-full text-xs text-primary" asChild>

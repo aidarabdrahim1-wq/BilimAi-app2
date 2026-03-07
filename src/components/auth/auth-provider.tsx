@@ -35,17 +35,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
+    setMounted(true);
+    
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
+        const docRef = doc(db, "users", firebaseUser.uid);
+        try {
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            setProfile(docSnap.data() as UserProfile);
+          }
+        } catch (error) {
+          console.error("Error loading user profile:", error);
         }
       } else {
         setUser(null);
@@ -62,15 +69,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
+  // Гидратация қатесін болдырмау үшін сервер мен алғашқы клиенттік көрсетілімнің бірдей болуын қамтамасыз етеміз.
+  // Ол үшін әуелі 'children' компонентін көрсетеміз, ал 'mounted' болған соң ғана 'loading' экранына ауысамыз.
+  const showLoading = mounted && loading;
+
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {!loading ? children : (
+      {showLoading ? (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
             <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
             <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
           </div>
         </div>
+      ) : (
+        children
       )}
     </AuthContext.Provider>
   );

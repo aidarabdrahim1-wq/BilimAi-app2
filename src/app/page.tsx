@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { 
   BrainCircuit, 
   Target, 
-  BarChart, 
+  ChartNoAxesColumnIncreasing, 
   Calendar, 
   ShieldCheck, 
   Users, 
@@ -70,7 +70,7 @@ export default function LandingPage() {
               { icon: Target, title: "Әлсіз тұсты анықтау", desc: "AI диагностика арқылы нақты қай тақырыптарды қайталау керек екенін білесіз." },
               { icon: Calendar, title: "Жеке оқу жоспары", desc: "Сіздің деңгейіңізге және мақсатты балыңызға сай құрастырылған апталық жоспар." },
               { icon: MessageSquare, title: "AI куратор", desc: "Кез келген уақытта сұрақ қойып, қолдау мен мотивация алыңыз." },
-              { icon: BarChart, title: "Прогресс бақылауы", desc: "Әр күн сайын өсуіңізді бақылап, қателермен жұмыс жасаңыз." },
+              { icon: ChartNoAxesColumnIncreasing, title: "Прогресс бақылауы", desc: "Әр күн сайын өсуіңізді бақылап, қателермен жұмыс жасаңыз." },
               { icon: ShieldCheck, title: "Теория + Практика", desc: "Барлық тақырып бойынша құрылымдалған конспектілер мен ҰБТ форматындағы тесттер." },
               { icon: Users, title: "Ұжымдық қолдау", desc: "Үздік оқушылар қауымдастығына қосылып, бірге дамыңыз." },
             ].map((feature, i) => (

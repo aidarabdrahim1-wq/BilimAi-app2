@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db } from "@/lib/firebase/config";
+import { auth, db, isConfigValid } from "@/lib/firebase/config";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -29,6 +30,16 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isConfigValid) {
+      toast({
+        title: "Конфигурация қатесі",
+        description: "Firebase API кілті дұрыс орнатылмаған. Әкімшіге хабарласыңыз.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!formData.fullName || !formData.email || !formData.password || !formData.grade) {
       toast({
         title: "Мәліметтер толық емес",
@@ -49,7 +60,7 @@ export default function SignupPage() {
         grade: formData.grade,
         targetScore: Number(formData.targetScore),
         currentScore: Number(formData.currentScore),
-        selectedSubjects: ["Математика", "Қазақстан тарихы"], // Әдепкі пәндер
+        selectedSubjects: ["Математика", "Қазақстан тарихы"],
         weakTopics: [],
         createdAt: serverTimestamp(),
       });
@@ -68,8 +79,8 @@ export default function SignupPage() {
         errorMessage = "Бұл email мекенжайы бос емес.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Email форматы дұрыс емес.";
+      } else if (error.code === 'auth/invalid-api-key' || error.message.includes('api-key-not-valid')) {
+        errorMessage = "Жүйе баптауларында (API Key) қате бар. Қайта көріңіз немесе қолдау көрсету қызметіне жазыңыз.";
       }
 
       toast({
@@ -95,6 +106,15 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
+          {!isConfigValid && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Назар аударыңыз</AlertTitle>
+              <AlertDescription>
+                Firebase API кілті табылмады. Тіркелу функциясы уақытша қолжетімсіз болуы мүмкін.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -143,7 +163,7 @@ export default function SignupPage() {
                   min="0"
                   max="140"
                   value={formData.targetScore}
-                  onChange={(e) => setFormData({ ...formData, targetScore: parseInt(e.target.value) })}
+                  onChange={(e) => setFormData({ ...formData, targetScore: parseInt(e.target.value) || 0 })}
                   required
                 />
               </div>
@@ -161,7 +181,7 @@ export default function SignupPage() {
               />
             </div>
             
-            <Button className="w-full h-11" type="submit" disabled={loading}>
+            <Button className="w-full h-11" type="submit" disabled={loading || !isConfigValid}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Тіркелу"}
             </Button>
           </form>

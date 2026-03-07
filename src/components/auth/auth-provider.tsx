@@ -42,22 +42,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     setMounted(true);
     
+    // Егер Firebase Auth бапталмаған болса, жүктеуді тоқтату
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        const docRef = doc(db, "users", firebaseUser.uid);
-        try {
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+        if (db) {
+          const docRef = doc(db, "users", firebaseUser.uid);
+          try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              setProfile(docSnap.data() as UserProfile);
+            }
+          } catch (error) {
+            console.error("Error loading user profile:", error);
           }
-        } catch (error) {
-          console.error("Error loading user profile:", error);
         }
       } else {
         setUser(null);
         setProfile(null);
-        // Redirect to login if accessing protected routes
+        // Protected routes check
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
@@ -69,22 +77,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Гидратация қатесін болдырмау үшін сервер мен алғашқы клиенттік көрсетілімнің бірдей болуын қамтамасыз етеміз.
-  // Ол үшін әуелі 'children' компонентін көрсетеміз, ал 'mounted' болған соң ғана 'loading' экранына ауысамыз.
-  const showLoading = mounted && loading;
+  // Гидратация қатесін болдырмау: mounted болғанша ештеңе көрсетпеу (немесе тек серверлік нұсқаны көрсету)
+  if (!mounted) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {showLoading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-4">
-            <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
-          </div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 };

@@ -29,6 +29,15 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.fullName || !formData.email || !formData.password || !formData.grade) {
+      toast({
+        title: "Мәліметтер толық емес",
+        description: "Барлық өрістерді толтыруыңыз қажет.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
@@ -40,16 +49,32 @@ export default function SignupPage() {
         grade: formData.grade,
         targetScore: Number(formData.targetScore),
         currentScore: Number(formData.currentScore),
-        selectedSubjects: ["Математика", "Қазақстан тарихы"], // Default subjects
+        selectedSubjects: ["Математика", "Қазақстан тарихы"], // Әдепкі пәндер
         weakTopics: [],
         createdAt: serverTimestamp(),
       });
 
+      toast({
+        title: "Тіркелу сәтті аяқталды!",
+        description: "BilimAI платформасына қош келдіңіз.",
+      });
+
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Signup error:", error);
+      let errorMessage = "Тіркелу кезінде қате орын алды.";
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "Бұл email мекенжайы бос емес.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Email форматы дұрыс емес.";
+      }
+
       toast({
         title: "Тіркелу қатесі",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -129,6 +154,7 @@ export default function SignupPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required

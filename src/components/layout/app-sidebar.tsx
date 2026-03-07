@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   BookOpen,
@@ -13,8 +13,12 @@ import {
   Settings,
   ShieldCheck,
   BrainCircuit,
-  AlertCircle
+  AlertCircle,
+  LogOut
 } from "lucide-react";
+import { auth } from "@/lib/firebase/config";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/components/auth/auth-provider";
 
 import {
   Sidebar,
@@ -28,6 +32,7 @@ import {
   SidebarGroupLabel,
   SidebarGroupContent,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 
 const mainNavItems = [
   { title: "Басты бет", icon: LayoutDashboard, url: "/dashboard" },
@@ -50,6 +55,13 @@ const adminItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { profile } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/login");
+  };
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -131,14 +143,20 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-4 group-data-[collapsible=icon]:p-2">
-        <div className="flex items-center gap-3 rounded-lg border p-2 group-data-[collapsible=icon]:border-none">
-          <div className="size-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shrink-0">
-            A
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-3 rounded-lg border p-2 group-data-[collapsible=icon]:border-none">
+            <div className="size-8 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold shrink-0">
+              {profile?.fullName?.[0] || "U"}
+            </div>
+            <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
+              <span className="text-sm font-medium leading-none truncate">{profile?.fullName || "Пайдаланушы"}</span>
+              <span className="text-xs text-muted-foreground truncate">{profile?.grade ? `${profile.grade}-сынып` : "Тіркелген"}</span>
+            </div>
           </div>
-          <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-medium leading-none truncate">Арман Серік</span>
-            <span className="text-xs text-muted-foreground truncate">11-сынып</span>
-          </div>
+          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 group-data-[collapsible=icon]:px-2" onClick={handleLogout}>
+            <LogOut className="size-4" />
+            <span className="group-data-[collapsible=icon]:hidden">Шығу</span>
+          </Button>
         </div>
       </SidebarFooter>
     </Sidebar>

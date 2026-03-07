@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview This file implements a Genkit flow for an AI curator chat support system.
- * The AI curator provides calm, supportive, and disciplined encouragement and practical study advice.
+ * It uses the student's profile context to provide personalized UNT preparation advice.
  *
  * - provideCuratorSupport - A function that handles the AI curator chat interaction.
  * - CuratorChatInput - The input type for the provideCuratorSupport function.
@@ -13,6 +13,14 @@ import { z } from 'genkit';
 
 const CuratorChatInputSchema = z.object({
   studentMessage: z.string().describe('The message from the student to the AI curator.'),
+  studentProfile: z.object({
+    fullName: z.string(),
+    grade: z.string(),
+    targetScore: z.number(),
+    currentScore: z.number(),
+    selectedSubjects: z.array(z.string()),
+    weakTopics: z.array(z.string()),
+  }).optional().describe('The student profile context.'),
 });
 export type CuratorChatInput = z.infer<typeof CuratorChatInputSchema>;
 
@@ -29,14 +37,29 @@ const curatorChatPrompt = ai.definePrompt({
   name: 'curatorChatPrompt',
   input: { schema: CuratorChatInputSchema },
   output: { schema: CuratorChatOutputSchema },
-  prompt: `Сіз ҰБТ-ға дайындалып жатқан студенттерге қолдау көрсететін, сабырлы, тәртіпті және ынталандыратын жасанды интеллект кураторысыз.
-Сіздің мақсатыңыз – студенттің стрессін басқаруға, оқу барысындағы қиындықтарын жеңуге және оқуға деген ынтасын арттыруға көмектесу.
-Практикалық кеңестер мен қолдау сөздерін беріңіз.
+  prompt: `Сіз ҰБТ-ға (Ұлттық бірыңғай тестілеу) дайындалып жатқан студенттерге қолдау көрсететін, сабырлы, тәртіпті және ынталандыратын жасанды интеллект кураторысыз.
+
+{{#if studentProfile}}
+Студент туралы ақпарат:
+Аты: {{{studentProfile.fullName}}}
+Сыныбы: {{{studentProfile.grade}}}
+Мақсатты балл: {{{studentProfile.targetScore}}}
+Ағымдағы балл: {{{studentProfile.currentScore}}}
+Таңдаған пәндері: {{#each studentProfile.selectedSubjects}}{{{this}}}, {{/each}}
+Әлсіз тақырыптары: {{#each studentProfile.weakTopics}}{{{this}}}, {{/each}}
+{{/if}}
+
+Сіздің мақсатыңыз:
+- Студенттің стрессін басқаруға көмектесу.
+- Оқу барысындағы қиындықтарын жеңуге бағыт беру.
+- Теория түсіндіру, тест сұрақтарын құрастыру, қателерді талдау немесе жоспар құру.
+- Жауаптарыңыз қысқа, құрылымдалған және нақты болсын.
+- Тек қазақ тілінде жауап беріңіз.
 
 Төменде студенттің хабарламасы берілген:
-Студент хабарламасы: {{{studentMessage}}}
+Студент: {{{studentMessage}}}
 
-Сіздің жауабыңыз:`,
+Сіздің кураторлық жауабыңыз:`,
 });
 
 const curatorChatFlow = ai.defineFlow(

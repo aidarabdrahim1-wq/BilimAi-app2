@@ -1,62 +1,136 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, BrainCircuit, User, Sparkles, Loader2 } from "lucide-react";
+import { Send, BrainCircuit, User, Sparkles, Loader2, History } from "lucide-react";
 import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
+import { useAuth } from "@/components/auth/auth-provider";
+import { db } from "@/lib/firebase/config";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "firebase/firestore";
 
 type Message = {
+  id?: string;
   role: "user" | "ai";
   content: string;
+  createdAt?: any;
 };
 
 export default function CuratorPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "ai",
-      content: "Сәлем, Арман! Мен сенің жеке AI кураторыңмын. Бүгін көңіл-күйің қалай? Оқу барысында қиындықтар немесе стресс болып жатыр ма? Кез келген сұрағыңды қоюыңа болады.",
-    },
-  ]);
+  const { user, profile } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  useEffect(() => {
+    if (!user) return;
 
-    const userMessage = input.trim();
+    const q = query(
+      collection(db, "users", user.uid, "messages"),
+      orderBy("createdAt", "asc"),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const msgs: Message[] = [];
+      snapshot.forEach((doc) => {
+        msgs.push({ id: doc.id, ...doc.data() } as Message);
+      });
+      if (msgs.length === 0) {
+        setMessages([
+          {
+            role: "ai",
+            content: `Сәлем, ${profile?.fullName || "оқушы"}! Мен сенің жеке AI кураторыңмын. Бүгін ҰБТ-ға дайындығың қалай? Қандай көмек керек: теория түсіндіру ме, жоспар құру ма, әлде мотивация ма?`,
+          },
+        ]);
+      } else {
+        setMessages(msgs);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user, profile]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isLoading]);
+
+  const handleSend = async (customMessage?: string) => {
+    const textToSend = customMessage || input;
+    if (!textToSend.trim() || isLoading || !user) return;
+
+    const userMessage = textToSend.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
-      const { aiResponse } = await provideCuratorSupport({ studentMessage: userMessage });
-      setMessages((prev) => [...prev, { role: "ai", content: aiResponse }]);
+      // 1. Save user message to Firestore
+      await addDoc(collection(db, "users", user.uid, "messages"), {
+        role: "user",
+        content: userMessage,
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Get AI Response
+      const { aiResponse } = await provideCuratorSupport({ 
+        studentMessage: userMessage,
+        studentProfile: profile ? {
+          fullName: profile.fullName,
+          grade: profile.grade,
+          targetScore: profile.targetScore,
+          currentScore: profile.currentScore,
+          selectedSubjects: profile.selectedSubjects,
+          weakTopics: profile.weakTopics
+        } : undefined
+      });
+
+      // 3. Save AI response to Firestore
+      await addDoc(collection(db, "users", user.uid, "messages"), {
+        role: "ai",
+        content: aiResponse,
+        createdAt: serverTimestamp(),
+      });
     } catch (error) {
+      console.error("AI Error:", error);
       setMessages((prev) => [...prev, { role: "ai", content: "Кешіріңіз, байланыста ақау болды. Қайта көріңізші." }]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const suggestions = [
+    { label: "Теория түсіндір", icon: "📚" },
+    { label: "10 тест сұрағы", icon: "📝" },
+    { label: "7 күндік жоспар", icon: "📅" },
+    { label: "Мотивация керек", icon: "🔥" }
+  ];
+
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto h-[calc(100vh-180px)] flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
-            <Sparkles className="text-primary size-8" />
-            AI Куратор қолдауы
-          </h1>
-          <p className="text-muted-foreground">Психологиялық қолдау, мотивация және оқу бойынша ақыл-кеңес.</p>
+      <div className="max-w-4xl mx-auto h-[calc(100vh-140px)] flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
+              <Sparkles className="text-primary size-8" />
+              AI Куратор
+            </h1>
+            <p className="text-muted-foreground text-sm">Жекелендірілген ҰБТ көмекшісі</p>
+          </div>
+          <Button variant="outline" size="sm" className="gap-2">
+            <History className="size-4" /> Тарих
+          </Button>
         </div>
 
         <Card className="flex-1 flex flex-col border-none shadow-sm overflow-hidden bg-white">
           <CardHeader className="border-b bg-accent/5 py-4">
             <div className="flex items-center gap-3">
-              <div className="size-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground">
+              <div className="size-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground shadow-sm">
                 <BrainCircuit className="size-6" />
               </div>
               <div>
@@ -69,7 +143,7 @@ export default function CuratorPage() {
             </div>
           </CardHeader>
           <CardContent className="flex-1 p-0 overflow-hidden flex flex-col">
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 p-4 md:p-6">
               <div className="space-y-6">
                 {messages.map((m, i) => (
                   <div
@@ -77,22 +151,22 @@ export default function CuratorPage() {
                     className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`flex gap-3 max-w-[80%] ${
+                      className={`flex gap-3 max-w-[85%] ${
                         m.role === "user" ? "flex-row-reverse" : "flex-row"
                       }`}
                     >
                       <div
-                        className={`size-8 rounded-full flex items-center justify-center shrink-0 ${
+                        className={`size-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
                           m.role === "user" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"
                         }`}
                       >
                         {m.role === "user" ? <User className="size-4" /> : <BrainCircuit className="size-4" />}
                       </div>
                       <div
-                        className={`p-4 rounded-2xl text-sm leading-relaxed ${
+                        className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                           m.role === "user"
-                            ? "bg-primary text-primary-foreground rounded-tr-none"
-                            : "bg-muted text-foreground rounded-tl-none"
+                            ? "bg-primary text-primary-foreground rounded-tr-none shadow-md"
+                            : "bg-muted text-foreground rounded-tl-none border border-border/50"
                         }`}
                       >
                         {m.content}
@@ -102,38 +176,42 @@ export default function CuratorPage() {
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="flex gap-3 items-center text-muted-foreground text-sm">
+                    <div className="flex gap-3 items-center text-muted-foreground text-sm bg-muted/50 p-3 rounded-2xl border border-dashed animate-pulse">
                       <Loader2 className="size-4 animate-spin text-primary" />
-                      Куратор жауап жазуда...
+                      Куратор ойлануда...
                     </div>
                   </div>
                 )}
+                <div ref={scrollRef} />
               </div>
             </ScrollArea>
 
             <div className="p-4 border-t bg-white">
+              <div className="flex flex-wrap gap-2 mb-4">
+                {suggestions.map((s) => (
+                  <button
+                    key={s.label}
+                    onClick={() => handleSend(s.label)}
+                    disabled={isLoading}
+                    className="text-[10px] bg-accent/20 hover:bg-accent/40 text-accent-foreground px-3 py-1.5 rounded-full transition-all font-medium border border-accent/10 flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span>{s.icon}</span>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Хабарлама жазу..."
+                  placeholder="Сұрағыңды жаз (мысалы: Логарифм түсіндір)..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                  className="flex-1"
+                  className="flex-1 bg-accent/5 focus-visible:ring-primary border-none shadow-none"
+                  disabled={isLoading}
                 />
-                <Button size="icon" onClick={handleSend} disabled={isLoading}>
+                <Button size="icon" onClick={() => handleSend()} disabled={isLoading || !input.trim()}>
                   <Send className="size-4" />
                 </Button>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {["Мен үлгермей жатырмын", "Бүгін шаршап жүрмін", "Мотивация керек"].map((hint) => (
-                  <button
-                    key={hint}
-                    onClick={() => setInput(hint)}
-                    className="text-[10px] bg-accent/30 hover:bg-accent/50 text-accent-foreground px-3 py-1 rounded-full transition-colors font-medium border border-accent/20"
-                  >
-                    {hint}
-                  </button>
-                ))}
               </div>
             </div>
           </CardContent>

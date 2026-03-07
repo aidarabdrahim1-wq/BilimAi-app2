@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "Premium education background",
+      "imageUrl": "https://picsum.photos/seed/bilim-hero/1200/800",
+      "imageHint": "education learning"
+    },
+    {
+      "id": "math-icon",
+      "description": "Mathematics subject illustration",
+      "imageUrl": "https://picsum.photos/seed/math/300/300",
+      "imageHint": "mathematics geometry"
+    },
+    {
+      "id": "physics-icon",
+      "description": "Physics subject illustration",
+      "imageUrl": "https://picsum.photos/seed/physics/300/300",
+      "imageHint": "physics science"
+    },
+    {
+      "id": "history-icon",
+      "description": "History subject illustration",
+      "imageUrl": "https://picsum.photos/seed/history/300/300",
+      "imageHint": "history old"
+    }
+  ]
 }

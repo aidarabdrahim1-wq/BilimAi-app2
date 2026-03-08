@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -11,20 +10,40 @@
         "grade": { "type": "string" },
         "targetScore": { "type": "number" },
         "currentScore": { "type": "number" },
+        "rating": { "type": "number" },
+        "solvedQuestions": { "type": "number" },
+        "correctAnswers": { "type": "number" },
+        "completedPlans": { "type": "number" },
+        "streakDays": { "type": "number" },
         "selectedSubjects": { "type": "array", "items": { "type": "string" } },
         "weakTopics": { "type": "array", "items": { "type": "string" } },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["fullName", "email", "grade"]
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
-    "Message": {
-      "title": "Chat Message",
-      "description": "Messages between student and AI curator.",
+    "TestResult": {
+      "title": "Test Result",
+      "description": "Historical record of a test completed by a user.",
       "type": "object",
       "properties": {
-        "role": { "type": "string", "enum": ["user", "ai"] },
-        "content": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "userId": { "type": "string" },
+        "testId": { "type": "string" },
+        "totalQuestions": { "type": "number" },
+        "correctAnswers": { "type": "number" },
+        "percentage": { "type": "number" },
+        "completedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Mistake": {
+      "title": "User Mistake",
+      "description": "Record of a question answered incorrectly.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "questionId": { "type": "string" },
+        "subject": { "type": "string" },
+        "selectedAnswer": { "type": "string" },
+        "correctAnswer": { "type": "string" }
       }
     }
   },
@@ -36,9 +55,13 @@
       "schema": "#/entities/UserProfile",
       "description": "Stores individual student profiles."
     },
-    "/users/{userId}/messages/{messageId}": {
-      "schema": "#/entities/Message",
-      "description": "Stores chat history for the student."
+    "/test_results/{resultId}": {
+      "schema": "#/entities/TestResult",
+      "description": "Stores test performance history."
+    },
+    "/mistakes/{mistakeId}": {
+      "schema": "#/entities/Mistake",
+      "description": "Stores questions answered incorrectly for later review."
     }
   }
 }

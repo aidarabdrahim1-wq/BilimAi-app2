@@ -1,40 +1,48 @@
-import { updateUserRating } from "@/lib/rating";
-import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, increment } from "firebase/firestore";
+import { db } from '@/lib/firebase/config';
+import { collection, addDoc, serverTimestamp, increment, doc, updateDoc } from 'firebase/firestore';
+import { TestResult, Mistake } from '@/types/firestore';
+import { updateUserRating } from '@/lib/rating';
 
-/**
- * Тест аяқталған кезде шақырылатын сервис
- */
-export async function finishTest(userId: string, results: { 
-  totalQuestions: number, 
-  correctOnes: number,
-  isDiagnostic?: boolean 
-}) {
-  const scorePercentage = (results.correctOnes / results.totalQuestions) * 100;
+export const testService = {
+  /**
+   * Тест нәтижесін сақтау және статистиканы жаңарту
+   */
+  async createTestResult(data: Omit<TestResult, 'id' | 'completedAt'>) {
+    const resultsRef = collection(db, 'test_results');
+    const resultDoc = await addDoc(resultsRef, {
+      ...data,
+      completedAt: serverTimestamp(),
+    });
 
-  // 1. Әр дұрыс жауап үшін рейтинг қосу
-  for (let i = 0; i < results.correctOnes; i++) {
-    await updateUserRating(userId, 'CORRECT_ANSWER');
-  }
-
-  // 2. Егер 80%-дан жоғары болса, бонус беру
-  if (scorePercentage >= 80) {
-    await updateUserRating(userId, 'TEST_EXCELLENT');
-  }
-
-  // 3. Егер бұл диагностика болса
-  if (results.isDiagnostic) {
-    await updateUserRating(userId, 'DIAGNOSTIC_FINISHED');
-  }
-
-  // 4. Пайдаланушының соңғы балын жаңарту (currentScore)
-  // Мысалы, ҰБТ форматында 140-қа шаққандағы балл
-  const finalScore = Math.round((results.correctOnes / results.totalQuestions) * 140);
-  if (db) {
-    const userRef = doc(db, "users", userId);
+    // Пайдаланушының жалпы статистикасын жаңарту
+    const userRef = doc(db, 'users', data.userId);
     await updateDoc(userRef, {
-      currentScore: finalScore,
-      solvedQuestions: increment(results.totalQuestions)
+      solvedQuestions: increment(data.totalQuestions),
+      correctAnswers: increment(data.correctAnswers),
+      currentScore: Math.round((data.correctAnswers / data.totalQuestions) * 140), // ҰБТ балына шаққанда
+      updatedAt: serverTimestamp(),
+    });
+
+    // Рейтинг қосу логикасы
+    // Әр дұрыс жауап үшін +2
+    await updateUserRating(data.userId, 'CORRECT_ANSWER');
+    
+    // Егер 80% жоғары болса бонус
+    if (data.percentage >= 80) {
+      await updateUserRating(data.userId, 'TEST_EXCELLENT');
+    }
+
+    return resultDoc.id;
+  },
+
+  /**
+   * Қате кеткен сұрақты сақтау
+   */
+  async saveMistake(data: Omit<Mistake, 'id' | 'createdAt'>) {
+    const mistakesRef = collection(db, 'mistakes');
+    await addDoc(mistakesRef, {
+      ...data,
+      createdAt: serverTimestamp(),
     });
   }
-}
+};

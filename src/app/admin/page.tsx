@@ -12,15 +12,14 @@ import {
   Folder, 
   Database, 
   Upload, 
-  ShieldCheck, 
   AlertCircle, 
-  MessageSquare, 
-  CheckCircle2, 
   Loader2,
-  FileJson
+  FileJson,
+  XCircle,
+  CheckCircle2
 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
-import { doc, setDoc, collection } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 
 const contentStructure = [
@@ -32,16 +31,25 @@ const contentStructure = [
 export default function AdminPage() {
   const [jsonInput, setJsonInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleBulkUpload = async () => {
     if (!jsonInput.trim()) return;
     setIsLoading(true);
+    setError(null);
+    
     try {
-      const data = JSON.parse(jsonInput);
+      let data;
+      try {
+        // Тікелей JSON.parse қолданбас бұрын, оны қателік үшін тексереміз
+        data = JSON.parse(jsonInput);
+      } catch (e: any) {
+        throw new Error(`JSON форматы дұрыс емес: Жақшаларды, үтірлерді немесе тырнақшаларды тексеріңіз. (Техникалық қате: ${e.message})`);
+      }
       
-      // Мысалы: Пәндерді жүктеу
       if (data.subjects && Array.isArray(data.subjects)) {
+        let count = 0;
         for (const subject of data.subjects) {
           const subjectId = subject.id || subject.name.toLowerCase().replace(/\s+/g, '-');
           await setDoc(doc(db, "subjects", subjectId), {
@@ -50,7 +58,6 @@ export default function AdminPage() {
             updatedAt: new Date().toISOString()
           });
 
-          // Тақырыптар болса
           if (subject.topics && Array.isArray(subject.topics)) {
             for (const topic of subject.topics) {
               const topicId = topic.id || topic.title.toLowerCase().replace(/\s+/g, '-');
@@ -60,19 +67,28 @@ export default function AdminPage() {
                 subjectId: subjectId,
                 updatedAt: new Date().toISOString()
               });
+              count++;
             }
           }
         }
-        toast({ title: "Деректер сәтті жүктелді!", description: "Пәндер мен тақырыптар базаға қосылды." });
+        toast({ 
+          title: "Деректер сәтті жүктелді!", 
+          description: `${data.subjects.length} пән және ${count} тақырып базаға қосылды.`,
+        });
+        setJsonInput("");
       } else {
-        toast({ title: "Қате формат", description: "JSON файлында 'subjects' массиві болуы керек.", variant: "destructive" });
+        throw new Error("JSON файлында 'subjects' массиві болуы керек. Мысалы: { \"subjects\": [] }");
       }
-    } catch (error: any) {
-      console.error("Upload error:", error);
-      toast({ title: "Жүктеу қатесі", description: error.message, variant: "destructive" });
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      setError(err.message);
+      toast({ 
+        title: "Жүктеу қатесі", 
+        description: "JSON форматын тексеріңіз.", 
+        variant: "destructive" 
+      });
     } finally {
       setIsLoading(false);
-      setJsonInput("");
     }
   };
 
@@ -131,20 +147,45 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {error && (
+                  <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs flex items-start gap-3 border border-destructive/20 animate-in fade-in slide-in-from-top-2">
+                    <XCircle className="size-4 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold">JSON қатесі:</p>
+                      <p className="leading-relaxed">{error}</p>
+                    </div>
+                  </div>
+                )}
                 <Textarea 
                   placeholder='{ "subjects": [...] }' 
-                  className="min-h-[300px] font-mono text-xs"
+                  className={`min-h-[300px] font-mono text-xs ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
                   value={jsonInput}
-                  onChange={(e) => setJsonInput(e.target.value)}
+                  onChange={(e) => {
+                    setJsonInput(e.target.value);
+                    if (error) setError(null);
+                  }}
                 />
-                <Button 
-                  className="w-full gap-2" 
-                  onClick={handleBulkUpload} 
-                  disabled={isLoading || !jsonInput.trim()}
-                >
-                  {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                  Базаға жүктеу
-                </Button>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setJsonInput("");
+                      setError(null);
+                    }}
+                    disabled={isLoading || !jsonInput}
+                  >
+                    Тазалау
+                  </Button>
+                  <Button 
+                    className="flex-[2] gap-2" 
+                    onClick={handleBulkUpload} 
+                    disabled={isLoading || !jsonInput.trim()}
+                  >
+                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                    Базаға жүктеу
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -314,9 +314,8 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
       const result = await explainTopic({ subject, topic });
       setAiExplanation(result);
     } catch (error: any) {
-      console.error("AI Explanation error:", error);
       let msg = "Түсіндірмені жүктеу мүмкін болмады.";
-      if (error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+      if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
         msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
       }
       setErrorMessage(msg);

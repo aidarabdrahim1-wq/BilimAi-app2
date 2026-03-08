@@ -53,7 +53,14 @@ const untTestFlow = ai.defineFlow(
     outputSchema: RunUntTestOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const { output } = await prompt(input);
+      return output!;
+    } catch (error: any) {
+      if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error('AI_QUOTA_EXCEEDED');
+      }
+      throw error;
+    }
   }
 );

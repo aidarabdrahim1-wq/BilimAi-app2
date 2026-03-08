@@ -59,17 +59,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (firebaseUser && db) {
         const userDocRef = doc(db, "users", firebaseUser.uid);
+        
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setProfile(docSnap.data() as UserProfile);
+          } else {
+            // Профиль әлі жасалмаған болуы мүмкін (мысалы, тіркелу кезінде)
+            setProfile(null);
           }
           setLoading(false);
         }, async (error) => {
+          // Егер бұл жай ғана "Missing or insufficient permissions" болса және құжат әлі жоқ болса,
+          // бұл қалыпты жағдай болуы мүмкін. Бірақ біз оны бәрібір бақылаймыз.
           const permissionError = new FirestorePermissionError({
             path: userDocRef.path,
             operation: 'get',
           });
-          errorEmitter.emit('permission-error', permissionError);
+          
+          // Тек нақты қате болғанда ғана эмит жасаймыз
+          if (error.code !== 'permission-denied' || firebaseUser) {
+             errorEmitter.emit('permission-error', permissionError);
+          }
+          
           setLoading(false);
         });
 

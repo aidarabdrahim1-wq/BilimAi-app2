@@ -1,44 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Пайдаланушы тек өз деректерін оқи және жаза алады
+    // Пайдаланушы профилі және оның ішкі коллекциялары
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
       
-      // AI куратор хабарламалары
-      match /messages/{messageId} {
+      // Ішкі коллекцияларға (мысалы, messages) рұқсат
+      match /{allSubcollections=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
     }
     
     // Тест нәтижелері
-    match /test_results/{resultId} {
+    match /test_results/{id} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
     // Қателер базасы
-    match /mistakes/{mistakeId} {
+    match /mistakes/{id} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
     
     // Оқу жоспарлары
-    match /study_plans/{planId} {
-      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    match /study_plans/{id} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
     
-    // Диагностика
-    match /diagnostics/{diagId} {
+    // Диагностика нәтижелері
+    match /diagnostics/{id} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
     }
     
-    // Теория (барлығына оқуға рұқсат)
-    match /theory_materials/{materialId} {
+    // Теория материалдары (тек оқуға рұқсат)
+    match /theory_materials/{id} {
       allow read: if request.auth != null;
-      allow write: if false; 
     }
     
     // Жалпы прогресс

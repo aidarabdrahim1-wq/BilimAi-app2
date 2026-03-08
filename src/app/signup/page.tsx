@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { BrainCircuit, Loader2 } from "lucide-react";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -71,8 +73,7 @@ export default function SignupPage() {
       const user = userCredential.user;
 
       if (db) {
-        // Updated to match firestore.rules: /studentProfiles/{studentId}
-        await setDoc(doc(db, "studentProfiles", user.uid), {
+        const profileData = {
           id: user.uid,
           fullName: formData.fullName,
           email: formData.email,
@@ -90,7 +91,17 @@ export default function SignupPage() {
           untDate: "2025-06-20", 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
+        };
+
+        const docRef = doc(db, "studentProfiles", user.uid);
+        setDoc(docRef, profileData)
+          .catch(async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: docRef.path,
+              operation: 'create',
+              requestResourceData: profileData
+            }));
+          });
       }
 
       toast({

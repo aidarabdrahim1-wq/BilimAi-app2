@@ -28,7 +28,8 @@ import {
   RotateCcw,
   Check,
   BarChart,
-  PieChart
+  PieChart,
+  LineChart
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -73,6 +74,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
+    // Fetch active plans (today's tasks)
     const q = query(
       collection(db, "study_plans"),
       where("userId", "==", user.uid),
@@ -146,6 +148,8 @@ export default function Dashboard() {
 
       if (completedCount === fullPlan.totalCount) {
         await updateUserRating(user.uid, 'PLAN_COMPLETED');
+        // Update plan status to completed if all tasks are done
+        await updateDoc(planRef, { status: 'completed' });
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
 
@@ -455,6 +459,22 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
+                {/* Daily Progress in Stats */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                      <Clock className="size-3 text-blue-500" />
+                      Бүгінгі тапсырмалар:
+                    </span>
+                    <span className="font-black text-blue-600 text-base">{completedTodayCount} / {todayTasks.length || 0}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <Progress value={dailyProgress} className="h-2 bg-blue-100" />
+                    <p className="text-[9px] text-right text-muted-foreground font-medium">Бүгінгі мақсаттың {dailyProgress}%-ы</p>
+                  </div>
+                </div>
+
+                {/* Overall Plans Progress */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -42,7 +43,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     setMounted(true);
     
-    // Егер Firebase Auth бапталмаған болса, жүктеуді тоқтату
     if (!auth) {
       setLoading(false);
       return;
@@ -77,11 +77,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Гидратация қатесін болдырмау: mounted болғанша ештеңе көрсетпеу (немесе тек серверлік нұсқаны көрсету)
+  // Prevent hydration error: wait until mounted
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
 
+  // If still loading auth state, show a loading indicator
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

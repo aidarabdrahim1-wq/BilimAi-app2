@@ -1,0 +1,44 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Student profile data for UNT preparation.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "grade": { "type": "string" },
+        "targetScore": { "type": "number" },
+        "currentScore": { "type": "number" },
+        "selectedSubjects": { "type": "array", "items": { "type": "string" } },
+        "weakTopics": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["fullName", "email", "grade"]
+    },
+    "Message": {
+      "title": "Chat Message",
+      "description": "Messages between student and AI curator.",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "enum": ["user", "ai"] },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["password"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "#/entities/UserProfile",
+      "description": "Stores individual student profiles."
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": "#/entities/Message",
+      "description": "Stores chat history for the student."
+    }
+  }
+}

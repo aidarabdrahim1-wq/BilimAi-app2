@@ -1,3 +1,6 @@
+
+'use client';
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -11,8 +14,10 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// API кілтінің жарамдылығын тексеру
-const isConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined" && firebaseConfig.apiKey.length > 10;
+// Check for valid API key to prevent app from crashing during initialization
+const isConfigValid = !!firebaseConfig.apiKey && 
+                     firebaseConfig.apiKey !== "undefined" && 
+                     firebaseConfig.apiKey.length > 10;
 
 let app;
 let auth: any = null;
@@ -26,6 +31,8 @@ if (isConfigValid) {
   } catch (error) {
     console.error("Firebase initialization error:", error);
   }
+} else {
+  console.warn("Firebase configuration is missing or invalid. Auth and Firestore will be unavailable.");
 }
 
 export { auth, db, isConfigValid };

@@ -4,20 +4,18 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// Студент берген нақты Firebase конфигурациясы
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyD4h_rErcBSKWhiI1U3CBpF8vDpWAfMRMY",
+  authDomain: "studio-5303827652-38d67.firebaseapp.com",
+  projectId: "studio-5303827652-38d67",
+  storageBucket: "studio-5303827652-38d67.firebasestorage.app",
+  messagingSenderId: "434230863781",
+  appId: "1:434230863781:web:17ed6d12afbccb348f2a4c"
 };
 
-// Конфигурацияның бар-жоғын және форматын тексеру
-const isConfigValid = 
-  !!firebaseConfig.apiKey && 
-  firebaseConfig.apiKey !== "undefined" && 
-  firebaseConfig.apiKey.length > 10;
+// Конфигурацияны тексеру
+const isConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
 
 let app;
 let auth: any = null;
@@ -31,8 +29,6 @@ if (isConfigValid) {
   } catch (error) {
     console.error("Firebase initialization error:", error);
   }
-} else {
-  console.warn("Firebase configuration is missing or invalid. Please set your environment variables.");
 }
 
 export { auth, db, isConfigValid };

@@ -65,8 +65,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(null);
         setProfile(null);
         
-        // Protected routes check
-        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory"];
+        // Қорғалған беттерді тексеру
+        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
         }
@@ -77,13 +77,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Hydration қатесін болдырмау үшін: 
-  // Егер компонент әлі браузерде жүктелмесе (mounted), бос контейнер қайтарамыз.
+  // Hydration қатесін болдырмау үшін mounted тексерісі
   if (!mounted) {
     return <div className="min-h-screen bg-background" aria-hidden="true" />;
   }
 
-  // Жүктелу кезіндегі UI
+  // Жүктелу экраны тек клиент жақта көрсетіледі
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -27,7 +28,7 @@ export default function CuratorPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !db) return;
 
     const q = query(
       collection(db, "users", user.uid, "messages"),
@@ -63,7 +64,7 @@ export default function CuratorPage() {
 
   const handleSend = async (customMessage?: string) => {
     const textToSend = customMessage || input;
-    if (!textToSend.trim() || isLoading || !user) return;
+    if (!textToSend.trim() || isLoading || !user || !db) return;
 
     const userMessage = textToSend.trim();
     setInput("");

@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -25,7 +26,9 @@ import {
   Play,
   Pause,
   RotateCcw,
-  Check
+  Check,
+  BarChart,
+  PieChart
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -185,13 +188,14 @@ export default function Dashboard() {
   const solvedCount = profile?.solvedQuestions || 0;
   const correctCount = profile?.correctAnswers || 0;
   const streak = profile?.streakDays || 0;
+  const completedPlansCount = profile?.completedPlans || 0;
 
   const progressToTarget = Math.round((currentScore / targetScore) * 100);
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
   
-  const completedToday = todayTasks.filter(t => t.status === 'completed').length;
+  const completedTodayCount = todayTasks.filter(t => t.status === 'completed').length;
   const pendingTasks = todayTasks.filter(t => t.status !== 'completed');
-  const dailyProgress = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
+  const dailyProgress = todayTasks.length > 0 ? Math.round((completedTodayCount / todayTasks.length) * 100) : 0;
 
   return (
     <AppShell>
@@ -219,7 +223,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-muted-foreground flex items-center gap-2">
               {todayTasks.length > 0 
-                ? <><span className="text-primary font-bold">{completedToday}/{todayTasks.length}</span> тапсырма орындалды</> 
+                ? <><span className="text-primary font-bold">{completedTodayCount}/{todayTasks.length}</span> тапсырма орындалды</> 
                 : "Бүгінге әлі жоспар құрылмаған."}
             </p>
           </div>
@@ -440,30 +444,55 @@ export default function Dashboard() {
           </Card>
 
           <div className="md:col-span-3 space-y-6">
-            <Card className="border-none shadow-sm bg-accent/5 overflow-hidden">
-              <div className="p-4 bg-primary text-primary-foreground flex justify-between items-center">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <Trophy className="size-4" /> Статистика
-                </h3>
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Деңгей: Орташа</span>
-              </div>
-              <CardContent className="p-6 space-y-5">
-                <div className="space-y-2">
+            <Card className="border-none shadow-sm bg-white overflow-hidden flex flex-col">
+              <CardHeader className="pb-2 border-b bg-accent/5">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <BarChart className="size-4 text-primary" />
+                  Оқу статистикасы
+                </CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">
+                  Сіздің даму көрсеткіштеріңіз
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <span className="text-xs font-bold text-muted-foreground uppercase">Орындалған жоспарлар:</span>
-                    <span className="font-black text-primary text-lg">{profile?.completedPlans || 0} / 30</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                      <CheckCircle2 className="size-3 text-green-500" />
+                      Орындалған жоспарлар:
+                    </span>
+                    <span className="font-black text-primary text-base">{completedPlansCount} / 30</span>
                   </div>
-                  <Progress value={((profile?.completedPlans || 0) / 30) * 100} className="h-2 bg-primary/10" />
+                  <div className="space-y-1">
+                    <Progress value={(completedPlansCount / 30) * 100} className="h-2 bg-primary/10" />
+                    <p className="text-[9px] text-right text-muted-foreground font-medium">Айлық мақсаттың {Math.round((completedPlansCount / 30) * 100)}%-ы</p>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="p-3 rounded-xl bg-white border border-border/50 shadow-sm text-center">
-                    <span className="text-[10px] font-bold text-muted-foreground block mb-1 uppercase">Дұрыс</span>
-                    <span className="text-xl font-black text-green-600">{correctCount}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center space-y-1 group hover:bg-accent/10 transition-colors">
+                    <div className="flex justify-center mb-1">
+                      <PieChart className="size-4 text-green-500 group-hover:scale-110 transition-transform" />
+                    </div>
+                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Дұрыс жауап</span>
+                    <span className="text-xl font-black text-foreground">{correctCount}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-white border border-border/50 shadow-sm text-center">
-                    <span className="text-[10px] font-bold text-muted-foreground block mb-1 uppercase">Жалпы</span>
-                    <span className="text-xl font-black text-primary">{solvedCount}</span>
+                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center space-y-1 group hover:bg-accent/10 transition-colors">
+                    <div className="flex justify-center mb-1">
+                      <ClipboardList className="size-4 text-primary group-hover:scale-110 transition-transform" />
+                    </div>
+                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Жалпы сұрақ</span>
+                    <span className="text-xl font-black text-foreground">{solvedCount}</span>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="size-4 text-orange-500" />
+                      <span className="text-xs font-bold">Streak (Күн):</span>
+                    </div>
+                    <span className="text-sm font-black">{streak} күн</span>
                   </div>
                 </div>
               </CardContent>
@@ -478,14 +507,14 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="p-5 rounded-2xl border bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/10 relative overflow-hidden">
-                  <h4 className="font-bold text-sm mb-2">{profile?.selectedSubjects[3] || "Пән"}: Жаңа тақырып</h4>
+                  <h4 className="font-bold text-sm mb-2">{profile?.selectedSubjects?.[3] || "Пән"}: Жаңа тақырып</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Сіздің әлсіз тақырыптарыңызға сай: осы бөлімді меңгеріп, +20 рейтинг ұпайын алыңыз!
                   </p>
                   <Button className="w-full mt-4 shadow-md font-bold text-xs h-9" size="sm" asChild>
                     <Link href="/theory">Оқуды бастау</Link>
                   </Button>
-                  <Zap className="absolute -bottom-4 -right-4 size-16 text-primary/5 group-hover:text-primary/10 transition-colors" />
+                  <Sparkles className="absolute -bottom-4 -right-4 size-16 text-primary/5 group-hover:text-primary/10 transition-colors" />
                 </div>
               </CardContent>
             </Card>

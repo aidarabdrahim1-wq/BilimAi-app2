@@ -97,6 +97,7 @@ export default function SignupPage() {
           targetCareer: formData.targetCareer,
           weakTopics: [],
           createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         });
       }
 
@@ -181,6 +182,8 @@ export default function SignupPage() {
                     <SelectValue placeholder="Таңдаңыз" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="8">8-сынып</SelectItem>
+                    <SelectItem value="9">9-сынып</SelectItem>
                     <SelectItem value="10">10-сынып</SelectItem>
                     <SelectItem value="11">11-сынып</SelectItem>
                     <SelectItem value="college">Колледж</SelectItem>

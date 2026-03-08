@@ -15,6 +15,19 @@ import { useToast } from "@/hooks/use-toast";
 import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
+const SUBJECT_COMBINATIONS = [
+  { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
+  { label: "Математика + Информатика", subjects: ["Математика", "Информатика"], careers: ["IT", "Программалау", "Киберқауіпсіздік"] },
+  { label: "Биология + Химия", subjects: ["Биология", "Химия"], careers: ["Медицина", "Стоматология", "Фармация", "Биотехнология"] },
+  { label: "Биология + География", subjects: ["Биология", "География"], careers: ["Агрономия", "Экология", "География", "Туризм"] },
+  { label: "География + Математика", subjects: ["География", "Математика"], careers: ["Экономика", "Бизнес", "Менеджмент", "Логистика", "Маркетинг"] },
+  { label: "Дүниежүзі тарихы + География", subjects: ["Дүниежүзі тарихы", "География"], careers: ["Халықаралық қатынастар", "Мұғалімдік", "Саясаттану", "Аймақтану"] },
+  { label: "Дүниежүзі тарихы + Адам. Қоғам. Құқық", subjects: ["Дүниежүзі тарихы", "Адам. Қоғам. Құқық"], careers: ["Заң", "Халықаралық құқық", "Қоғамдық ғылымдар"] },
+  { label: "Қазақ әдебиеті + Қазақ тілі", subjects: ["Қазақ әдебиеті", "Қазақ тілі"], careers: ["Филология", "Мұғалімдік", "Журналистика"] },
+  { label: "Орыс тілі + Орыс әдебиеті", subjects: ["Орыс тілі", "Орыс әдебиеті"], careers: ["Орыс филологиясы", "Аударма", "Мұғалімдік"] },
+  { label: "Ағылшын тілі + Дүниежүзі тарихы", subjects: ["Ағылшын тілі", "Дүниежүзі тарихы"], careers: ["Дипломатия", "Халықаралық бизнес", "Шетелмен жұмыс", "Аударма", "Туризм"] },
+];
+
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     fullName: "",
@@ -22,10 +35,14 @@ export default function SignupPage() {
     password: "",
     grade: "",
     targetScore: 120,
+    subjectComboIndex: "",
+    targetCareer: "",
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  const currentCombo = formData.subjectComboIndex !== "" ? SUBJECT_COMBINATIONS[parseInt(formData.subjectComboIndex)] : null;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +51,15 @@ export default function SignupPage() {
       toast({
         title: "Конфигурация қатесі",
         description: "Firebase API кілті дұрыс орнатылмаған.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!currentCombo) {
+      toast({
+        title: "Қате",
+        description: "Пән комбинациясын таңдаңыз.",
         variant: "destructive",
       });
       return;
@@ -51,12 +77,14 @@ export default function SignupPage() {
           grade: formData.grade,
           targetScore: Number(formData.targetScore),
           currentScore: 0,
-          rating: 0, // Бастапқы рейтинг
+          rating: 0,
           solvedQuestions: 0,
           correctAnswers: 0,
           completedPlans: 0,
           streakDays: 0,
-          selectedSubjects: ["Математика", "Қазақстан тарихы"],
+          selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
+          subjectCombination: currentCombo.label,
+          targetCareer: formData.targetCareer,
           weakTopics: [],
           createdAt: serverTimestamp(),
         });
@@ -73,7 +101,7 @@ export default function SignupPage() {
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
       if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "МАҢЫЗДЫ: Firebase консолінде Email/Password әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны қосыңыз.";
+        errorMessage = "МАҢЫЗДЫ: Firebase консолінде Email/Password әдісі қосылмаған.";
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
       }
@@ -89,8 +117,8 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-accent/30 p-4">
-      <Card className="w-full max-w-lg border-none shadow-xl">
+    <div className="min-h-screen flex items-center justify-center bg-accent/30 p-4 py-12">
+      <Card className="w-full max-w-2xl border-none shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
@@ -110,7 +138,7 @@ export default function SignupPage() {
               </AlertDescription>
             </Alert>
           )}
-          <form onSubmit={handleSignup} className="space-y-4">
+          <form onSubmit={handleSignup} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Толық аты-жөніңіз</Label>
@@ -164,7 +192,48 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-4 border-t pt-4">
+              <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">ҰБТ таңдау пәндері</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Пән комбинациясы</Label>
+                  <Select onValueChange={(v) => setFormData({ ...formData, subjectComboIndex: v, targetCareer: "" })} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Комбинацияны таңдаңыз" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUBJECT_COMBINATIONS.map((combo, index) => (
+                        <SelectItem key={index} value={index.toString()}>
+                          {combo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Болашақ мамандық</Label>
+                  <Select 
+                    disabled={!currentCombo} 
+                    onValueChange={(v) => setFormData({ ...formData, targetCareer: v })} 
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={currentCombo ? "Мамандықты таңдаңыз" : "Алдымен пәнді таңдаңыз"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currentCombo?.careers.map((career, index) => (
+                        <SelectItem key={index} value={career}>
+                          {career}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 border-t pt-4">
               <Label htmlFor="password">Құпия сөз</Label>
               <Input
                 id="password"

@@ -17,6 +17,8 @@ export interface UserProfile {
   completedPlans: number;
   streakDays: number;
   selectedSubjects: string[];
+  subjectCombination?: string;
+  targetCareer?: string;
   weakTopics: string[];
   lastStudyDate?: Timestamp;
   createdAt: Timestamp;

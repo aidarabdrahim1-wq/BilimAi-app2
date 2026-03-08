@@ -7,12 +7,6 @@ service cloud.firestore {
      * CORE PHILOSOPHY
      * This ruleset enforces a strict User-Ownership model. All user-generated content is hierarchically 
      * nested under a specific student's profile path (/studentProfiles/{studentId}). 
-     * 
-     * DATA STRUCTURE
-     * 1. Public/Global Content: Subjects, Topics, Questions, and MistakePatterns are top-level or 
-     *    logical subcollections that are read-only for all authenticated students.
-     * 2. Private User Content: All learning progress, test sessions, study plans, and AI interactions 
-     *    are stored within the /studentProfiles/{studentId} tree.
      */
 
     // --- Helper Functions ---
@@ -89,22 +83,27 @@ service cloud.firestore {
 
     match /subjects/{subjectId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      // Allow creation/updates for the purpose of development seeding
+      allow create, update: if isSignedIn();
+      allow delete: if false;
 
       match /topics/{topicId} {
         allow get, list: if isSignedIn();
-        allow create, update, delete: if false;
+        allow create, update: if isSignedIn();
+        allow delete: if false;
 
         match /questions/{questionId} {
           allow get, list: if isSignedIn();
-          allow create, update, delete: if false;
+          allow create, update: if isSignedIn();
+          allow delete: if false;
         }
       }
     }
 
     match /mistakePatterns/{mistakePatternId} {
       allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
+      allow create, update: if isSignedIn();
+      allow delete: if false;
     }
   }
 }

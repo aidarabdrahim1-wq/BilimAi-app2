@@ -28,7 +28,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">Кіру</Link>
             <Button asChild>
-              <Link href="/dashboard">Бастау</Link>
+              <Link href="/signup">Тіркелу</Link>
             </Button>
           </div>
         </div>
@@ -48,7 +48,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
                 <Button size="lg" className="h-12 px-8 text-base font-semibold" asChild>
-                  <Link href="/dashboard">Тегін бастау</Link>
+                  <Link href="/signup">Тегін тіркелу</Link>
                 </Button>
                 <Button variant="outline" size="lg" className="h-12 px-8 text-base font-semibold" asChild>
                   <Link href="/diagnostic">Диагностикадан өту</Link>
@@ -118,7 +118,7 @@ export default function LandingPage() {
                 Мақсатыңызға бір қадам жақындаңыз!
               </p>
               <Button size="lg" variant="secondary" className="h-12 px-10 text-base font-bold shadow-lg" asChild>
-                <Link href="/dashboard">Қазір бастау</Link>
+                <Link href="/signup">Қазір тіркелу</Link>
               </Button>
             </div>
             <div className="absolute top-0 right-0 size-64 bg-white/5 rounded-full blur-3xl" />
@@ -142,9 +142,9 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold mb-4">Платформа</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-primary">Басты бет</Link></li>
-                <li><Link href="#" className="hover:text-primary">Диагностика</Link></li>
-                <li><Link href="#" className="hover:text-primary">Курстар</Link></li>
+                <li><Link href="/" className="hover:text-primary">Басты бет</Link></li>
+                <li><Link href="/diagnostic" className="hover:text-primary">Диагностика</Link></li>
+                <li><Link href="/signup" className="hover:text-primary">Тіркелу</Link></li>
               </ul>
             </div>
             <div>

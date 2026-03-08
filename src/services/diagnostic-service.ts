@@ -1,30 +1,35 @@
+
 import { db } from '@/lib/firebase/config';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 import { DiagnosticResult } from '@/types/firestore';
 import { updateUserRating } from '@/lib/rating';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export const diagnosticService = {
   /**
-   * Диагностика нәтижесін сақтау
+   * Диагностика нәтижесін сақтау және профильді жаңарту
    */
   async saveDiagnosticResult(data: Omit<DiagnosticResult, 'id' | 'createdAt'>) {
-    const diagRef = collection(db, 'diagnostics');
-    const diagDoc = await addDoc(diagRef, {
-      ...data,
-      createdAt: serverTimestamp(),
-    });
+    if (!db || !data.userId) return;
 
-    // Пайдаланушының әлсіз тақырыптарын жаңарту
-    const userRef = doc(db, 'users', data.userId);
-    await updateDoc(userRef, {
+    // Пайдаланушының әлсіз тақырыптарын және балын жаңарту (studentProfiles)
+    const userRef = doc(db, 'studentProfiles', data.userId);
+    const updateData = {
       weakTopics: data.weakTopics,
       currentScore: data.score,
       updatedAt: serverTimestamp(),
+    };
+
+    updateDoc(userRef, updateData).catch(error => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: updateData
+      }));
     });
 
-    // Рейтинг
+    // Рейтинг қосу
     await updateUserRating(data.userId, 'DIAGNOSTIC_FINISHED');
-
-    return diagDoc.id;
   }
 };

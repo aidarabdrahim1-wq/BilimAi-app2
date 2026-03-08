@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(firebaseUser);
       
       if (firebaseUser && db) {
-        // Профильді studentProfiles коллекциясынан алу (Security Rules-ке сай)
+        // Профильді тек studentProfiles коллекциясынан аламыз (firestore.rules бойынша)
         const userDocRef = doc(db, "studentProfiles", firebaseUser.uid);
         
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
@@ -73,17 +73,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setLoading(false);
         }, (error: any) => {
-          // Егер бұл жай ғана авторизацияның синхронизациялануы болса, қате шығармаймыз
-          if (error.code === 'permission-denied' && firebaseUser) {
-             console.debug("Auth sync in progress...");
-             return;
+          // Авторизация ауысуы кезіндегі (sign-in/out) уақытша рұқсат қатесін өткізіп жібереміз
+          if (error.code === 'permission-denied') {
+            return;
           }
           
-          const contextualError = new FirestorePermissionError({
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: userDocRef.path,
             operation: 'get',
-          });
-          errorEmitter.emit('permission-error', contextualError);
+          }));
           setLoading(false);
         });
 

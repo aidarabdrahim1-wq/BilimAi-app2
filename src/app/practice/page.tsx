@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, XCircle, Trophy, AlertTriangle } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -25,12 +25,19 @@ type Question = {
   points: number;
 };
 
+type SubjectConfig = {
+  name: string;
+  count: number;
+  threshold: number;
+};
+
 type SubjectResult = {
   subject: string;
   score: number;
   maxScore: number;
   correct: number;
   total: number;
+  isThresholdPassed: boolean;
 };
 
 type TestSession = {
@@ -52,9 +59,21 @@ export default function PracticePage() {
   const [results, setResults] = useState<SubjectResult[]>([]);
   const [recentSessions, setRecentSessions] = useState<TestSession[]>([]);
   
-  const subjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
+  // 2026 UBT Structure
+  const getSubjectConfigs = (): SubjectConfig[] => {
+    const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
+    
+    return [
+      { name: "Қазақстан тарихы", count: 20, threshold: 5 },
+      { name: "Оқу сауаттылығы", count: 10, threshold: 3 },
+      { name: "Математикалық сауаттылық", count: 10, threshold: 3 },
+      { name: profileSubjects[3] || "1-бейіндік пән", count: 40, threshold: 5 },
+      { name: profileSubjects[4] || "2-бейіндік пән", count: 40, threshold: 5 },
+    ];
+  };
 
-  // Fetch recent sessions
+  const subjectConfigs = getSubjectConfigs();
+
   useEffect(() => {
     if (!user) return;
 
@@ -76,20 +95,34 @@ export default function PracticePage() {
     setTestState("loading");
     setCurrentSubjectIndex(0);
     setResults([]);
-    await loadSubjectQuestions(subjects[0]);
+    await loadSubjectQuestions(subjectConfigs[0]);
   };
 
-  const loadSubjectQuestions = async (subject: string) => {
+  const loadSubjectQuestions = async (config: SubjectConfig) => {
     try {
+      // In a real app, 40 questions might be slow to generate at once. 
+      // For the prototype, we use the specified counts.
       const { questions: newQuestions } = await generateUntQuestions({ 
-        subject, 
-        count: subject.includes("сауаттылық") ? 3 : 5 
+        subject: config.name, 
+        count: config.count 
       });
-      setQuestions(newQuestions);
+      
+      // Update points based on 2026 rules for elective subjects
+      const updatedQuestions = newQuestions.map((q, idx) => {
+        let points = 1;
+        // Rules for Choice Subjects (Index 3 and 4)
+        if (currentSubjectIndex >= 3) {
+          if (idx >= 30) points = 2; // 31-40 questions are 2 points
+        }
+        return { ...q, points };
+      });
+
+      setQuestions(updatedQuestions);
       setCurrentQuestionIndex(0);
       setAnswers({});
       setTestState("testing");
     } catch (error) {
+      console.error("Load error:", error);
       toast({ title: "Қате", description: "Сұрақтарды жүктеу мүмкін болмады.", variant: "destructive" });
       setTestState("idle");
     }
@@ -103,6 +136,7 @@ export default function PracticePage() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
+      // Calculate subject result
       let score = 0;
       let correct = 0;
       let maxScore = 0;
@@ -115,22 +149,24 @@ export default function PracticePage() {
         }
       });
 
+      const config = subjectConfigs[currentSubjectIndex];
       const subjectResult: SubjectResult = {
-        subject: subjects[currentSubjectIndex],
+        subject: config.name,
         score,
         maxScore,
         correct,
-        total: questions.length
+        total: questions.length,
+        isThresholdPassed: score >= config.threshold
       };
 
       const newResults = [...results, subjectResult];
       setResults(newResults);
 
-      if (currentSubjectIndex < subjects.length - 1) {
+      if (currentSubjectIndex < subjectConfigs.length - 1) {
         setTestState("loading");
         const nextIdx = currentSubjectIndex + 1;
         setCurrentSubjectIndex(nextIdx);
-        await loadSubjectQuestions(subjects[nextIdx]);
+        await loadSubjectQuestions(subjectConfigs[nextIdx]);
       } else {
         finishTest(newResults);
       }
@@ -140,25 +176,19 @@ export default function PracticePage() {
   const finishTest = async (finalResults: SubjectResult[]) => {
     setTestState("results");
     
-    let totalUntScore = 0;
-    finalResults.forEach((r, idx) => {
-      let weight = idx < 3 ? (idx === 0 ? 20 : 10) : 50;
-      totalUntScore += (r.score / r.maxScore) * weight;
-    });
-
-    const finalScore = Math.round(totalUntScore);
+    const totalScore = finalResults.reduce((acc, r) => acc + r.score, 0);
 
     if (user) {
       const testSession = {
         studentId: user.uid,
-        type: "practice",
-        score: finalScore,
+        type: "practice_2026",
+        score: totalScore,
         results: finalResults,
         createdAt: serverTimestamp(),
       };
       
       await addDoc(collection(db, "studentProfiles", user.uid, "testSessions"), testSession);
-      await updateUserRating(user.uid, finalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
+      await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
     }
   };
 
@@ -166,54 +196,72 @@ export default function PracticePage() {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <Loader2 className="size-12 animate-spin text-primary" />
-          <p className="font-bold text-lg animate-pulse">{subjects[currentSubjectIndex]} сұрақтары дайындалуда...</p>
+          <div className="relative">
+            <Loader2 className="size-16 animate-spin text-primary opacity-20" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Zap className="size-8 text-primary animate-pulse" />
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <p className="font-bold text-xl">{subjectConfigs[currentSubjectIndex].name}</p>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {subjectConfigs[currentSubjectIndex].count} сұрақ дайындалуда...
+            </p>
+          </div>
         </div>
       </AppShell>
     );
   }
 
   if (testState === "results") {
-    const totalScore = Math.round(results.reduce((acc, r, idx) => {
-      let weight = idx < 3 ? (idx === 0 ? 20 : 10) : 50;
-      return acc + (r.score / r.maxScore) * weight;
-    }, 0));
+    const totalScore = results.reduce((acc, r) => acc + r.score, 0);
+    const isAllPassed = results.every(r => r.isThresholdPassed);
 
     return (
       <AppShell>
         <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
           <div className="text-center space-y-4">
-            <div className="inline-flex size-20 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center mb-2">
-              <Trophy className="size-10" />
+            <div className="inline-flex size-24 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center mb-2 shadow-inner">
+              <Trophy className="size-12 drop-shadow-sm" />
             </div>
-            <h1 className="text-4xl font-black font-headline">Тест аяқталды!</h1>
+            <h1 className="text-4xl font-black font-headline">2026 ҰБТ Нәтижесі</h1>
             <div className="flex flex-col items-center">
-              <span className="text-7xl font-black text-primary">{totalScore}</span>
-              <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">140 балдан</span>
+              <span className="text-8xl font-black text-primary tracking-tighter">{totalScore}</span>
+              <span className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em]">140 балдан</span>
             </div>
+            {!isAllPassed && (
+              <Badge variant="destructive" className="px-4 py-1">Шекті балл жиналмаған пәндер бар</Badge>
+            )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {results.map((r, i) => (
-              <Card key={i} className="border-none shadow-sm overflow-hidden">
-                <div className={`h-1 ${i < 3 ? 'bg-blue-500' : 'bg-primary'}`} />
+              <Card key={i} className={`border-none shadow-sm overflow-hidden ${!r.isThresholdPassed ? 'ring-2 ring-destructive/20' : ''}`}>
+                <div className={`h-1.5 ${i < 3 ? 'bg-blue-500' : 'bg-primary'}`} />
                 <CardHeader className="py-4">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-bold">{r.subject}</CardTitle>
-                    <Badge variant="secondary">{Math.round((r.score / r.maxScore) * (i < 3 ? (i === 0 ? 20 : 10) : 50))} балл</Badge>
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{r.subject}</CardTitle>
+                    <Badge variant={r.isThresholdPassed ? "secondary" : "destructive"} className="text-[10px]">
+                      {r.score} балл
+                    </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="pb-4 text-xs text-muted-foreground">
-                  Дұрыс жауап: {r.correct} / {r.total}
-                  <Progress value={(r.correct/r.total)*100} className="h-1.5 mt-2" />
+                <CardContent className="pb-4">
+                  <div className="flex justify-between text-[10px] font-bold mb-1.5 uppercase">
+                    <span>Дұрыс: {r.correct} / {r.total}</span>
+                    <span className={r.isThresholdPassed ? "text-green-600" : "text-destructive"}>
+                      {r.isThresholdPassed ? "Өтті" : "Шекті балл: " + subjectConfigs[i].threshold}
+                    </span>
+                  </div>
+                  <Progress value={(r.score / r.maxScore) * 100} className="h-2 rounded-full" />
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          <div className="flex justify-center gap-4">
-            <Button variant="outline" onClick={() => setTestState("idle")}>Басты бетке</Button>
-            <Button onClick={startTest}>Қайта тапсыру</Button>
+          <div className="flex justify-center gap-4 pt-4">
+            <Button variant="outline" size="lg" className="px-8" onClick={() => setTestState("idle")}>Басты бетке</Button>
+            <Button size="lg" className="px-8 font-bold" onClick={startTest}>Қайта тапсыру</Button>
           </div>
         </div>
       </AppShell>
@@ -223,29 +271,40 @@ export default function PracticePage() {
   if (testState === "testing") {
     const q = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    const totalProgress = ((currentSubjectIndex * 20 + currentQuestionIndex) / 120) * 100; // rough visual progress
 
     return (
       <AppShell>
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="flex justify-between items-center px-2">
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase text-primary tracking-widest">{subjects[currentSubjectIndex]}</span>
-              <span className="text-sm font-bold">Сұрақ {currentQuestionIndex + 1} / {questions.length}</span>
+          <div className="space-y-2">
+            <div className="flex justify-between items-end px-1">
+              <div className="flex flex-col">
+                <Badge variant="outline" className="w-fit mb-1 bg-primary/5 text-primary border-primary/20 text-[10px] font-bold">
+                  {subjectConfigs[currentSubjectIndex].name}
+                </Badge>
+                <span className="text-2xl font-black font-headline">Сұрақ {currentQuestionIndex + 1} / {questions.length}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Жалпы барысы</span>
+                <span className="text-sm font-black text-primary">Пән {currentSubjectIndex + 1} / 5</span>
+              </div>
             </div>
-            <Badge variant="outline" className="font-mono">
-              Пән {currentSubjectIndex + 1} / 5
-            </Badge>
+            <Progress value={progress} className="h-1.5 rounded-full" />
           </div>
-          
-          <Progress value={progress} className="h-2" />
 
-          <Card className="border-none shadow-xl">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl leading-relaxed font-headline font-bold">
+          <Card className="border-none shadow-xl bg-white overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-primary to-secondary" />
+            <CardHeader className="p-8">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase bg-accent/50 px-2 py-1 rounded">
+                  {q.points} БАЛЛЫҚ СҰРАҚ
+                </span>
+              </div>
+              <CardTitle className="text-xl md:text-2xl leading-relaxed font-bold">
                 {q.text}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="px-8 pb-8 space-y-3">
               {q.options.map((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isSelected = answers[currentQuestionIndex] === letter;
@@ -253,34 +312,38 @@ export default function PracticePage() {
                   <button 
                     key={i} 
                     onClick={() => handleAnswer(letter)}
-                    className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-4 group ${
+                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-5 group active:scale-[0.98] ${
                       isSelected 
                         ? "border-primary bg-primary/5 ring-4 ring-primary/10" 
                         : "border-border hover:border-primary/30 hover:bg-accent/5"
                     }`}
                   >
-                    <span className={`size-8 rounded-full border-2 flex items-center justify-center text-xs font-black transition-colors ${
-                      isSelected ? "bg-primary text-primary-foreground border-primary" : "group-hover:border-primary/50"
+                    <span className={`size-10 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
+                      isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg" : "group-hover:border-primary/50"
                     }`}>
                       {letter}
                     </span>
-                    <span className={`font-medium text-sm ${isSelected ? "text-primary" : ""}`}>{opt}</span>
+                    <span className={`font-semibold text-base ${isSelected ? "text-primary" : ""}`}>{opt}</span>
                   </button>
                 );
               })}
             </CardContent>
-            <CardFooter className="bg-accent/5 py-4 border-t flex justify-between">
-              <Button variant="ghost" disabled={currentQuestionIndex === 0} onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}>
+            <CardFooter className="bg-accent/5 p-6 border-t flex justify-between">
+              <Button variant="ghost" className="font-bold" disabled={currentQuestionIndex === 0} onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}>
                 Артқа
               </Button>
-              <Button className="gap-2 px-8 font-bold" disabled={!answers[currentQuestionIndex]} onClick={nextStep}>
+              <Button className="gap-2 px-10 h-12 font-black text-lg shadow-lg shadow-primary/20" disabled={!answers[currentQuestionIndex]} onClick={nextStep}>
                 {currentQuestionIndex === questions.length - 1 
-                  ? (currentSubjectIndex === subjects.length - 1 ? "Аяқтау" : "Келесі пән") 
+                  ? (currentSubjectIndex === subjectConfigs.length - 1 ? "Аяқтау" : "Келесі пән") 
                   : "Келесі сұрақ"}
-                <ArrowRight className="size-4" />
+                <ArrowRight className="size-5" />
               </Button>
             </CardFooter>
           </Card>
+          
+          <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            2026 ҰБТ Стандарты бойынша
+          </p>
         </div>
       </AppShell>
     );
@@ -292,47 +355,49 @@ export default function PracticePage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
             <ClipboardCheck className="size-8 text-primary" />
-            Практикалық жаттығу
+            Практикалық жаттығу (ҰБТ 2026)
           </h1>
-          <p className="text-muted-foreground text-sm">ҰБТ форматындағы тесттер арқылы 140 балдық мүмкіндігіңді анықта.</p>
+          <p className="text-muted-foreground text-sm">Жаңа формат бойынша 120 сұрақ және 140 балдық шкаламен дайындал.</p>
         </div>
 
         <div className="grid gap-8 md:grid-cols-3">
           <Card className="md:col-span-2 border-none shadow-sm bg-primary text-primary-foreground overflow-hidden relative group">
-            <CardHeader className="relative z-10">
-              <Badge className="bg-white/20 text-white w-fit mb-2">ҰБТ СИМУЛЯТОРЫ</Badge>
-              <CardTitle className="text-3xl font-black font-headline">Толық ҰБТ Тесті</CardTitle>
-              <CardDescription className="text-primary-foreground/80 text-base max-w-md mt-2">
-                Барлық 5 пән бойынша кешенді тексеру. Нәтиже 140 балдық шкаламен есептеледі.
+            <CardHeader className="relative z-10 p-8">
+              <Badge className="bg-white/20 text-white w-fit mb-4 font-bold">2026 ФОРМАТ</Badge>
+              <CardTitle className="text-4xl md:text-5xl font-black font-headline leading-tight">Толық ҰБТ Тесті</CardTitle>
+              <CardDescription className="text-primary-foreground/80 text-lg max-w-md mt-4 leading-relaxed">
+                5 пән бойынша кешенді тексеру. Жаңа шкаламен (140 балл) деңгейіңді анықта.
               </CardDescription>
             </CardHeader>
-            <CardContent className="relative z-10">
-              <div className="flex flex-wrap items-center gap-6 mt-6">
+            <CardContent className="relative z-10 px-8 pb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-4">
                 <div className="flex flex-col">
-                  <span className="text-3xl font-black">5</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70">Пән</span>
+                  <span className="text-4xl font-black tracking-tighter">120</span>
+                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Сұрақ</span>
                 </div>
-                <div className="size-px h-8 bg-white/20" />
                 <div className="flex flex-col">
-                  <span className="text-3xl font-black">140</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70">Макс балл</span>
+                  <span className="text-4xl font-black tracking-tighter">140</span>
+                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Макс балл</span>
                 </div>
-                <div className="size-px h-8 bg-white/20" />
                 <div className="flex flex-col">
-                  <span className="text-3xl font-black">+20</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70">Рейтинг ұпайы</span>
+                  <span className="text-4xl font-black tracking-tighter">5</span>
+                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Пән</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-4xl font-black tracking-tighter">+20</span>
+                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Рейтинг</span>
                 </div>
               </div>
-              <Button size="lg" variant="secondary" className="mt-10 font-black h-14 px-10 gap-3 shadow-xl hover:scale-105 transition-transform" onClick={startTest}>
-                ТЕСТТІ БАСТАУ <Play className="size-5 fill-current" />
+              <Button size="lg" variant="secondary" className="mt-12 font-black h-16 px-12 text-xl gap-4 shadow-2xl hover:scale-105 transition-transform" onClick={startTest}>
+                ТЕСТТІ БАСТАУ <Play className="size-6 fill-current" />
               </Button>
             </CardContent>
-            <div className="absolute -bottom-10 -right-10 size-64 bg-white/10 rounded-full blur-3xl" />
-            <Zap className="absolute top-10 right-10 size-32 opacity-10 rotate-12 group-hover:scale-110 transition-transform" />
+            <div className="absolute -bottom-20 -right-20 size-96 bg-white/10 rounded-full blur-3xl" />
+            <Zap className="absolute top-10 right-10 size-48 opacity-10 rotate-12 group-hover:scale-110 transition-transform" />
           </Card>
 
           <div className="space-y-6">
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm h-fit">
               <CardHeader className="pb-3 border-b bg-accent/5">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <History className="size-4 text-primary" />
@@ -345,7 +410,7 @@ export default function PracticePage() {
                     recentSessions.map((item) => (
                       <div key={item.id} className="flex justify-between items-center p-4 hover:bg-accent/5 transition-colors">
                         <div className="space-y-1">
-                          <p className="font-bold text-sm">Толық ҰБТ Тесті</p>
+                          <p className="font-bold text-sm">ҰБТ Тесті</p>
                           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
                             {item.createdAt?.seconds 
                               ? format(new Date(item.createdAt.seconds * 1000), "d MMMM, HH:mm", { locale: kk }) 
@@ -353,14 +418,14 @@ export default function PracticePage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className={`text-sm font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                          <span className={`text-base font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
                             {item.score}/140
                           </span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-xs text-muted-foreground">
+                    <div className="p-12 text-center text-xs text-muted-foreground italic">
                       Әлі тест тапсырылмаған
                     </div>
                   )}
@@ -372,13 +437,13 @@ export default function PracticePage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-bold flex items-center gap-2 text-orange-800">
                   <AlertTriangle className="size-4" />
-                  Кеңес
+                  2026 Өзгерістері
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-xs text-orange-700 leading-relaxed font-medium">
-                  ҰБТ-да уақытты тиімді пайдалану үшін әр сұраққа 1.5 минуттан артық жұмсамауға тырысыңыз.
-                </p>
+              <CardContent className="space-y-3">
+                <div className="p-3 rounded-xl bg-white/60 text-[10px] leading-relaxed text-orange-900 border border-orange-200">
+                  Бейіндік пәндердегі <strong>31-40</strong> сұрақтар <strong>2 балл</strong> береді. Шекті баллдарды сақтау маңызды!
+                </div>
               </CardContent>
             </Card>
           </div>

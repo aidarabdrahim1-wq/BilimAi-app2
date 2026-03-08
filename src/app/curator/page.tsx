@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, BrainCircuit, User, Sparkles, Loader2, History } from "lucide-react";
+import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle } from "lucide-react";
 import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
@@ -17,7 +17,7 @@ import { FirestorePermissionError } from "@/firebase/errors";
 
 type Message = {
   id?: string;
-  role: "user" | "ai";
+  role: "user" | "ai" | "error";
   content: string;
   createdAt?: any;
 };
@@ -32,7 +32,6 @@ export default function CuratorPage() {
   useEffect(() => {
     if (!user || !db) return;
 
-    // Updated to match firestore.rules: /studentProfiles/{studentId}/curatorInteractions
     const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
     const q = query(
       interactionsRef,
@@ -62,11 +61,13 @@ export default function CuratorPage() {
         setMessages(msgs);
       }
     }, async (error) => {
-      const permissionError = new FirestorePermissionError({
-        path: interactionsRef.path,
-        operation: 'list',
-      });
-      errorEmitter.emit('permission-error', permissionError);
+      if (error.code !== 'permission-denied') {
+        const permissionError = new FirestorePermissionError({
+          path: interactionsRef.path,
+          operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      }
     });
 
     return () => unsubscribe();
@@ -83,7 +84,6 @@ export default function CuratorPage() {
     if (!textToSend.trim() || isLoading || !user || !db) return;
 
     const userMessage = textToSend.trim();
-    // Updated to match firestore.rules: /studentProfiles/{studentId}/curatorInteractions
     const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
     setInput("");
     setIsLoading(true);
@@ -95,16 +95,12 @@ export default function CuratorPage() {
         messageType: "student_query",
         content: userMessage,
         timestamp: serverTimestamp(),
-      }).catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: interactionsRef.path,
-          operation: 'create',
-          requestResourceData: { studentId: user.uid, content: userMessage }
-        }));
+      }).catch(async (err) => {
+        console.error("Firestore Save Error:", err);
       });
 
       // 2. Get AI Response
-      const { aiResponse } = await provideCuratorSupport({ 
+      const response = await provideCuratorSupport({ 
         studentMessage: userMessage,
         studentProfile: profile ? {
           fullName: profile.fullName,
@@ -116,22 +112,31 @@ export default function CuratorPage() {
         } : undefined
       });
 
+      if (!response || !response.aiResponse) {
+        throw new Error("EMPTY_RESPONSE");
+      }
+
       // 3. Save AI response to Firestore
       addDoc(interactionsRef, {
         studentId: user.uid,
         messageType: "ai_response",
-        content: aiResponse,
+        content: response.aiResponse,
         timestamp: serverTimestamp(),
-      }).catch(async () => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: interactionsRef.path,
-          operation: 'create',
-          requestResourceData: { studentId: user.uid, content: aiResponse }
-        }));
+      }).catch(async (err) => {
+        console.error("Firestore Save Error AI:", err);
       });
-    } catch (error) {
-      console.error("AI Error:", error);
-      setMessages((prev) => [...prev, { role: "ai", content: "Кешіріңіз, байланыста ақау болды. Қайта көріңізші." }]);
+    } catch (error: any) {
+      console.error("AI Curator Error:", error);
+      let errorMessage = "Кешіріңіз, байланыста ақау болды. Қайта көріңізші.";
+      
+      if (error.message === 'AI_QUOTA_EXCEEDED' || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        errorMessage = "AI куратордың тегін лимиті аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз. ⏳";
+      }
+
+      setMessages((prev) => [...prev, { 
+        role: "error", 
+        content: errorMessage 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -190,15 +195,21 @@ export default function CuratorPage() {
                     >
                       <div
                         className={`size-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${
-                          m.role === "user" ? "bg-accent text-accent-foreground" : "bg-primary text-primary-foreground"
+                          m.role === "user" ? "bg-accent text-accent-foreground" : 
+                          m.role === "error" ? "bg-destructive text-destructive-foreground" :
+                          "bg-primary text-primary-foreground"
                         }`}
                       >
-                        {m.role === "user" ? <User className="size-4" /> : <BrainCircuit className="size-4" />}
+                        {m.role === "user" ? <User className="size-4" /> : 
+                         m.role === "error" ? <AlertCircle className="size-4" /> :
+                         <BrainCircuit className="size-4" />}
                       </div>
                       <div
                         className={`p-4 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                           m.role === "user"
                             ? "bg-primary text-primary-foreground rounded-tr-none shadow-md"
+                            : m.role === "error"
+                            ? "bg-destructive/10 text-destructive border border-destructive/20 rounded-tl-none"
                             : "bg-muted text-foreground rounded-tl-none border border-border/50"
                         }`}
                       >

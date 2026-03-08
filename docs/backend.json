@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -16,6 +17,8 @@
         "completedPlans": { "type": "number" },
         "streakDays": { "type": "number" },
         "selectedSubjects": { "type": "array", "items": { "type": "string" } },
+        "subjectCombination": { "type": "string" },
+        "targetCareer": { "type": "string" },
         "weakTopics": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -58,8 +59,17 @@ export default function SignupPage() {
 
     if (!currentCombo) {
       toast({
-        title: "Қате",
-        description: "Пән комбинациясын таңдаңыз.",
+        title: "Пәнді таңдаңыз",
+        description: "Пән комбинациясын таңдау міндетті.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.targetCareer) {
+      toast({
+        title: "Мамандықты таңдаңыз",
+        description: "Болашақ мамандықты таңдау міндетті.",
         variant: "destructive",
       });
       return;
@@ -215,6 +225,7 @@ export default function SignupPage() {
                   <Label>Болашақ мамандық</Label>
                   <Select 
                     disabled={!currentCombo} 
+                    value={formData.targetCareer}
                     onValueChange={(v) => setFormData({ ...formData, targetCareer: v })} 
                     required
                   >

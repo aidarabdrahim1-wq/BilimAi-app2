@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -70,14 +71,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setLoading(false);
         }, async (error: any) => {
-          // During login/signup transitions, permission-denied might briefly occur
-          // We only emit if it's not a race condition where the user is suddenly null
-          if (auth.currentUser) {
-            const permissionError = new FirestorePermissionError({
-              path: userDocRef.path,
-              operation: 'get',
-            });
-            errorEmitter.emit('permission-error', permissionError);
+          // Filter out transitive permission errors during signup/login
+          if (auth.currentUser && error.code === 'permission-denied') {
+             // Silence transitive errors to avoid flashing error screens
+             console.debug("AuthProvider: Profile document not ready yet or permission issue.");
           }
           setLoading(false);
         });

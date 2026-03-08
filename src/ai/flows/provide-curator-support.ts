@@ -25,7 +25,8 @@ const CuratorChatInputSchema = z.object({
 export type CuratorChatInput = z.infer<typeof CuratorChatInputSchema>;
 
 const CuratorChatOutputSchema = z.object({
-  aiResponse: z.string().describe('The AI curator\'s supportive and encouraging response.'),
+  aiResponse: z.string().optional().describe('The AI curator\'s supportive and encouraging response.'),
+  error: z.string().optional().describe('Error code if the request failed.'),
 });
 export type CuratorChatOutput = z.infer<typeof CuratorChatOutputSchema>;
 
@@ -74,9 +75,9 @@ const curatorChatFlow = ai.defineFlow(
       return output!;
     } catch (error: any) {
       if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        throw new Error('AI_QUOTA_EXCEEDED');
+        return { error: 'AI_QUOTA_EXCEEDED' };
       }
-      throw error;
+      return { error: 'UNKNOWN_ERROR' };
     }
   }
 );

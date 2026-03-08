@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -112,6 +111,14 @@ export default function CuratorPage() {
         } : undefined
       });
 
+      if (response.error === 'AI_QUOTA_EXCEEDED') {
+        setMessages((prev) => [...prev, { 
+          role: "error", 
+          content: "AI куратордың тегін лимиті аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз. ⏳" 
+        }]);
+        return;
+      }
+
       if (!response || !response.aiResponse) {
         throw new Error("EMPTY_RESPONSE");
       }
@@ -127,15 +134,9 @@ export default function CuratorPage() {
       });
     } catch (error: any) {
       console.error("AI Curator Error:", error);
-      let errorMessage = "Кешіріңіз, байланыста ақау болды. Қайта көріңізші.";
-      
-      if (error.message === 'AI_QUOTA_EXCEEDED' || error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        errorMessage = "AI куратордың тегін лимиті аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз. ⏳";
-      }
-
       setMessages((prev) => [...prev, { 
         role: "error", 
-        content: errorMessage 
+        content: "Кешіріңіз, байланыста ақау болды. Қайта көріңізші." 
       }]);
     } finally {
       setIsLoading(false);

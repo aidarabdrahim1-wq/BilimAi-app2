@@ -23,7 +23,8 @@ const RunUntTestInputSchema = z.object({
 });
 
 const RunUntTestOutputSchema = z.object({
-  questions: z.array(UntQuestionSchema),
+  questions: z.array(UntQuestionSchema).optional(),
+  error: z.string().optional(),
 });
 
 export async function generateUntQuestions(input: z.infer<typeof RunUntTestInputSchema>) {
@@ -60,9 +61,9 @@ const untTestFlow = ai.defineFlow(
       return output!;
     } catch (error: any) {
       if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        throw new Error('AI_QUOTA_EXCEEDED');
+        return { error: 'AI_QUOTA_EXCEEDED' };
       }
-      throw error;
+      return { error: 'UNKNOWN_ERROR' };
     }
   }
 );

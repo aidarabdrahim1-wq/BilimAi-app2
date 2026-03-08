@@ -18,10 +18,11 @@ const ExplainTopicInputSchema = z.object({
 export type ExplainTopicInput = z.infer<typeof ExplainTopicInputSchema>;
 
 const ExplainTopicOutputSchema = z.object({
-  given: z.string().describe('Тақырыптың берілгені немесе қысқаша контексті.'),
-  theory: z.string().describe('Тақырыптың егжей-тегжейлі теориялық түсіндірмесі.'),
-  yearsToMemorize: z.array(z.string()).describe('Жаттап алу керек маңызды жылдар немесе негізгі даталар/деректер.'),
-  frequentUntTopics: z.string().describe('ҰБТ-да осы тақырып бойынша жиі келетін сұрақтардың бағыттары мен маңызды тұстары.'),
+  given: z.string().optional().describe('Тақырыптың берілгені немесе қысқаша контексті.'),
+  theory: z.string().optional().describe('Тақырыптың егжей-тегжейлі теориялық түсіндірмесі.'),
+  yearsToMemorize: z.array(z.string()).optional().describe('Жаттап алу керек маңызды жылдар немесе негізгі даталар/деректер.'),
+  frequentUntTopics: z.string().optional().describe('ҰБТ-да осы тақырып бойынша жиі келетін сұрақтардың бағыттары мен маңызды тұстары.'),
+  error: z.string().optional().describe('Қателік коды.'),
 });
 export type ExplainTopicOutput = z.infer<typeof ExplainTopicOutputSchema>;
 
@@ -59,9 +60,9 @@ const explainTopicFlow = ai.defineFlow(
       return output!;
     } catch (error: any) {
       if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        throw new Error('AI_QUOTA_EXCEEDED');
+        return { error: 'AI_QUOTA_EXCEEDED' };
       }
-      throw error;
+      return { error: 'UNKNOWN_ERROR' };
     }
   }
 );

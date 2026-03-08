@@ -17,18 +17,17 @@ import {
   Dna,
   Scale,
   ListChecks,
-  Info,
   Terminal,
   BookText,
   FileText,
   Sparkles,
   Loader2,
-  Lightbulb,
   CheckCircle2,
   Target,
   Calendar,
   ClipboardList,
-  AlertCircle
+  AlertCircle,
+  RefreshCcw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -300,18 +299,27 @@ export default function TheoryPage() {
 
 function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }) {
   const [explainingTopic, setExplainingTopic] = useState<string | null>(null);
+  const [explainingSubject, setExplainingSubject] = useState<string | null>(null);
   const [aiExplanation, setAiExplanation] = useState<ExplainTopicOutput | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleExplain = async (subject: string, topic: string) => {
     setExplainingTopic(topic);
+    setExplainingSubject(subject);
     setIsAiLoading(true);
     setAiExplanation(null);
+    setErrorMessage(null);
     try {
       const result = await explainTopic({ subject, topic });
       setAiExplanation(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Explanation error:", error);
+      let msg = "Түсіндірмені жүктеу мүмкін болмады.";
+      if (error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
+      }
+      setErrorMessage(msg);
     } finally {
       setIsAiLoading(false);
     }
@@ -406,6 +414,24 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                   <p className="font-bold">AI ойлануда...</p>
                                   <p className="text-xs text-muted-foreground">Тақырыпты ең қарапайым тілмен құрастырып жатырмыз.</p>
                                 </div>
+                              </div>
+                            ) : errorMessage ? (
+                              <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-sm mx-auto">
+                                <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+                                  <AlertCircle className="size-10" />
+                                </div>
+                                <div className="space-y-2">
+                                  <h2 className="text-xl font-bold font-headline">Байланыс қатесі</h2>
+                                  <p className="text-muted-foreground text-sm leading-relaxed">
+                                    {errorMessage}
+                                  </p>
+                                </div>
+                                <Button 
+                                  className="gap-2" 
+                                  onClick={() => handleExplain(explainingSubject!, explainingTopic!)}
+                                >
+                                  <RefreshCcw className="size-4" /> Қайта көру
+                                </Button>
                               </div>
                             ) : aiExplanation ? (
                               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">

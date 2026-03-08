@@ -1,53 +1,208 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if the user is the owner of the document
-    function isOwner(userId) {
-      return request.auth != null && request.auth.uid == userId;
+
+    /**
+     * CORE PHILOSOPHY:
+     * This ruleset enforces a strict user-ownership model. Personal data is isolated within 
+     * user-specific paths (/users/{userId}), ensuring that users can only access and 
+     * manage their own information.
+     *
+     * DATA STRUCTURE:
+     * - /users/{userId}: The root for all user-specific data, including profiles, 
+     *   test attempts, study plans, and progress snapshots.
+     * - Global Collections: /subjects, /topics, /questions, /motivationCards, and 
+     *   /contentBlocks contain shared educational content accessible to all 
+     *   authenticated users.
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Authorization Independence: All user data is nested under their UID. This 
+     *    allows for fast, performant rules that check request.auth.uid against the 
+     *    document path without requiring additional lookups (get() calls).
+     * 2. Path-Data Consistency: For all user-owned documents, the rules enforce 
+     *    that internal ID fields (like studentId) match the path parameter.
+     * 3. Read-Only Global Content: Educational content is strictly read-only for 
+     *    regular users.
+     * 4. Denormalization: Entity IDs are stored within documents to facilitate 
+     *    ownership checks and future collection group queries while maintaining 
+     *    rule simplicity.
+     */
+
+    // --- Helper Functions ---
+
+    /** @description Checks if the user is authenticated with Firebase Auth. */
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // User profiles and their subcollections
-    match /users/{userId} {
-      allow read, write: if isOwner(userId);
-      
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks if the document exists and the current user is the owner. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the StudentProfile entity.
+     * @path /users/{studentId}
+     * @allow (get) Authenticated user 'abc' requests /users/abc.
+     * @deny (create) User 'abc' attempts to create a profile with ID 'xyz'.
+     * @principle Enforces self-creation and strict ownership of user profile data.
+     */
+    match /users/{studentId} {
+      allow get, list: if isOwner(studentId);
+      allow create: if isOwner(studentId) && request.resource.data.id == studentId;
+      allow update: if isExistingOwner(studentId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(studentId);
+
+      /**
+       * @description Records of student test attempts.
+       * @path /users/{studentId}/testAttempts/{testAttemptId}
+       * @allow (list) User 'abc' lists their own test attempts.
+       * @deny (update) User 'abc' tries to change the 'studentId' field of a test attempt.
+       * @principle Scopes access to the user's private data tree and ensures relational integrity.
+       */
+      match /testAttempts/{testAttemptId} {
+        allow get, list: if isOwner(studentId);
+        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
+        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+        allow delete: if isExistingOwner(studentId);
+
+        /**
+         * @description Individual question responses within a test attempt.
+         * @path /users/{studentId}/testAttempts/{testAttemptId}/questionAttempts/{qaId}
+         * @allow (get) User 'abc' reads a question attempt within their own test attempt.
+         * @deny (create) User 'abc' writes a question attempt to user 'xyz's path.
+         * @principle Deeply nested ownership verification via path parameters.
+         */
+        match /questionAttempts/{qaId} {
+          allow get, list: if isOwner(studentId);
+          allow create: if isOwner(studentId);
+          allow update: if isExistingOwner(studentId);
+          allow delete: if isExistingOwner(studentId);
+        }
+      }
+
+      /**
+       * @description Personalized study plans for students.
+       * @path /users/{studentId}/studyPlans/{studyPlanId}
+       * @allow (create) User 'abc' creates a study plan where studentId is 'abc'.
+       * @deny (get) User 'abc' attempts to read user 'def's study plan.
+       * @principle Validates ownership and prevents cross-user data leakage.
+       */
+      match /studyPlans/{studyPlanId} {
+        allow get, list: if isOwner(studentId);
+        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
+        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+        allow delete: if isExistingOwner(studentId);
+
+        /**
+         * @description Specific activities within a study plan.
+         * @path /users/{studentId}/studyPlans/{studyPlanId}/activities/{activityId}
+         * @allow (update) User 'abc' marks an activity in their plan as completed.
+         * @deny (list) User 'abc' lists activities in user 'xyz's plan.
+         * @principle Ensures sub-resource access is gated by parent ownership.
+         */
+        match /activities/{activityId} {
+          allow get, list: if isOwner(studentId);
+          allow create: if isOwner(studentId);
+          allow update: if isExistingOwner(studentId);
+          allow delete: if isExistingOwner(studentId);
+        }
+      }
+
+      /**
+       * @description Historical snapshots of student progress.
+       * @path /users/{studentId}/progressSnapshots/{snapshotId}
+       * @allow (get) User 'abc' retrieves a specific progress snapshot.
+       * @deny (delete) User 'abc' tries to delete a snapshot belonging to 'xyz'.
+       * @principle Protects longitudinal user performance data.
+       */
+      match /progressSnapshots/{snapshotId} {
+        allow get, list: if isOwner(studentId);
+        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
+        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+        allow delete: if isExistingOwner(studentId);
+      }
+
+      /**
+       * @description Communication between student and AI curator.
+       * @path /users/{studentId}/curatorMessages/{messageId}
+       * @allow (create) User 'abc' sends a message to the curator.
+       * @deny (list) User 'abc' attempts to see user 'xyz's messages.
+       * @principle Secures private communication logs.
+       */
+      match /curatorMessages/{messageId} {
+        allow get, list: if isOwner(studentId);
+        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
+        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
+        allow delete: if isExistingOwner(studentId);
       }
     }
-    
-    // Test results - allow if the user is the owner
-    match /test_results/{id} {
-      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
-    }
-    
-    // User mistakes
-    match /mistakes/{id} {
-      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
-    }
-    
-    // Study plans
-    match /study_plans/{id} {
-      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
-    }
-    
-    // Diagnostics
-    match /diagnostics/{id} {
-      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
-    }
-    
-    // Progress
-    match /progress/{userId} {
-      allow read, write: if isOwner(userId);
+
+    /**
+     * @description Global academic subjects.
+     * @path /subjects/{subjectId}
+     * @allow (get) Any signed-in user reads a subject.
+     * @deny (create) Any user attempts to create a new subject.
+     * @principle Global read access for authenticated users, restricted writes.
+     */
+    match /subjects/{subjectId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
-    // Theory materials - read only for authenticated users
-    match /theory_materials/{id} {
-      allow read: if request.auth != null;
+    /**
+     * @description Global learning topics.
+     * @path /topics/{topicId}
+     * @allow (get) Any signed-in user reads a topic.
+     * @deny (update) Any user attempts to modify a topic definition.
+     * @principle Global read access for authenticated users, restricted writes.
+     */
+    match /topics/{topicId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
 
-    // Default deny for everything else
-    match /{document=**} {
-      allow read, write: if false;
+    /**
+     * @description Global test questions.
+     * @path /questions/{questionId}
+     * @allow (list) Any signed-in user lists available questions.
+     * @deny (delete) Any user attempts to delete a question.
+     * @principle Global read access for authenticated users, restricted writes.
+     */
+    match /questions/{questionId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Global motivational content.
+     * @path /motivationCards/{cardId}
+     * @allow (get) Any signed-in user reads a card.
+     * @deny (create) Any user attempts to add a new card.
+     * @principle Global read access for authenticated users, restricted writes.
+     */
+    match /motivationCards/{cardId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Global dynamic UI content blocks.
+     * @path /contentBlocks/{blockId}
+     * @allow (get) Any signed-in user reads a content block.
+     * @deny (update) Any user attempts to change block content.
+     * @principle Global read access for authenticated users, restricted writes.
+     */
+    match /contentBlocks/{blockId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
     }
   }
 }

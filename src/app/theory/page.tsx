@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -27,7 +28,8 @@ import {
   Calendar,
   ClipboardList,
   AlertCircle,
-  RefreshCcw
+  RefreshCcw,
+  Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +46,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { explainTopic, type ExplainTopicOutput } from "@/ai/flows/explain-topic-flow";
+
+// Статикалық түсіндірмелер базасы (AI лимиті біткенде немесе жылдам қарау үшін)
+const STATIC_THEORY: Record<string, any> = {
+  "Қазақ хандығының құрылуы мен дамуы": {
+    given: "XV ғасырдың ортасындағы Қазақстан аумағындағы саяси жағдай және қазақ халқының этникалық бірігу процесі.",
+    theory: "Қазақ хандығының негізі 1465 жылы Шу мен Қозыбасы өңірлерінде қаланды. Негізін салғандар - Керей мен Жәнібек хандар. Олар Әбілқайыр хандығынан (Көшпелі өзбектер мемлекеті) бөлініп, Моғолстанның батыс бөлігіне қоныс аударды.\n\nДаму кезеңдері:\n1. Қасым хан тұсында - 'Қасым ханның қасқа жолы' заңдар жинағы, халқы 1 миллионға жетті.\n2. Хақназар хан тұсында - Хандықтың жерін кеңейту және нығайту.\n3. Тәуекел хан тұсында - Түркістан мен Ташкентті қосу.\n4. Есім хан тұсында - 'Есім ханның ескі жолы' заңдары.\n5. Тәуке хан тұсында - 'Жеті жарғы' заңдар жинағы, 'Алтын ғасыр'.",
+    years: ["1465 ж. - Қазақ хандығының құрылуы", "1511-1518 жж. - Қасым ханның билігі", "1680-1718 жж. - Тәуке ханның билігі"],
+    unt_focus: "Керей мен Жәнібектің Моғолстанға көшу себептері, 'Жеті жарғы' баптары және хандардың билік еткен жылдары жиі келеді."
+  },
+  "Логарифмдік теңдеулер": {
+    given: "Айнымалысы логарифм белгісінің астында немесе негізінде болатын теңдеулер.",
+    theory: "Логарифмнің негізгі қасиеттері:\n1. log_a(b) = c => a^c = b (Анықтама бойынша)\n2. log_a(xy) = log_a(x) + log_a(y)\n3. log_a(x/y) = log_a(x) - log_a(y)\n4. log_a(x^n) = n * log_a(x)\n\nШешу жолдары:\n- Потенциалдау (екі жағын бірдей негізге келтіру).\n- Жаңа айнымалы енгізу.\n- Логарифмдік анықтаманы қолдану.\n\nМАҢЫЗДЫ: Мүмкін мәндер жиынын (ММЖ) анықтау керек! Негізі a > 0, a != 1 және логарифм астындағы сан x > 0 болуы тиіс.",
+    years: ["log_a(1) = 0", "log_a(a) = 1", "a^{log_a(b)} = b"],
+    unt_focus: "ММЖ-ны ұмытып кету - ең жиі қателік. Тестте жауабын теңдеуге қойып тексерген тиімді."
+  },
+  "Ньютонның екінші заңы": {
+    given: "Дененің үдеуі мен оған әсер етуші күш арасындағы байланысты сипаттайтын классикалық механиканың іргелі заңы.",
+    theory: "Денеге әсер ететін күш дене массасы мен оның алған үдеуінің көбейтіндісіне тең.\n\nФормула: F = m * a\nМұндағы:\n- F — күш (Ньютон, Н)\n- m — масса (Килограмм, кг)\n- a — үдеу (м/с²)\n\nЕгер денеге бірнеше күш әсер етсе, онда F — барлық күштердің теңәсерлі күші болып табылады.",
+    years: ["1 Н = 1 кг * м/с²", "a = F / m", "m = F / a"],
+    unt_focus: "Көлбеу жазықтық пен блоктар арқылы жүктерді тарту есептерінде осы заң негізінде теңдеулер жүйесі құрылады."
+  }
+};
 
 const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Қазақстан тарихы": {
@@ -78,7 +102,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
     description: "Алгебра, тригонометрия және геометрияның тереңдетілген курсы.",
     topics: [
       "Сандар мен өрнектер", "Теңдеулер мен теңсіздіктер", "Функциялар және графиктер", 
-      "Дәреже, түбір, логарифм", "Тригонометрия", "Арифметикалық және геометриялық прогрессия", 
+      "Дәреже, түбір, логарифм", "Логарифмдік теңдеулер", "Тригонометрия", "Арифметикалық және геометриялық прогрессия", 
       "Туынды және оның қолданылуы", "Алғашқы функция және интегралдың бастапқы түсініктері", 
       "Векторлар", "Координаталар әдісі", "Планиметрия", "Стереометрия", "Комбинаторика және ықтималдық"
     ]
@@ -86,7 +110,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Физика": {
     description: "Классикалық механикадан бастап атомдық физикаға дейінгі негізгі заңдар.",
     topics: [
-      "Кинематика", "Динамика", "Сақталу заңдары", "Статика және гидростатика", "Молекулалық физика", 
+      "Кинематика", "Динамика", "Ньютонның екінші заңы", "Сақталу заңдары", "Статика және гидростатика", "Молекулалық физика", 
       "Термодинамика", "Электростатика", "Тұрақты ток заңдары", "Магнит өрісі", "Электромагниттік индукция", 
       "Тербелістер мен толқындар", "Оптика", "Атом және ядро физикасы", "Радиация", "Астрономияның негізгі элементтері"
     ]
@@ -118,71 +142,6 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
       "Дүниежүзіның саяси картасы", "Елтану", "Табиғи ресурстар географиясы", 
       "Өнеркәсіп, ауыл шаруашылығы, көлік, қызмет көрсету саласы", 
       "Қазақстанның экономикалық және әлеуметтік географиясы", "Экологиялық проблемалар", "Ғаламдық мәселелер"
-    ]
-  },
-  "Дүниежүзі тарихы": {
-    description: "Әлемдік өркениеттердин дамуы мен халықаралық қатынастар тарихы.",
-    topics: [
-      "Ежелгі өркениеттер", "Антикалық дүние", "Орта ғасырлар", "Феодалдық қоғам", "Ислам өркениеті", 
-      "Қайта өрлеу", "Реформация", "Ұлы географиялық ашулар", "Буржуазиялық революциялар", 
-      "Индустрияландыру", "Отаршылдық", "І және ІІ дүниежүзілік соғыс", "Версаль-Вашингтон жүйесі", 
-      "Қырғи-қабақ соғыс", "Деколонизация", "Халықаралық қатынастар", "ХХ-ХХІ ғасырдағы жаһандық үрдістер"
-    ]
-  },
-  "Құқық негіздері": {
-    description: "Мемлекеттік басқару, Конституция және заңнама негіздері.",
-    topics: [
-      "Мемлекет және құқық теориясы", "Конституция", "Адам және азамат құқықтары", "Сайлау жүйесі", 
-      "Мемлекеттік басқару", "Әкімшілік құқық", "Азаматтық құқық", "Еңбек құқығы", "Отбасы құқығы", 
-      "Қылмыстық құқық", "Сыбайлас жемқорлыққа қарсы мәдениет", "Сот жүйесі", "Құқықтық жауапкершілік", 
-      "Халықаралық құқықтың негізгі ұғымдары"
-    ]
-  },
-  "Информатика": {
-    description: "Алгоритмдеу, программалау және киберқауіпсіздік негіздері.",
-    topics: [
-      "Ақпарат және ақпараттық процестер", "Компьютер архитектурасы", "Операциялық жүйелер", 
-      "Файлдар және деректер", "Ақпаратты кодтау", "Логика элементтері", "Алгоритмдеу", 
-      "Программалау негіздері", "Деректер қоры", "Электрондық кестелер", "Желілер және интернет", 
-      "Киберқауіпсіздік", "Веб-технология негіздері", "Модельдеу", "Цифрлық сауаттылық"
-    ]
-  },
-  "Ағылшын тілі": {
-    description: "Reading comprehension, grammar and vocabulary usage.",
-    topics: [
-      "Reading comprehension", "Vocabulary in context", "Grammar: tenses, passive voice, reported speech", 
-      "Conditionals, modal verbs, articles, prepositions", "Relative clauses, word formation", 
-      "Sentence transformation", "Cloze test", "Matching", "Everyday and academic topics мәтіндері"
-    ]
-  },
-  "Қазақ тілі": {
-    description: "Қазақ тілінің грамматикасы, стилистикасы мен мәтін талдауы.",
-    topics: [
-      "Фонетика", "Орфоэпия", "Орфография", "Лексика және фразеология", "Сөзжасам", "Морфология", 
-      "Сөз таптары", "Сөйлем мүшелері", "Жай сөйлем", "Құрмалас сөйлем", "Синтаксис", "Тыныс белгілері", 
-      "Мәтін түрлері", "Стильдер", "Тілдік норма", "Грамматикалық талдау"
-    ]
-  },
-  "Қазақ әдебиеті": {
-    description: "Әдеби шығармалар талдауы мен авторлар шығармашылығы.",
-    topics: [
-      "Әдеби бағыттар мен жанрлар", "Әдеби-теориялық ұғымдар", "Ақын-жазушылардың өмірі мен шығармашылығы", 
-      "Поэзия талдауы", "Прозалық шығармаларды талдау", "Драмалық шығармалар", "Кейіпкер бейнесі", 
-      "Идея, тақырып, композиция", "Тарихи-көркемдік маңызы", "Автор позициясы", "Әдеби шығарма бойынша салыстырмалы талдау"
-    ]
-  },
-  "Орыс тілі": {
-    description: "Русский язык и культура речи.",
-    topics: [
-      "Фонетика, лексика, грамматика", "Морфология, синтаксис, пунктуация", "Мәтінді түсіну", 
-      "Стилистика", "Языковые нормы", "Культура речи"
-    ]
-  },
-  "Орыс әдебиеті": {
-    description: "History russian literature and analysis of works.",
-    topics: [
-      "Авторы и произведения", "Литературные жанры", "Литературный анализ", "Герои и идеи", 
-      "Композиция", "Историко-литературный контекст"
     ]
   }
 };
@@ -268,7 +227,7 @@ export default function TheoryPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               { title: "Логарифмдік теңдеулер", subject: "Математика", difficulty: "Орта" },
-              { title: "Қазақ хандығының құрылуы", subject: "Қазақстан тарихы", difficulty: "Оңай" },
+              { title: "Қазақ хандығының құрылуы мен дамуы", subject: "Қазақстан тарихы", difficulty: "Оңай" },
               { title: "Ньютонның екінші заңы", subject: "Физика", difficulty: "Орта" },
               { title: "Адам анатомиясы мен физиологиясы", subject: "Биология", difficulty: "Қиын" },
             ].map((item, i) => (
@@ -304,9 +263,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleExplain = async (subject: string, topic: string) => {
-    setExplainingTopic(topic);
-    setExplainingSubject(subject);
+  const handleAiDeepDive = async (subject: string, topic: string) => {
     setIsAiLoading(true);
     setAiExplanation(null);
     setErrorMessage(null);
@@ -351,7 +308,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                   <CardContent className="mt-auto">
                     <div className="flex items-center justify-between mt-4">
                       <span className="text-xs font-bold text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
-                        Оқуды бастау <ChevronRight className="size-4" />
+                        Тақырыптарды көру <ChevronRight className="size-4" />
                       </span>
                       <Badge variant="secondary" className="text-[9px] bg-accent/30 font-bold">
                         {ubtInfo.topics.length} тақырып
@@ -369,122 +326,212 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                     <DialogTitle className="text-2xl font-bold font-headline">{subject}</DialogTitle>
                   </div>
                   <DialogDescription className="text-sm font-medium">
-                    ҰТО спецификациясына сай бекітілген тақырыптар тізімі. AI арқылы кез келген тақырыпты түсіндіріп алыңыз.
+                    Тақырыпты таңдап, түсіндірмені оқыңыз.
                   </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] mt-4 pr-4">
                   <div className="grid gap-3">
-                    {ubtInfo.topics.map((topic, idx) => (
-                      <Dialog key={idx}>
-                        <DialogTrigger asChild>
-                          <div 
-                            onClick={() => handleExplain(subject, topic)}
-                            className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-black group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
-                                {idx + 1}
+                    {ubtInfo.topics.map((topic, idx) => {
+                      const hasStatic = STATIC_THEORY[topic];
+                      return (
+                        <Dialog key={idx}>
+                          <DialogTrigger asChild>
+                            <div 
+                              onClick={() => {
+                                setExplainingTopic(topic);
+                                setExplainingSubject(subject);
+                                setAiExplanation(null);
+                                setErrorMessage(null);
+                              }}
+                              className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-black group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
+                                  {idx + 1}
+                                </div>
+                                <span className="text-sm font-bold">{topic}</span>
                               </div>
-                              <span className="text-sm font-bold">{topic}</span>
-                            </div>
-                            <Button size="sm" variant="ghost" className="text-xs font-bold gap-1 h-8 text-primary group-hover/item:bg-primary/10">
-                              <Sparkles className="size-3" /> AI Түсіндіру
-                            </Button>
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
-                          <DialogHeader className="p-6 pb-2">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline" className="text-[10px] uppercase">{subject}</Badge>
-                              <Sparkles className="size-4 text-primary animate-pulse" />
-                            </div>
-                            <DialogTitle className="text-2xl font-bold font-headline">{topic}</DialogTitle>
-                            <DialogDescription>BilimAI оқушыға арналған түсіндірмесі</DialogDescription>
-                          </DialogHeader>
-                          
-                          <ScrollArea className="flex-1 px-6 pb-6">
-                            {isAiLoading ? (
-                              <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
-                                <div className="relative">
-                                  <Loader2 className="size-12 animate-spin text-primary" />
-                                  <Sparkles className="absolute -top-2 -right-2 size-6 text-yellow-400 animate-bounce" />
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="font-bold">AI ойлануда...</p>
-                                  <p className="text-xs text-muted-foreground">Тақырыпты ең қарапайым тілмен құрастырып жатырмыз.</p>
-                                </div>
-                              </div>
-                            ) : errorMessage ? (
-                              <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-sm mx-auto">
-                                <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                                  <AlertCircle className="size-10" />
-                                </div>
-                                <div className="space-y-2">
-                                  <h2 className="text-xl font-bold font-headline">Байланыс қатесі</h2>
-                                  <p className="text-muted-foreground text-sm leading-relaxed">
-                                    {errorMessage}
-                                  </p>
-                                </div>
-                                <Button 
-                                  className="gap-2" 
-                                  onClick={() => handleExplain(explainingSubject!, explainingTopic!)}
-                                >
-                                  <RefreshCcw className="size-4" /> Қайта көру
+                              <div className="flex items-center gap-2">
+                                {hasStatic && (
+                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[9px] font-bold">
+                                    Дайын конспект
+                                  </Badge>
+                                )}
+                                <Button size="sm" variant="ghost" className="text-xs font-bold h-8 text-primary group-hover/item:bg-primary/10">
+                                  Оқу <ChevronRight className="size-4" />
                                 </Button>
                               </div>
-                            ) : aiExplanation ? (
-                              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                                {/* 1. Берілгені */}
-                                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
-                                  <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
-                                    <ClipboardList className="size-4" /> 1. Берілгені
-                                  </h4>
-                                  <p className="text-sm leading-relaxed">{aiExplanation.given}</p>
-                                </div>
-
-                                {/* 2. Теория */}
-                                <div className="space-y-3">
-                                  <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
-                                    <BookText className="size-4" /> 2. Теория
-                                  </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.theory}</p>
-                                </div>
-
-                                {/* 5. Жаттап алу керек жылдар */}
-                                <div className="p-5 rounded-2xl bg-yellow-50 border border-yellow-100">
-                                  <h4 className="flex items-center gap-2 text-sm font-black text-yellow-800 mb-2 uppercase tracking-wider">
-                                    <Calendar className="size-4" /> 5. Жаттап алу керек жылдар / Маңызды деректер
-                                  </h4>
-                                  <ul className="space-y-2">
-                                    {aiExplanation.yearsToMemorize.map((item, yi) => (
-                                      <li key={yi} className="flex gap-2 text-xs text-yellow-900">
-                                        <CheckCircle2 className="size-3 text-yellow-600 shrink-0 mt-0.5" />
-                                        {item}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-
-                                {/* 6. ҰБТ-да көп келетін тақырыптар */}
-                                <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
-                                  <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
-                                    <Target className="size-4" /> 6. ҰБТ-да көп келетін тақырыптар
-                                  </h4>
-                                  <p className="text-sm text-green-700 leading-relaxed whitespace-pre-wrap">
-                                    {aiExplanation.frequentUntTopics}
-                                  </p>
-                                </div>
+                            </div>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+                            <DialogHeader className="p-6 pb-2">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className="text-[10px] uppercase">{subject}</Badge>
+                                <Info className="size-4 text-primary" />
                               </div>
-                            ) : null}
-                          </ScrollArea>
-                          <div className="p-4 border-t bg-muted/20 flex justify-center">
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <Sparkles className="size-2.5" /> BilimAI Куратор сізге сәттілік тілейді!
-                            </p>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    ))}
+                              <DialogTitle className="text-2xl font-bold font-headline">{topic}</DialogTitle>
+                              <DialogDescription>Түсіндірме және негізгі мәліметтер</DialogDescription>
+                            </DialogHeader>
+                            
+                            <ScrollArea className="flex-1 px-6 pb-6">
+                              {/* Simple / Static Explanation */}
+                              {!aiExplanation && !isAiLoading && (
+                                <div className="space-y-6">
+                                  {hasStatic ? (
+                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                      <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                                        <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
+                                          <ClipboardList className="size-4" /> Берілгені
+                                        </h4>
+                                        <p className="text-sm leading-relaxed">{hasStatic.given}</p>
+                                      </div>
+                                      <div className="space-y-3">
+                                        <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
+                                          <BookText className="size-4" /> Теория
+                                        </h4>
+                                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{hasStatic.theory}</p>
+                                      </div>
+                                      <div className="p-5 rounded-2xl bg-yellow-50 border border-yellow-100">
+                                        <h4 className="flex items-center gap-2 text-sm font-black text-yellow-800 mb-2 uppercase tracking-wider">
+                                          <Calendar className="size-4" /> Маңызды деректер
+                                        </h4>
+                                        <ul className="space-y-2">
+                                          {hasStatic.years.map((item: string, yi: number) => (
+                                            <li key={yi} className="flex gap-2 text-xs text-yellow-900">
+                                              <CheckCircle2 className="size-3 text-yellow-600 shrink-0 mt-0.5" />
+                                              {item}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                      <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
+                                        <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
+                                          <Target className="size-4" /> ҰБТ-да көп келетін сұрақтар
+                                        </h4>
+                                        <p className="text-sm text-green-700 leading-relaxed">
+                                          {hasStatic.unt_focus}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="py-12 flex flex-col items-center text-center gap-4">
+                                      <div className="size-16 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground">
+                                        <BookOpen className="size-8" />
+                                      </div>
+                                      <div className="space-y-2">
+                                        <h4 className="font-bold">Бұл тақырып бойынша әлі конспект жоқ</h4>
+                                        <p className="text-sm text-muted-foreground max-w-sm">
+                                          AI-дан осы тақырыпты егжей-тегжейлі түсіндіріп беруін сұрай аласыз.
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* AI Deep Dive Button */}
+                                  <div className="pt-4 border-t">
+                                    <Button 
+                                      className="w-full gap-2 h-12 shadow-md bg-gradient-to-r from-primary to-secondary"
+                                      onClick={() => handleAiDeepDive(subject, topic)}
+                                      disabled={isAiLoading}
+                                    >
+                                      <Sparkles className="size-4" />
+                                      AI-мен тереңдетілген талдау жасау
+                                    </Button>
+                                    <p className="text-[10px] text-center text-muted-foreground mt-2 italic">
+                                      AI тақырыптың мәнін, жаттау тәсілдерін және ҰБТ фокусын талдап береді.
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* AI Loading State */}
+                              {isAiLoading && (
+                                <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
+                                  <div className="relative">
+                                    <Loader2 className="size-12 animate-spin text-primary" />
+                                    <Sparkles className="absolute -top-2 -right-2 size-6 text-yellow-400 animate-bounce" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="font-bold">AI ойлануда...</p>
+                                    <p className="text-xs text-muted-foreground">Тақырыпты ең қарапайым тілмен құрастырып жатырмыз.</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Error State */}
+                              {errorMessage && !isAiLoading && (
+                                <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-sm mx-auto">
+                                  <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+                                    <AlertCircle className="size-10" />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <h2 className="text-xl font-bold font-headline">Байланыс қатесі</h2>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">{errorMessage}</p>
+                                  </div>
+                                  <Button 
+                                    className="gap-2" 
+                                    onClick={() => handleAiDeepDive(explainingSubject!, explainingTopic!)}
+                                  >
+                                    <RefreshCcw className="size-4" /> Қайта көру
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* AI Success View */}
+                              {aiExplanation && !isAiLoading && (
+                                <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
+                                  <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                                    <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
+                                      <ClipboardList className="size-4" /> 1. Берілгені
+                                    </h4>
+                                    <p className="text-sm leading-relaxed">{aiExplanation.given}</p>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
+                                      <BookText className="size-4" /> 2. Теория
+                                    </h4>
+                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.theory}</p>
+                                  </div>
+                                  <div className="p-5 rounded-2xl bg-yellow-50 border border-yellow-100">
+                                    <h4 className="flex items-center gap-2 text-sm font-black text-yellow-800 mb-2 uppercase tracking-wider">
+                                      <Calendar className="size-4" /> 5. Жаттап алу керек жылдар / Деректер
+                                    </h4>
+                                    <ul className="space-y-2">
+                                      {aiExplanation.yearsToMemorize.map((item, yi) => (
+                                        <li key={yi} className="flex gap-2 text-xs text-yellow-900">
+                                          <CheckCircle2 className="size-3 text-yellow-600 shrink-0 mt-0.5" />
+                                          {item}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
+                                    <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
+                                      <Target className="size-4" /> 6. ҰБТ-да көп келетін тақырыптар
+                                    </h4>
+                                    <p className="text-sm text-green-700 leading-relaxed whitespace-pre-wrap">
+                                      {aiExplanation.frequentUntTopics}
+                                    </p>
+                                  </div>
+                                  <Button 
+                                    variant="outline" 
+                                    className="w-full text-xs" 
+                                    onClick={() => setAiExplanation(null)}
+                                  >
+                                    Қарапайым нұсқаға қайту
+                                  </Button>
+                                </div>
+                              )}
+                            </ScrollArea>
+                            <div className="p-4 border-t bg-muted/20 flex justify-center">
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Sparkles className="size-2.5" /> BilimAI — Сенің ҰБТ-дағы жеңісің!
+                              </p>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </DialogContent>

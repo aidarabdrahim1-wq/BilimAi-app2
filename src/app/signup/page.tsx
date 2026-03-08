@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -32,19 +31,10 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isConfigValid) {
+    if (!isConfigValid || !auth) {
       toast({
         title: "Конфигурация қатесі",
-        description: "Firebase API кілті дұрыс орнатылмаған. Әкімшіге хабарласыңыз.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!formData.fullName || !formData.email || !formData.password || !formData.grade) {
-      toast({
-        title: "Мәліметтер толық емес",
-        description: "Барлық өрістерді толтыруыңыз қажет.",
+        description: "Firebase API кілті дұрыс орнатылмаған.",
         variant: "destructive",
       });
       return;
@@ -55,7 +45,6 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // Создание профиля пользователя в Firestore
       await setDoc(doc(db, "users", user.uid), {
         fullName: formData.fullName,
         email: formData.email,
@@ -74,21 +63,19 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error details:", error);
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
       if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Оны Authentication > Sign-in method бөлімінен қосыңыз.";
+        errorMessage = "МАҢЫЗДЫ: Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны 'Enable' етіңіз және 'Save' басыңыз.";
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Email форматы дұрыс емес.";
       }
 
       toast({
-        title: "Тіркелу қатесі",
+        title: "Firebase қатесі",
         description: errorMessage,
         variant: "destructive",
       });
@@ -110,15 +97,6 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
-          {!isConfigValid && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Назар аударыңыз</AlertTitle>
-              <AlertDescription>
-                Firebase API кілті табылмады. Тіркелу функциясы уақытша қолжетімсіз болуы мүмкін.
-              </AlertDescription>
-            </Alert>
-          )}
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -185,7 +163,7 @@ export default function SignupPage() {
               />
             </div>
             
-            <Button className="w-full h-11" type="submit" disabled={loading || !isConfigValid}>
+            <Button className="w-full h-11" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Тіркелу"}
             </Button>
           </form>

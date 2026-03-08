@@ -1,3 +1,6 @@
+
+"use client";
+
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +28,7 @@ export default function AdminPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {contentStructure.map((section) => (
-          <Card key={section.id} className="border-none shadow-sm hover:shadow-md transition-shadow">
+          <Card key={section.id} className="border-none shadow-sm hover:shadow-md transition-shadow bg-white">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="flex items-center gap-3">
                 <div className="size-10 rounded-lg bg-accent/20 text-accent-foreground flex items-center justify-center">

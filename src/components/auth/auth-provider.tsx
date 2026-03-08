@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(null);
         
         // Қорғалған беттерді тексеру
-        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress"];
+        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
         }
@@ -79,10 +80,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Hydration қатесін болдырмау үшін mounted тексерісі
   if (!mounted) {
-    return <div className="min-h-screen bg-background" aria-hidden="true" />;
+    return (
+      <div className="min-h-screen bg-background" aria-hidden="true" />
+    );
   }
 
-  // Жүктелу экраны тек клиент жақта көрсетіледі
+  // Жүктелу экраны
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

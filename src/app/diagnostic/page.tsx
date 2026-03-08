@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { BrainCircuit, Play, ArrowRight, BarChart3, Target, AlertTriangle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 
 export default function DiagnosticPage() {
   const [step, setStep] = useState<"start" | "testing" | "result">("start");
@@ -105,7 +107,7 @@ export default function DiagnosticPage() {
           </div>
         )}
 
-        {step === "result" && (
+        {step === "result" && (step as any) !== "error" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
             <div className="text-center space-y-2">
               <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Аяқталды</Badge>

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "StudentProfile": {
@@ -408,6 +409,25 @@
         "createdAt"
       ]
     },
+    "Mistake": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Mistake",
+      "type": "object",
+      "description": "A specific question the student answered incorrectly, collected for analysis.",
+      "properties": {
+        "id": { "type": "string" },
+        "studentId": { "type": "string" },
+        "testSessionId": { "type": "string" },
+        "question": { "type": "string" },
+        "correctAnswer": { "type": "string" },
+        "studentAnswer": { "type": "string" },
+        "subject": { "type": "string" },
+        "topic": { "type": "string" },
+        "explanation": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "studentId", "question", "correctAnswer", "studentAnswer", "subject", "createdAt"]
+    },
     "MistakePattern": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "MistakePattern",
@@ -705,6 +725,16 @@
             "$ref": "#/backend/entities/StudentProfile"
           },
           "description": "Stores a student's personal learning profile. Access is restricted to the student whose ID matches 'studentId' in the path (i.e., request.auth.uid)."
+        }
+      },
+      {
+        "path": "/studentProfiles/{studentId}/mistakes/{mistakeId}",
+        "definition": {
+          "entityName": "Mistake",
+          "schema": {
+            "$ref": "#/backend/entities/Mistake"
+          },
+          "description": "Questions the student answered incorrectly."
         }
       },
       {

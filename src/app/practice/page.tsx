@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,9 +13,11 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc } from "firebase/firestore";
 import { format } from "date-fns";
 import { kk } from "date-fns/locale";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 type Question = {
   id: string;
@@ -59,6 +62,7 @@ export default function PracticePage() {
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [results, setResults] = useState<SubjectResult[]>([]);
   const [recentSessions, setRecentSessions] = useState<TestSession[]>([]);
+  const [allTestAnswers, setAllTestAnswers] = useState<any[]>([]);
   
   const getSubjectConfigs = (): SubjectConfig[] => {
     const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
@@ -87,7 +91,10 @@ export default function PracticePage() {
       })) as TestSession[];
       setRecentSessions(sessions);
     }, (err) => {
-      console.error("Firestore snapshot error:", err);
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: sessionsRef.path,
+        operation: 'list'
+      }));
     });
 
     return () => unsubscribe();
@@ -98,6 +105,7 @@ export default function PracticePage() {
     setTestState("loading");
     setCurrentSubjectIndex(0);
     setResults([]);
+    setAllTestAnswers([]);
     await loadSubjectQuestions(subjectConfigs[0], 0);
   };
 
@@ -121,14 +129,12 @@ export default function PracticePage() {
       setAnswers({});
       setTestState("testing");
     } catch (error: any) {
-      console.error("AI Generation Error:", error);
       let msg = "Сұрақтарды жүктеу мүмкін болмады.";
-      if (error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+      if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
         msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
       }
       setErrorMessage(msg);
       setTestState("error");
-      toast({ title: "Қате", description: msg, variant: "destructive" });
     }
   };
 
@@ -137,6 +143,19 @@ export default function PracticePage() {
   };
 
   const nextStep = async () => {
+    const currentConfig = subjectConfigs[currentSubjectIndex];
+    
+    // Collect current subject's answers
+    const subjectAnswers = questions.map((q, idx) => ({
+      question: q.text,
+      correctAnswer: q.correctAnswer,
+      studentAnswer: answers[idx],
+      isCorrect: answers[idx] === q.correctAnswer,
+      subject: currentConfig.name,
+      explanation: q.explanation,
+      points: q.points
+    }));
+
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
@@ -144,26 +163,26 @@ export default function PracticePage() {
       let correct = 0;
       let maxScore = 0;
       
-      questions.forEach((q, idx) => {
-        maxScore += q.points;
-        if (answers[idx] === q.correctAnswer) {
-          score += q.points;
+      subjectAnswers.forEach((ans) => {
+        maxScore += ans.points;
+        if (ans.isCorrect) {
+          score += ans.points;
           correct++;
         }
       });
 
-      const config = subjectConfigs[currentSubjectIndex];
       const subjectResult: SubjectResult = {
-        subject: config.name,
+        subject: currentConfig.name,
         score,
         maxScore,
         correct,
         total: questions.length,
-        isThresholdPassed: score >= config.threshold
+        isThresholdPassed: score >= currentConfig.threshold
       };
 
       const newResults = [...results, subjectResult];
       setResults(newResults);
+      setAllTestAnswers([...allTestAnswers, ...subjectAnswers]);
 
       if (currentSubjectIndex < subjectConfigs.length - 1) {
         setTestState("loading");
@@ -171,17 +190,18 @@ export default function PracticePage() {
         setCurrentSubjectIndex(nextIdx);
         await loadSubjectQuestions(subjectConfigs[nextIdx], nextIdx);
       } else {
-        finishTest(newResults);
+        finishTest(newResults, [...allTestAnswers, ...subjectAnswers]);
       }
     }
   };
 
-  const finishTest = async (finalResults: SubjectResult[]) => {
+  const finishTest = async (finalResults: SubjectResult[], finalAnswers: any[]) => {
     setTestState("results");
     
     const totalScore = finalResults.reduce((acc, r) => acc + r.score, 0);
 
     if (user) {
+      const sessionId = Math.random().toString(36).substring(7);
       const testSession = {
         studentId: user.uid,
         type: "practice_2026",
@@ -191,7 +211,32 @@ export default function PracticePage() {
       };
       
       try {
-        await addDoc(collection(db, "studentProfiles", user.uid, "testSessions"), testSession);
+        const sessionRef = doc(db, "studentProfiles", user.uid, "testSessions", sessionId);
+        await setDoc(sessionRef, testSession);
+        
+        // Save missed questions
+        const missed = finalAnswers.filter(ans => !ans.isCorrect);
+        const mistakesRef = collection(db, "studentProfiles", user.uid, "mistakes");
+        
+        for (const m of missed) {
+          addDoc(mistakesRef, {
+            studentId: user.uid,
+            testSessionId: sessionId,
+            question: m.question,
+            correctAnswer: m.correctAnswer,
+            studentAnswer: m.studentAnswer,
+            subject: m.subject,
+            explanation: m.explanation || "",
+            createdAt: serverTimestamp()
+          }).catch(err => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: mistakesRef.path,
+              operation: 'create',
+              requestResourceData: m
+            }));
+          });
+        }
+
         await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
       } catch (e) {
         console.error("Save result error:", e);

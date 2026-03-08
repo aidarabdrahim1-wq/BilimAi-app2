@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -12,74 +13,43 @@ service cloud.firestore {
      *    logical subcollections that are read-only for all authenticated students.
      * 2. Private User Content: All learning progress, test sessions, study plans, and AI interactions 
      *    are stored within the /studentProfiles/{studentId} tree.
-     * 
-     * KEY SECURITY DECISIONS
-     * - Authorization Independence: Security rules prioritize the path-based {studentId} wildcard 
-     *   matched against the request.auth.uid.
-     * - Relational Integrity: On creation of user-owned documents, the rules enforce that internal 
-     *   linkage fields (like studentId) match the authenticated user's ID.
-     * - Immutability: Critical relational fields (like ownership IDs) are enforced as immutable 
-     *   during updates to prevent data hijacking.
-     * - Prototyping Flexibility: Data types and non-authorization fields are not validated to 
-     *   allow for rapid schema iteration.
      */
 
     // --- Helper Functions ---
 
-    /** @description Checks if the user is authenticated with any provider. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the document exists and the user is the owner. Used for updates and deletes. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    // The isAdmin function was unused and generated warnings, so it has been removed.
-    // If administrative access is needed in the future, it can be re-introduced and properly integrated.
-
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for the student's root profile document.
-     * @path /studentProfiles/{studentId}
-     * @allow (get) If the student is viewing their own profile.
-     * @deny (list) If a student tries to list all profiles.
-     * @principle Ownership and Self-Creation.
-     */
     match /studentProfiles/{studentId} {
       allow get: if isOwner(studentId);
-      allow list: if false; // Users cannot browse other profiles.
+      allow list: if false; 
       allow create: if isOwner(studentId) && request.resource.data.id == studentId;
       allow update: if isExistingOwner(studentId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(studentId);
 
-      /**
-       * @description Records of test sessions nested under the student.
-       * @path /studentProfiles/{studentId}/testSessions/{testSessionId}
-       * @allow (create) If the studentId in data matches the path and auth.uid.
-       * @deny (update) If trying to change the owner (studentId).
-       * @principle Path-based authorization with denormalized ownership check.
-       */
+      match /mistakes/{mistakeId} {
+        allow get, list: if isOwner(studentId);
+        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
+        allow delete: if isExistingOwner(studentId);
+      }
+
       match /testSessions/{testSessionId} {
         allow get, list: if isOwner(studentId);
         allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
         allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
         allow delete: if isExistingOwner(studentId);
 
-        /**
-         * @description Individual question attempts within a specific session.
-         * @path /studentProfiles/{studentId}/testSessions/{testSessionId}/questionAttempts/{attemptId}
-         * @allow (list) If the student owns the parent path.
-         * @deny (create) If the testSessionId doesn't match the path.
-         * @principle Recursive ownership via path wildcards.
-         */
         match /questionAttempts/{attemptId} {
           allow get, list: if isOwner(studentId);
           allow create: if isOwner(studentId) && request.resource.data.testSessionId == testSessionId;
@@ -88,13 +58,6 @@ service cloud.firestore {
         }
       }
 
-      /**
-       * @description Personalized study plans generated for the student.
-       * @path /studentProfiles/{studentId}/studyPlans/{studyPlanId}
-       * @allow (get) Owner access only.
-       * @deny (write) If auth UID does not match studentId wildcard.
-       * @principle Ownership.
-       */
       match /studyPlans/{studyPlanId} {
         allow get, list: if isOwner(studentId);
         allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
@@ -109,13 +72,6 @@ service cloud.firestore {
         }
       }
 
-      /**
-       * @description Daily progress logs and metrics.
-       * @path /studentProfiles/{studentId}/progressEntries/{progressEntryId}
-       * @allow (create) If owner creates entry for themselves.
-       * @deny (update) If attempting to move record to another student.
-       * @principle Ownership.
-       */
       match /progressEntries/{progressEntryId} {
         allow get, list: if isOwner(studentId);
         allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
@@ -123,13 +79,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(studentId);
       }
 
-      /**
-       * @description Interactions with the AI Curator.
-       * @path /studentProfiles/{studentId}/curatorInteractions/{interactionId}
-       * @allow (get) Owner viewing history.
-       * @deny (create) If studentId field is missing or mismatched.
-       * @principle Ownership.
-       */
       match /curatorInteractions/{interactionId} {
         allow get, list: if isOwner(studentId);
         allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
@@ -138,15 +87,6 @@ service cloud.firestore {
       }
     }
 
-    // --- Global Read-Only Collections ---
-
-    /**
-     * @description Academic subjects available to all students.
-     * @path /subjects/{subjectId}
-     * @allow (read) Any signed-in user.
-     * @deny (write) Any user (Admin only, handled by backend/if false).
-     * @principle Public Read with Restricted Writes.
-     */
     match /subjects/{subjectId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if false;
@@ -162,13 +102,6 @@ service cloud.firestore {
       }
     }
 
-    /**
-     * @description Global common mistake patterns for analysis.
-     * @path /mistakePatterns/{mistakePatternId}
-     * @allow (read) Any signed-in user.
-     * @deny (write) Any user.
-     * @principle Public Read with Restricted Writes.
-     */
     match /mistakePatterns/{mistakePatternId} {
       allow get, list: if isSignedIn();
       allow create, update, delete: if false;

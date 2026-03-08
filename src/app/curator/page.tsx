@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -12,6 +11,8 @@ import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
 import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 type Message = {
   id?: string;
@@ -30,8 +31,9 @@ export default function CuratorPage() {
   useEffect(() => {
     if (!user || !db) return;
 
+    const messagesRef = collection(db, "users", user.uid, "messages");
     const q = query(
-      collection(db, "users", user.uid, "messages"),
+      messagesRef,
       orderBy("createdAt", "asc"),
       limit(50)
     );
@@ -51,6 +53,12 @@ export default function CuratorPage() {
       } else {
         setMessages(msgs);
       }
+    }, async (error) => {
+      const permissionError = new FirestorePermissionError({
+        path: messagesRef.path,
+        operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
     });
 
     return () => unsubscribe();
@@ -67,15 +75,22 @@ export default function CuratorPage() {
     if (!textToSend.trim() || isLoading || !user || !db) return;
 
     const userMessage = textToSend.trim();
+    const messagesRef = collection(db, "users", user.uid, "messages");
     setInput("");
     setIsLoading(true);
 
     try {
       // 1. Save user message to Firestore
-      await addDoc(collection(db, "users", user.uid, "messages"), {
+      addDoc(messagesRef, {
         role: "user",
         content: userMessage,
         createdAt: serverTimestamp(),
+      }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: messagesRef.path,
+          operation: 'create',
+          requestResourceData: { role: "user", content: userMessage }
+        }));
       });
 
       // 2. Get AI Response
@@ -92,10 +107,16 @@ export default function CuratorPage() {
       });
 
       // 3. Save AI response to Firestore
-      await addDoc(collection(db, "users", user.uid, "messages"), {
+      addDoc(messagesRef, {
         role: "ai",
         content: aiResponse,
         createdAt: serverTimestamp(),
+      }).catch(async () => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: messagesRef.path,
+          operation: 'create',
+          requestResourceData: { role: "ai", content: aiResponse }
+        }));
       });
     } catch (error) {
       console.error("AI Error:", error);

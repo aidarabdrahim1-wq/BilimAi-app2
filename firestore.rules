@@ -4,6 +4,11 @@ service cloud.firestore {
     // Пайдаланушы тек өз деректерін оқи және жаза алады
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // AI куратор хабарламалары
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     
     // Тест нәтижелері
@@ -33,7 +38,7 @@ service cloud.firestore {
     // Теория (барлығына оқуға рұқсат)
     match /theory_materials/{materialId} {
       allow read: if request.auth != null;
-      allow write: if false; // Тек админ (бұл жерде жабық)
+      allow write: if false; 
     }
     
     // Жалпы прогресс

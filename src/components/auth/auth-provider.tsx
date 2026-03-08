@@ -5,6 +5,8 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export interface UserProfile {
   fullName: string;
@@ -56,14 +58,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(firebaseUser);
       
       if (firebaseUser && db) {
-        // Real-time профильді тыңдау (Рейтинг үшін маңызды)
-        const unsubscribeProfile = onSnapshot(doc(db, "users", firebaseUser.uid), (docSnap) => {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setProfile(docSnap.data() as UserProfile);
           }
           setLoading(false);
-        }, (error) => {
-          console.error("Profile listen error:", error);
+        }, async (error) => {
+          const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'get',
+          });
+          errorEmitter.emit('permission-error', permissionError);
           setLoading(false);
         });
 

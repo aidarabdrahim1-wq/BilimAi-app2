@@ -62,17 +62,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(firebaseUser);
       
       if (firebaseUser && db) {
+        // Профильді studentProfiles коллекциясынан алу (Security Rules-ке сай)
         const userDocRef = doc(db, "studentProfiles", firebaseUser.uid);
         
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
             setProfile(docSnap.data() as UserProfile);
           } else {
-            console.debug("AuthProvider: Profile document does not exist yet.");
             setProfile(null);
           }
           setLoading(false);
         }, (error: any) => {
+          // Егер бұл жай ғана авторизацияның синхронизациялануы болса, қате шығармаймыз
+          if (error.code === 'permission-denied' && firebaseUser) {
+             console.debug("Auth sync in progress...");
+             return;
+          }
+          
           const contextualError = new FirestorePermissionError({
             path: userDocRef.path,
             operation: 'get',
@@ -86,6 +92,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(null);
         setLoading(false);
         
+        // Қорғалған беттерді тексеру
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/admin"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");

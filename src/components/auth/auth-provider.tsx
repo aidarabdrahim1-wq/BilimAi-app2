@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setLoading(false);
         }, (error: any) => {
-          // Авторизация ауысуы кезіндегі (sign-in/out) уақытша рұқсат қатесін өткізіп жібереміз
+          // Авторизация ауысуы кезіндегі уақытша рұқсат қатесін (permission-denied) өткізіп жібереміз
           if (error.code === 'permission-denied') {
             return;
           }

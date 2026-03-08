@@ -17,7 +17,11 @@ import {
   CalendarDays,
   Edit2,
   PlusCircle,
-  BellRing
+  BellRing,
+  ArrowRight,
+  Clock,
+  BookOpen,
+  ClipboardList
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -30,6 +34,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -54,7 +59,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
-    // Бүгінгі жоспарды алу
     const q = query(
       collection(db, "study_plans"),
       where("userId", "==", user.uid),
@@ -109,19 +113,24 @@ export default function Dashboard() {
 
   const progressToTarget = Math.round((currentScore / targetScore) * 100);
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
+  
+  const completedToday = todayTasks.filter(t => t.status === 'completed').length;
+  const dailyProgress = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
 
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
         {/* Reminder Alert */}
         {todayTasks.length === 0 && (
-          <Alert className="bg-orange-50 border-orange-200 animate-pulse">
+          <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
             <AlertTitle className="text-orange-800 font-bold">Оқу жоспары бос!</AlertTitle>
             <AlertDescription className="text-orange-700 flex flex-col md:flex-row md:items-center justify-between gap-2">
               <span>Бүгінгі күніңізді тиімді өткізу үшін оқу жоспарын құрыңыз. Тәртіп - жетістік кепілі!</span>
-              <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 bg-white hover:bg-orange-100" asChild>
-                <Link href="/plan">Жоспар құру</Link>
+              <Button size="sm" variant="default" className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm" asChild>
+                <Link href="/plan" className="flex items-center gap-1">
+                  Жоспар құру <ArrowRight className="size-3" />
+                </Link>
               </Button>
             </AlertDescription>
           </Alert>
@@ -132,71 +141,71 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold tracking-tight font-headline">
               Сәлем, {profile?.fullName?.split(' ')[0] || "Оқушы"}! 👋
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground flex items-center gap-2">
               {todayTasks.length > 0 
-                ? `Бүгінгі жоспарда ${todayTasks.length} тапсырма бар.` 
+                ? <><span className="text-primary font-bold">{completedToday}/{todayTasks.length}</span> тапсырма орындалды</> 
                 : "Бүгінге әлі жоспар құрылмаған."}
             </p>
           </div>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Card className="border-none shadow-sm bg-white overflow-hidden flex items-center px-6 py-3 gap-4 cursor-pointer hover:bg-accent/5 transition-colors group">
-                <div className="size-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                  <CalendarDays className="size-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">ҰБТ-ға қалды:</p>
-                    <Edit2 className="size-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex items-center gap-3">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Card className="border-none shadow-sm bg-white flex items-center px-4 py-2 gap-3 cursor-pointer hover:bg-accent/5 transition-all group border-l-2 border-orange-500">
+                  <div className="size-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                    <CalendarDays className="size-5" />
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-black text-orange-600">
-                      {daysLeft !== null ? daysLeft : "..."}
-                    </span>
-                    <span className="text-sm font-bold text-muted-foreground">күн</span>
+                  <div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">ҰБТ-ға:</p>
+                      <Edit2 className="size-2 text-muted-foreground opacity-50 group-hover:opacity-100" />
+                    </div>
+                    <div className="flex items-baseline gap-1 leading-none">
+                      <span className="text-xl font-black text-orange-600">{daysLeft !== null ? daysLeft : "..."}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">күн</span>
+                    </div>
                   </div>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>ҰБТ күнін таңдау</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="untDate">Тапсыратын күніңізді белгілеңіз</Label>
+                    <Input
+                      id="untDate"
+                      type="date"
+                      value={newDate}
+                      onChange={(e) => setNewDate(e.target.value)}
+                    />
+                  </div>
+                  <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>
+                    {isUpdating ? "Жаңартылуда..." : "Сақтау"}
+                  </Button>
                 </div>
-              </Card>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>ҰБТ күнін таңдау</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="untDate">Тапсыратын күніңізді белгілеңіз</Label>
-                  <Input
-                    id="untDate"
-                    type="date"
-                    value={newDate}
-                    onChange={(e) => setNewDate(e.target.value)}
-                  />
-                </div>
-                <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>
-                  {isUpdating ? "Жаңартылуда..." : "Сақтау"}
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
-              <Trophy className="size-3.5 fill-current" />
-              {rating} ұпай
-            </Badge>
-            <Badge variant="outline" className="px-3 py-1 gap-1.5 border-orange-200 bg-orange-50 text-orange-700">
-              <Zap className="size-3.5 fill-current" />
-              {streak} күн
-            </Badge>
+            <div className="flex flex-col gap-1.5">
+              <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
+                <Trophy className="size-3.5 fill-current" />
+                {rating} ұпай
+              </Badge>
+              <Badge variant="outline" className="px-3 py-1 gap-1.5 border-orange-200 bg-orange-50 text-orange-700">
+                <Zap className="size-3.5 fill-current" />
+                {streak} күн streak
+              </Badge>
+            </div>
           </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-sm border-none bg-primary text-primary-foreground overflow-hidden relative">
+          <Card className="shadow-sm border-none bg-primary text-primary-foreground overflow-hidden relative group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Ағымдағы балл</CardTitle>
-              <TrendingUp className="h-4 w-4 opacity-70" />
+              <TrendingUp className="h-4 w-4 opacity-70 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{currentScore}</div>
@@ -204,12 +213,13 @@ export default function Dashboard() {
                 ҰБТ потенциалы: {Math.round(currentScore)} / 140
               </p>
             </CardContent>
+            <div className="absolute top-0 right-0 size-16 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
           </Card>
 
-          <Card className="shadow-sm border-none bg-secondary text-secondary-foreground overflow-hidden relative">
+          <Card className="shadow-sm border-none bg-secondary text-secondary-foreground overflow-hidden relative group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Мақсатты балл</CardTitle>
-              <Target className="h-4 w-4 opacity-70" />
+              <Target className="h-4 w-4 opacity-70 group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">{targetScore}</div>
@@ -222,7 +232,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-none bg-white">
+          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Дәлдік (Accuracy)</CardTitle>
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -235,7 +245,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-none bg-white">
+          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Қателік коэффициенті</CardTitle>
               <AlertCircle className="h-4 w-4 text-destructive" />
@@ -250,50 +260,94 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-7">
-          <Card className="md:col-span-4 border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="md:col-span-4 border-none shadow-sm overflow-hidden flex flex-col">
+            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
               <div>
-                <CardTitle className="text-xl font-headline">Бүгінгі оқу жоспары</CardTitle>
-                <CardDescription>Дайындықты жалғастырыңыз</CardDescription>
+                <CardTitle className="text-xl font-headline flex items-center gap-2">
+                  Бүгінгі оқу жоспары
+                  {todayTasks.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] ml-2 font-bold bg-primary/5">
+                      {dailyProgress}% орындалды
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>Күнделікті мақсаттарыңыз</CardDescription>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/plan">
-                  {todayTasks.length > 0 ? "Басқару" : "Құру"}
+              <Button variant="ghost" size="sm" asChild className="text-primary hover:text-primary hover:bg-primary/5">
+                <Link href="/plan" className="flex items-center gap-1 font-bold">
+                  {todayTasks.length > 0 ? "Басқару" : "Құру"} <ArrowRight className="size-4" />
                 </Link>
               </Button>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-0">
               {todayTasks.length > 0 ? (
-                todayTasks.map((task, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-xl border bg-accent/10 hover:bg-accent/20 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`size-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-primary text-primary-foreground'}`}>
-                        {task.status === 'completed' ? <CheckCircle2 className="size-5" /> : <PlayCircle className="size-5" />}
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm">{task.title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground">{task.time}</span>
-                          <span className="text-[10px] text-muted-foreground">•</span>
-                          <span className="text-xs text-muted-foreground capitalize">{task.type}</span>
+                <div className="divide-y">
+                  {todayTasks.map((task, i) => (
+                    <div 
+                      key={i} 
+                      className={cn(
+                        "flex items-center justify-between p-5 hover:bg-accent/5 transition-colors group",
+                        task.status === 'completed' && "bg-accent/5"
+                      )}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={cn(
+                          "size-12 rounded-xl flex items-center justify-center transition-all shadow-sm",
+                          task.status === 'completed' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-primary/10 text-primary group-hover:scale-105'
+                        )}>
+                          {task.status === 'completed' 
+                            ? <CheckCircle2 className="size-6" /> 
+                            : task.type === 'test' 
+                              ? <ClipboardList className="size-6" /> 
+                              : <BookOpen className="size-6" />
+                          }
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className={cn(
+                            "font-bold text-sm leading-none",
+                            task.status === 'completed' && "line-through text-muted-foreground"
+                          )}>
+                            {task.title}
+                          </h4>
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                              <Clock className="size-3" /> {task.time}
+                            </span>
+                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4 font-bold border-muted-foreground/20">
+                              {task.subject}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        {task.status === 'completed' ? (
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 shadow-none">Орындалды</Badge>
+                        ) : (
+                          <Button size="sm" className="h-8 rounded-full px-4 text-xs font-bold shadow-sm" asChild>
+                            <Link href={task.type === 'test' ? '/practice' : '/theory'}>Бастау</Link>
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {task.status !== 'completed' && (
-                      <Button size="sm" className="shadow-sm">Бастау</Button>
-                    )}
+                  ))}
+                  <div className="p-4 bg-accent/5 flex items-center justify-center">
+                    <Progress value={dailyProgress} className="h-1.5 flex-1 max-w-xs mx-auto" />
                   </div>
-                ))
+                </div>
               ) : (
-                <div className="text-center py-12 flex flex-col items-center gap-4 bg-muted/20 rounded-2xl border border-dashed">
-                  <div className="size-16 rounded-full bg-muted flex items-center justify-center">
-                    <PlusCircle className="size-8 text-muted-foreground" />
+                <div className="text-center py-20 flex flex-col items-center gap-4 bg-muted/5 rounded-2xl m-6 border border-dashed border-muted-foreground/20">
+                  <div className="size-20 rounded-full bg-primary/5 flex items-center justify-center mb-2">
+                    <PlusCircle className="size-10 text-primary/30" />
                   </div>
-                  <div className="max-w-[200px]">
-                    <h4 className="font-bold text-sm">Жоспар жоқ</h4>
-                    <p className="text-xs text-muted-foreground mt-1">Бүгінгі күніңізге мақсат қойыңыз.</p>
+                  <div className="max-w-[240px]">
+                    <h4 className="font-bold text-base">Жоспар әлі құрылмаған</h4>
+                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                      Бүгінгі күніңізге мақсат қойып, дайындықты тиімді өткізіңіз.
+                    </p>
                   </div>
-                  <Button size="sm" asChild>
+                  <Button size="default" className="mt-4 rounded-full font-bold px-8 shadow-md" asChild>
                     <Link href="/plan">Жоспар құру</Link>
                   </Button>
                 </div>
@@ -304,28 +358,34 @@ export default function Dashboard() {
           <div className="md:col-span-3 space-y-6">
             <Card className="border-none shadow-sm bg-accent/5 overflow-hidden">
               <div className="p-4 bg-primary text-primary-foreground flex justify-between items-center">
-                <h3 className="font-bold">Рейтинг статистикасы</h3>
-                <Trophy className="size-5 opacity-50" />
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <Trophy className="size-4" /> Статистика
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Деңгей: Орташа</span>
               </div>
-              <CardContent className="p-6 space-y-4">
-                <div className="flex justify-between items-end">
-                  <span className="text-sm text-muted-foreground">Орындалған жоспарлар:</span>
-                  <span className="font-bold">{profile?.completedPlans || 0} / 30</span>
+              <CardContent className="p-6 space-y-5">
+                <div className="space-y-2">
+                  <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">Орындалған жоспарлар:</span>
+                    <span className="font-black text-primary text-lg">{profile?.completedPlans || 0} / 30</span>
+                  </div>
+                  <Progress value={((profile?.completedPlans || 0) / 30) * 100} className="h-2 bg-primary/10" />
                 </div>
-                <Progress value={((profile?.completedPlans || 0) / 30) * 100} className="h-1.5" />
                 
-                <div className="flex justify-between items-end pt-2">
-                  <span className="text-sm text-muted-foreground">Дұрыс жауаптар:</span>
-                  <span className="font-bold text-green-600">{correctCount}</span>
-                </div>
-                <div className="flex justify-between items-end">
-                  <span className="text-sm text-muted-foreground">Барлық сұрақтар:</span>
-                  <span className="font-bold">{solvedCount}</span>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="p-3 rounded-xl bg-white border border-border/50 shadow-sm text-center">
+                    <span className="text-[10px] font-bold text-muted-foreground block mb-1 uppercase">Дұрыс</span>
+                    <span className="text-xl font-black text-green-600">{correctCount}</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white border border-border/50 shadow-sm text-center">
+                    <span className="text-[10px] font-bold text-muted-foreground block mb-1 uppercase">Жалпы</span>
+                    <span className="text-xl font-black text-primary">{solvedCount}</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-sm relative overflow-hidden group">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg font-headline flex items-center gap-2 text-primary">
                   <BookMarked className="size-5" />
@@ -333,12 +393,15 @@ export default function Dashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="p-4 rounded-xl border bg-primary/5">
-                  <h4 className="font-bold text-sm">Химия: Органикалық қосылыстар</h4>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Бұл тақырып бойынша 10 сұраққа жауап беріп, +20 рейтинг ұпайын алыңыз!
+                <div className="p-5 rounded-2xl border bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/10 relative overflow-hidden">
+                  <h4 className="font-bold text-sm mb-2">{profile?.selectedSubjects[3] || "Пән"}: Жаңа тақырып</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Сіздің әлсіз тақырыптарыңызға сай: осы бөлімді меңгеріп, +20 рейтинг ұпайын алыңыз!
                   </p>
-                  <Button className="w-full mt-4 shadow-sm" size="sm">Оқуды бастау</Button>
+                  <Button className="w-full mt-4 shadow-md font-bold text-xs h-9" size="sm" asChild>
+                    <Link href="/theory">Оқуды бастау</Link>
+                  </Button>
+                  <Zap className="absolute -bottom-4 -right-4 size-16 text-primary/5 group-hover:text-primary/10 transition-colors" />
                 </div>
               </CardContent>
             </Card>

@@ -19,6 +19,7 @@
         "selectedSubjects": { "type": "array", "items": { "type": "string" } },
         "subjectCombination": { "type": "string" },
         "targetCareer": { "type": "string" },
+        "untDate": { "type": "string", "format": "date" },
         "weakTopics": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }

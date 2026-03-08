@@ -38,6 +38,7 @@ export default function SignupPage() {
     targetScore: 120,
     subjectComboIndex: "",
     targetCareer: "",
+    untDate: "2025-06-20", // Default date
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -95,6 +96,7 @@ export default function SignupPage() {
           selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
           subjectCombination: currentCombo.label,
           targetCareer: formData.targetCareer,
+          untDate: formData.untDate,
           weakTopics: [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -110,10 +112,7 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error("Signup error:", error);
       let errorMessage = "Тіркелу кезінде қате орын алды.";
-      
-      if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "МАҢЫЗДЫ: Firebase консолінде Email/Password әдісі қосылмаған.";
-      } else if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
       }
 
@@ -140,15 +139,6 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
-          {!isConfigValid && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Назар аударыңыз</AlertTitle>
-              <AlertDescription>
-                Firebase конфигурациясы дұрыс емес. API кілтін тексеріңіз.
-              </AlertDescription>
-            </Alert>
-          )}
           <form onSubmit={handleSignup} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -192,14 +182,12 @@ export default function SignupPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="targetScore">Мақсатты балл (0-140)</Label>
+                <Label htmlFor="untDate">ҰБТ күні</Label>
                 <Input
-                  id="targetScore"
-                  type="number"
-                  min="0"
-                  max="140"
-                  value={formData.targetScore}
-                  onChange={(e) => setFormData({ ...formData, targetScore: parseInt(e.target.value) || 0 })}
+                  id="untDate"
+                  type="date"
+                  value={formData.untDate}
+                  onChange={(e) => setFormData({ ...formData, untDate: e.target.value })}
                   required
                 />
               </div>
@@ -247,16 +235,30 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="space-y-2 border-t pt-4">
-              <Label htmlFor="password">Құпия сөз</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <div className="space-y-2">
+                <Label htmlFor="targetScore">Мақсатты балл (0-140)</Label>
+                <Input
+                  id="targetScore"
+                  type="number"
+                  min="0"
+                  max="140"
+                  value={formData.targetScore}
+                  onChange={(e) => setFormData({ ...formData, targetScore: parseInt(e.target.value) || 0 })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Құпия сөз</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+              </div>
             </div>
             
             <Button className="w-full h-11 shadow-md" type="submit" disabled={loading || !isConfigValid}>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -20,20 +21,23 @@ import {
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
-import { differenceInDays } from "date-fns";
+import { differenceInDays, parseISO } from "date-fns";
 
 export default function Dashboard() {
   const { profile } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
 
-  // ҰБТ-ның негізгі күні (мысалы: 20 маусым 2025 жыл)
-  const untDate = new Date("2025-06-20");
-
   useEffect(() => {
-    const now = new Date();
-    const diff = differenceInDays(untDate, now);
-    setDaysLeft(diff > 0 ? diff : 0);
-  }, []);
+    const calculateDiff = () => {
+      const now = new Date();
+      // Default to 2025-06-20 if no date set in profile
+      const targetDate = profile?.untDate ? parseISO(profile.untDate) : new Date("2025-06-20");
+      const diff = differenceInDays(targetDate, now);
+      setDaysLeft(diff > 0 ? diff : 0);
+    };
+
+    calculateDiff();
+  }, [profile?.untDate]);
 
   const currentScore = profile?.currentScore || 0;
   const targetScore = profile?.targetScore || 140;

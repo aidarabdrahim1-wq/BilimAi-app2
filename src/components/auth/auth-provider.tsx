@@ -6,8 +6,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
 import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 export interface UserProfile {
   fullName: string;
@@ -23,6 +21,7 @@ export interface UserProfile {
   selectedSubjects: string[];
   subjectCombination?: string;
   targetCareer?: string;
+  untDate?: string;
   weakTopics: string[];
   createdAt: any;
 }
@@ -70,12 +69,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfile(null);
           }
           setLoading(false);
-        }, async (error: any) => {
-          // Filter out transitive permission errors during signup/login
-          if (auth.currentUser && error.code === 'permission-denied') {
-             // Silence transitive errors to avoid flashing error screens
-             console.debug("AuthProvider: Profile document not ready yet or permission issue.");
-          }
+        }, (error: any) => {
+          console.debug("AuthProvider: Profile document not ready yet or permission issue.");
           setLoading(false);
         });
 

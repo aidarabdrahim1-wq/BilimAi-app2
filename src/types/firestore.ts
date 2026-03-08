@@ -20,6 +20,7 @@ export interface UserProfile {
   selectedSubjects: string[];
   subjectCombination?: string;
   targetCareer?: string;
+  untDate?: string; // YYYY-MM-DD format
   weakTopics: string[];
   lastStudyDate?: Timestamp;
   createdAt: Timestamp;

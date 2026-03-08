@@ -10,14 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { 
   CalendarCheck, 
   Plus, 
-  Trash2, 
   CheckCircle2, 
   Clock, 
   BookOpen, 
   ClipboardList, 
   Zap,
-  Save,
-  Loader2
+  Loader2,
+  Sparkles,
+  Wand2
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
@@ -25,12 +25,18 @@ import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimest
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { updateUserRating } from "@/lib/rating";
+import { generateStudyPlan } from "@/ai/flows/generate-study-plan-flow";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 
 export default function PlanPage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
+  const [aiPreview, setAiPreview] = useState<any[] | null>(null);
+
   const [newTask, setNewTask] = useState({
     title: "",
     time: "30 мин",
@@ -59,31 +65,29 @@ export default function PlanPage() {
     }
   };
 
-  const handleAddTask = async () => {
-    if (!user || !newTask.title.trim() || !newTask.subject) {
-      toast({
-        title: "Мәліметтер толық емес",
-        description: "Тақырып пен пәнді таңдаңыз.",
-        variant: "destructive"
-      });
+  const handleAddTask = async (taskData?: any) => {
+    if (!user) return;
+    
+    const taskToSave = taskData || {
+      id: Math.random().toString(36).substring(7),
+      title: newTask.title,
+      time: newTask.time,
+      type: newTask.type,
+      subject: newTask.subject,
+      status: "pending"
+    };
+
+    if (!taskToSave.title || !taskToSave.subject) {
+      toast({ title: "Мәліметтер толық емес", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
-      const taskObj = {
-        id: Math.random().toString(36).substring(7),
-        title: newTask.title,
-        time: newTask.time,
-        type: newTask.type,
-        subject: newTask.subject,
-        status: "pending"
-      };
-
       if (activePlan) {
         const planRef = doc(db, "study_plans", activePlan.id);
         await updateDoc(planRef, {
-          tasks: arrayUnion(taskObj),
+          tasks: arrayUnion(taskToSave),
           totalCount: (activePlan.totalCount || 0) + 1,
           updatedAt: serverTimestamp()
         });
@@ -91,7 +95,7 @@ export default function PlanPage() {
         const newPlan = {
           userId: user.uid,
           title: `Бүгінгі жоспар - ${new Date().toLocaleDateString()}`,
-          tasks: [taskObj],
+          tasks: [taskToSave],
           status: "active",
           completedCount: 0,
           totalCount: 1,
@@ -101,11 +105,63 @@ export default function PlanPage() {
         await addDoc(collection(db, "study_plans"), newPlan);
       }
 
-      setNewTask({ title: "", time: "30 мин", type: "theory", subject: "" });
-      toast({ title: "Тапсырма қосылды!" });
+      if (!taskData) {
+        setNewTask({ title: "", time: "30 мин", type: "theory", subject: "" });
+      }
       fetchActivePlan();
     } catch (error) {
-      toast({ title: "Қате", description: "Сақтау мүмкін болмады.", variant: "destructive" });
+      toast({ title: "Қате", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!user || !profile) return;
+    setIsAiGenerating(true);
+    try {
+      const response = await generateStudyPlan({
+        studentName: profile.fullName,
+        currentScore: profile.currentScore || 0,
+        targetScore: profile.targetScore || 140,
+        weakSubjects: profile.selectedSubjects.slice(3, 5), // Sample weak subjects
+        weakTopics: profile.weakTopics || [],
+        dailyAvailableStudyTimeMinutes: 120,
+        studyGoals: `${profile.targetCareer} мамандығына түсу`,
+        performanceSummary: "Соңғы тесттерде орташа балл жақсарып келеді.",
+        levelSegmentation: "70-90 балл"
+      });
+
+      // Convert AI activities to tasks
+      const newTasks = response.dailyPlan.map(p => ({
+        id: Math.random().toString(36).substring(7),
+        title: p.description,
+        time: p.activity.split(' ')[0] + " " + p.activity.split(' ')[1],
+        type: p.activity.toLowerCase().includes('test') ? 'test' : 'theory',
+        subject: p.description.split(':')[0],
+        status: "pending"
+      }));
+
+      setAiPreview(newTasks);
+    } catch (error) {
+      toast({ title: "AI қатесі", description: "Жоспар құру мүмкін болмады.", variant: "destructive" });
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  const applyAiPlan = async () => {
+    if (!aiPreview || !user) return;
+    setIsLoading(true);
+    try {
+      for (const task of aiPreview) {
+        await handleAddTask(task);
+      }
+      setAiPreview(null);
+      setIsAiDialogOpen(false);
+      toast({ title: "AI жоспары қосылды!", description: "Бүгінгі күніңізге сәттілік! 🚀" });
+    } catch (error) {
+      toast({ title: "Қате", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -128,7 +184,6 @@ export default function PlanPage() {
         updatedAt: serverTimestamp()
       });
 
-      // Егер барлығы орындалса рейтинг қосу
       if (completedCount === activePlan.totalCount && currentStatus !== "completed") {
         await updateUserRating(user.uid, 'PLAN_COMPLETED');
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
@@ -143,20 +198,79 @@ export default function PlanPage() {
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
-            <CalendarCheck className="size-8 text-primary" />
-            Жеке оқу жоспары
-          </h1>
-          <p className="text-muted-foreground">Бүгінгі күніңізге мақсаттар қойып, орындалуын қадағалаңыз.</p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
+              <CalendarCheck className="size-8 text-primary" />
+              Жеке оқу жоспары
+            </h1>
+            <p className="text-muted-foreground text-sm">Бүгінгі күніңізге мақсаттар қойып, орындалуын қадағалаңыз.</p>
+          </div>
+
+          <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 animate-pulse hover:animate-none">
+                <Sparkles className="size-4" />
+                AI-мен жоспар құру
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Wand2 className="size-5 text-primary" />
+                  AI Куратор ұсынысы
+                </DialogTitle>
+                <DialogDescription>
+                  Сіздің әлсіз тақырыптарыңыз бен мақсатты балыңызға негізделген жеке жоспар.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-6 min-h-[200px] flex flex-col items-center justify-center">
+                {isAiGenerating ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="size-10 animate-spin text-primary" />
+                    <p className="text-sm font-medium animate-pulse">AI профиліңізді талдауда...</p>
+                  </div>
+                ) : aiPreview ? (
+                  <div className="w-full space-y-3">
+                    {aiPreview.map((task, i) => (
+                      <div key={i} className="p-3 rounded-lg border bg-accent/5 flex justify-between items-center">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold">{task.title}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">{task.subject}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">{task.time}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="size-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary">
+                      <Sparkles className="size-8" />
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                      Куратор сізге бүгінге арналған ең тиімді оқу кестесін жасап береді.
+                    </p>
+                    <Button onClick={handleAiGenerate}>Жоспарды генерациялау</Button>
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                {aiPreview && (
+                  <Button className="w-full gap-2" onClick={applyAiPlan} disabled={isLoading}>
+                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                    Бұл жоспарды қолдану
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8">
-          {/* Add Task Form */}
           <Card className="md:col-span-1 border-none shadow-sm">
             <CardHeader>
               <CardTitle className="text-lg">Жаңа тапсырма</CardTitle>
-              <CardDescription>Бүгін не істегіңіз келеді?</CardDescription>
+              <CardDescription>Қолмен тапсырма қосу</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -169,7 +283,7 @@ export default function PlanPage() {
               </div>
               <div className="space-y-2">
                 <Label>Пән</Label>
-                <Select onValueChange={(v) => setNewTask({...newTask, subject: v})}>
+                <Select onValueChange={(v) => setNewTask({...newTask, subject: v})} value={newTask.subject}>
                   <SelectTrigger>
                     <SelectValue placeholder="Таңдаңыз" />
                   </SelectTrigger>
@@ -180,7 +294,7 @@ export default function PlanPage() {
               </div>
               <div className="space-y-2">
                 <Label>Түрі</Label>
-                <Select onValueChange={(v) => setNewTask({...newTask, type: v})} defaultValue="theory">
+                <Select onValueChange={(v: any) => setNewTask({...newTask, type: v})} value={newTask.type}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -193,7 +307,7 @@ export default function PlanPage() {
               </div>
               <div className="space-y-2">
                 <Label>Уақыт</Label>
-                <Select onValueChange={(v) => setNewTask({...newTask, time: v})} defaultValue="30 мин">
+                <Select onValueChange={(v) => setNewTask({...newTask, time: v})} value={newTask.time}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -208,14 +322,13 @@ export default function PlanPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="w-full gap-2" onClick={handleAddTask} disabled={isLoading}>
+              <Button className="w-full gap-2" onClick={() => handleAddTask()} disabled={isLoading}>
                 {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
                 Қосу
               </Button>
             </CardFooter>
           </Card>
 
-          {/* Current Plan List */}
           <Card className="md:col-span-2 border-none shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -237,7 +350,7 @@ export default function PlanPage() {
                   <div 
                     key={task.id} 
                     className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                      task.status === 'completed' ? 'bg-green-50/50 border-green-100 opacity-80' : 'bg-white'
+                      task.status === 'completed' ? 'bg-green-50/50 border-green-100 opacity-80' : 'bg-white shadow-sm'
                     }`}
                   >
                     <div className="flex items-center gap-4">
@@ -274,7 +387,7 @@ export default function PlanPage() {
                   <CalendarCheck className="size-12 text-muted-foreground opacity-20" />
                   <div className="space-y-1">
                     <p className="font-bold text-sm">Тізім әлі бос</p>
-                    <p className="text-xs text-muted-foreground">Сол жақтағы форманы толтырып, мақсат қойыңыз.</p>
+                    <p className="text-xs text-muted-foreground">AI-дан көмек алыңыз немесе қолмен қосыңыз.</p>
                   </div>
                 </div>
               )}

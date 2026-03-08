@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -464,7 +463,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
                       <Clock className="size-3 text-blue-500" />
-                      Бүгінгі тапсырмалар:
+                      Орындалған жоспар:
                     </span>
                     <span className="font-black text-blue-600 text-base">{completedTodayCount} / {todayTasks.length || 0}</span>
                   </div>

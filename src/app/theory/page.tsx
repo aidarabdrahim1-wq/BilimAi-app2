@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -29,7 +28,10 @@ import {
   ClipboardList,
   AlertCircle,
   RefreshCcw,
-  Info
+  Info,
+  Trophy,
+  ArrowRight,
+  XCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -45,9 +47,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { explainTopic, type ExplainTopicOutput } from "@/ai/flows/explain-topic-flow";
+import { Progress } from "@/components/ui/progress";
+import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
+import { updateUserRating } from "@/lib/rating";
 
-// Статикалық түсіндірмелер базасы (AI лимиті біткенде немесе жылдам қарау үшін)
+// Статикалық түсіндірмелер базасы
 const STATIC_THEORY: Record<string, any> = {
   "Қазақ хандығының құрылуы мен дамуы": {
     given: "XV ғасырдың ортасындағы Қазақстан аумағындағы саяси жағдай және қазақ халқының этникалық бірігу процесі.",
@@ -87,7 +91,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
       "Мәтіннің тақырыбы мен негізгі ойы", "Мәтіндегі ашық және жасырын ақпарат", "Стиль түрлері", 
       "Мәтін құрылымы", "Логикалық байланыс", "Автор көзқарасы", "Факті мен пікірді ажырату", 
       "Қорытынды шығару", "Салыстыру", "Мәтін бойынша интерпретация", "Бірнеше мәтінді салыстырып талдау", 
-      "Кесте, сызба, диаграммадағы ақпаратты оқу"
+      "Кесте, сызба, диаграммадағы ақпаратны оқу"
     ]
   },
   "Математикалық сауаттылық": {
@@ -216,68 +220,71 @@ export default function TheoryPage() {
             <SubjectGroup title="Бейіндік және таңдау пәндері" subjects={filterSubjects(choiceSubjects)} />
           </TabsContent>
         </Tabs>
-
-        <div className="mt-12 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold font-headline flex items-center gap-2">
-              <Star className="size-5 text-yellow-500 fill-yellow-500" />
-              Таңдаулы тақырыптар
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { title: "Логарифмдік теңдеулер", subject: "Математика", difficulty: "Орта" },
-              { title: "Қазақ хандығының құрылуы мен дамуы", subject: "Қазақстан тарихы", difficulty: "Оңай" },
-              { title: "Ньютонның екінші заңы", subject: "Физика", difficulty: "Орта" },
-              { title: "Адам анатомиясы мен физиологиясы", subject: "Биология", difficulty: "Қиын" },
-            ].map((item, i) => (
-              <Card key={i} className="border-none shadow-sm flex items-center justify-between p-4 bg-white hover:shadow-md transition-shadow cursor-pointer group">
-                <div className="flex items-center gap-4">
-                  <div className="size-10 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
-                    <BookOpen className="size-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm leading-none mb-1">{item.title}</h4>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{item.subject}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge variant="outline" className="text-[9px] font-bold">
-                    {item.difficulty}
-                  </Badge>
-                  <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
       </div>
     </AppShell>
   );
 }
 
 function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }) {
-  const [explainingTopic, setExplainingTopic] = useState<string | null>(null);
-  const [explainingSubject, setExplainingSubject] = useState<string | null>(null);
-  const [aiExplanation, setAiExplanation] = useState<ExplainTopicOutput | null>(null);
-  const [isAiLoading, setIsAiLoading] = useState(false);
+  const { user } = useAuth();
+  const [activeDialogTopic, setActiveDialogTopic] = useState<string | null>(null);
+  const [activeDialogSubject, setActiveDialogSubject] = useState<string | null>(null);
+  
+  // Practice Test State
+  const [practiceMode, setPracticeMode] = useState<"reading" | "loading" | "testing" | "results">("reading");
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [testResult, setTestResult] = useState({ score: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleAiDeepDive = async (subject: string, topic: string) => {
-    setIsAiLoading(true);
-    setAiExplanation(null);
+  const startPractice = async (subject: string, topic: string) => {
+    setPracticeMode("loading");
     setErrorMessage(null);
     try {
-      const result = await explainTopic({ subject, topic });
-      setAiExplanation(result);
+      const { questions: newQuestions } = await generateUntQuestions({ 
+        subject, 
+        topic, 
+        count: 5 
+      });
+      setQuestions(newQuestions);
+      setCurrentIndex(0);
+      setAnswers({});
+      setPracticeMode("testing");
     } catch (error: any) {
-      let msg = "Түсіндірмені жүктеу мүмкін болмады.";
-      if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
-        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
+      let msg = "Сұрақтарды жүктеу мүмкін болмады.";
+      if (error.message?.includes("AI_QUOTA_EXCEEDED")) {
+        msg = "AI лимиті аяқталды. 1-2 минуттан соң қайталаңыз.";
       }
       setErrorMessage(msg);
-    } finally {
-      setIsAiLoading(false);
+      setPracticeMode("reading");
+    }
+  };
+
+  const handleAnswer = (option: string) => {
+    setAnswers({ ...answers, [currentIndex]: option });
+  };
+
+  const nextQuestion = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else {
+      finishPractice();
+    }
+  };
+
+  const finishPractice = async () => {
+    let correct = 0;
+    questions.forEach((q, idx) => {
+      if (answers[idx] === q.correctAnswer) correct++;
+    });
+    
+    setTestResult({ score: correct, total: questions.length });
+    setPracticeMode("results");
+
+    if (user && correct > 0) {
+      // Ұпай қосу
+      await updateUserRating(user.uid, 'CORRECT_ANSWER');
     }
   };
 
@@ -289,10 +296,10 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {subjects.map((subject, i) => {
           const Icon = getSubjectIcon(subject);
-          const ubtInfo = UBT_TOPICS[subject] || { topics: ["Негізгі тақырыптар", "Практикалық есептер"], description: "ҰБТ-ға дайындық материалдары" };
+          const ubtInfo = UBT_TOPICS[subject] || { topics: ["Негізгі тақырыптар"], description: "ҰБТ-ға дайындық материалдары" };
 
           return (
-            <Dialog key={i}>
+            <Dialog key={i} onOpenChange={(open) => { if(!open) setPracticeMode("reading"); }}>
               <DialogTrigger asChild>
                 <Card className="hover:border-primary cursor-pointer transition-all group bg-white shadow-sm border-none overflow-hidden h-full flex flex-col">
                   <div className="h-1 bg-primary/20 group-hover:bg-primary transition-colors" />
@@ -325,23 +332,24 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                     </div>
                     <DialogTitle className="text-2xl font-bold font-headline">{subject}</DialogTitle>
                   </div>
-                  <DialogDescription className="text-sm font-medium">
-                    Тақырыпты таңдап, түсіндірмені оқыңыз.
-                  </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] mt-4 pr-4">
                   <div className="grid gap-3">
                     {ubtInfo.topics.map((topic, idx) => {
                       const hasStatic = STATIC_THEORY[topic];
                       return (
-                        <Dialog key={idx}>
+                        <Dialog key={idx} onOpenChange={(open) => { 
+                          if(!open) {
+                            setPracticeMode("reading");
+                            setQuestions([]);
+                          }
+                        }}>
                           <DialogTrigger asChild>
                             <div 
                               onClick={() => {
-                                setExplainingTopic(topic);
-                                setExplainingSubject(subject);
-                                setAiExplanation(null);
-                                setErrorMessage(null);
+                                setActiveDialogTopic(topic);
+                                setActiveDialogSubject(subject);
+                                setPracticeMode("reading");
                               }}
                               className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item cursor-pointer"
                             >
@@ -351,16 +359,9 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                 </div>
                                 <span className="text-sm font-bold">{topic}</span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {hasStatic && (
-                                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[9px] font-bold">
-                                    Дайын конспект
-                                  </Badge>
-                                )}
-                                <Button size="sm" variant="ghost" className="text-xs font-bold h-8 text-primary group-hover/item:bg-primary/10">
-                                  Оқу <ChevronRight className="size-4" />
-                                </Button>
-                              </div>
+                              <Button size="sm" variant="ghost" className="text-xs font-bold h-8 text-primary group-hover/item:bg-primary/10">
+                                Оқу <ChevronRight className="size-4" />
+                              </Button>
                             </div>
                           </DialogTrigger>
                           <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
@@ -370,15 +371,13 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                 <Info className="size-4 text-primary" />
                               </div>
                               <DialogTitle className="text-2xl font-bold font-headline">{topic}</DialogTitle>
-                              <DialogDescription>Түсіндірме және негізгі мәліметтер</DialogDescription>
                             </DialogHeader>
                             
                             <ScrollArea className="flex-1 px-6 pb-6">
-                              {/* Simple / Static Explanation */}
-                              {!aiExplanation && !isAiLoading && (
-                                <div className="space-y-6">
+                              {practiceMode === "reading" && (
+                                <div className="space-y-6 animate-in fade-in duration-300">
                                   {hasStatic ? (
-                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                    <>
                                       <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
                                         <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
                                           <ClipboardList className="size-4" /> Берілгені
@@ -404,121 +403,137 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                           ))}
                                         </ul>
                                       </div>
-                                      <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
-                                        <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
-                                          <Target className="size-4" /> ҰБТ-да көп келетін сұрақтар
-                                        </h4>
-                                        <p className="text-sm text-green-700 leading-relaxed">
-                                          {hasStatic.unt_focus}
-                                        </p>
-                                      </div>
-                                    </div>
+                                    </>
                                   ) : (
                                     <div className="py-12 flex flex-col items-center text-center gap-4">
                                       <div className="size-16 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground">
                                         <BookOpen className="size-8" />
                                       </div>
-                                      <div className="space-y-2">
-                                        <h4 className="font-bold">Бұл тақырып бойынша әлі конспект жоқ</h4>
-                                        <p className="text-sm text-muted-foreground max-w-sm">
-                                          AI-дан осы тақырыпты егжей-тегжейлі түсіндіріп беруін сұрай аласыз.
-                                        </p>
-                                      </div>
+                                      <p className="text-sm text-muted-foreground max-w-sm">
+                                        Бұл тақырып бойынша әлі дайын конспект жоқ. Бірақ сіз біліміңізді тест арқылы тексере аласыз.
+                                      </p>
                                     </div>
                                   )}
 
-                                  {/* AI Deep Dive Button */}
-                                  <div className="pt-4 border-t">
+                                  <div className="pt-6 border-t">
                                     <Button 
-                                      className="w-full gap-2 h-12 shadow-md bg-gradient-to-r from-primary to-secondary"
-                                      onClick={() => handleAiDeepDive(subject, topic)}
-                                      disabled={isAiLoading}
+                                      className="w-full gap-2 h-14 text-lg font-black shadow-lg bg-gradient-to-r from-primary to-secondary hover:scale-[1.02] transition-transform"
+                                      onClick={() => startPractice(subject, topic)}
                                     >
-                                      <Sparkles className="size-4" />
-                                      AI-мен тереңдетілген талдау жасау
+                                      <Sparkles className="size-5" />
+                                      Тақырыпты бекіту (5 тест)
                                     </Button>
                                     <p className="text-[10px] text-center text-muted-foreground mt-2 italic">
-                                      AI тақырыптың мәнін, жаттау тәсілдерін және ҰБТ фокусын талдап береді.
+                                      AI сізге осы тақырып бойынша арнайы 5 сұрақ дайындап береді.
                                     </p>
+                                    {errorMessage && (
+                                      <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+                                        <AlertCircle className="size-4" /> {errorMessage}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               )}
 
-                              {/* AI Loading State */}
-                              {isAiLoading && (
-                                <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
+                              {practiceMode === "loading" && (
+                                <div className="py-24 flex flex-col items-center justify-center gap-4 text-center">
                                   <div className="relative">
                                     <Loader2 className="size-12 animate-spin text-primary" />
                                     <Sparkles className="absolute -top-2 -right-2 size-6 text-yellow-400 animate-bounce" />
                                   </div>
                                   <div className="space-y-1">
-                                    <p className="font-bold">AI ойлануда...</p>
-                                    <p className="text-xs text-muted-foreground">Тақырыпты ең қарапайым тілмен құрастырып жатырмыз.</p>
+                                    <p className="font-bold">AI сұрақтарды құрастыруда...</p>
+                                    <p className="text-xs text-muted-foreground">Тақырыпқа сай ең маңызды сұрақтар таңдалуда.</p>
                                   </div>
                                 </div>
                               )}
 
-                              {/* Error State */}
-                              {errorMessage && !isAiLoading && (
-                                <div className="py-20 flex flex-col items-center justify-center gap-6 text-center max-w-sm mx-auto">
-                                  <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-                                    <AlertCircle className="size-10" />
-                                  </div>
+                              {practiceMode === "testing" && questions.length > 0 && (
+                                <div className="space-y-6 animate-in slide-in-from-right-4">
                                   <div className="space-y-2">
-                                    <h2 className="text-xl font-bold font-headline">Байланыс қатесі</h2>
-                                    <p className="text-muted-foreground text-sm leading-relaxed">{errorMessage}</p>
+                                    <div className="flex justify-between items-end">
+                                      <span className="text-sm font-bold">Сұрақ {currentIndex + 1} / {questions.length}</span>
+                                      <Badge variant="secondary" className="text-[10px]">Тақырыптық практика</Badge>
+                                    </div>
+                                    <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-1.5" />
                                   </div>
+
+                                  <Card className="border-none shadow-md bg-accent/5 p-6">
+                                    <h3 className="text-lg font-bold leading-relaxed mb-6">
+                                      {questions[currentIndex].text}
+                                    </h3>
+                                    <div className="space-y-3">
+                                      {questions[currentIndex].options.map((opt: string, i: number) => {
+                                        const letter = String.fromCharCode(65 + i);
+                                        const isSelected = answers[currentIndex] === letter;
+                                        return (
+                                          <button 
+                                            key={i} 
+                                            onClick={() => handleAnswer(letter)}
+                                            className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-4 group ${
+                                              isSelected ? "border-primary bg-primary/5" : "border-border bg-white hover:border-primary/30"
+                                            }`}
+                                          >
+                                            <span className={`size-8 rounded-lg border-2 flex items-center justify-center text-xs font-black ${
+                                              isSelected ? "bg-primary text-primary-foreground border-primary" : "group-hover:border-primary/50"
+                                            }`}>
+                                              {letter}
+                                            </span>
+                                            <span className="font-medium text-sm">{opt}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  </Card>
+
                                   <Button 
-                                    className="gap-2" 
-                                    onClick={() => handleAiDeepDive(explainingSubject!, explainingTopic!)}
+                                    className="w-full h-12 gap-2 font-bold" 
+                                    disabled={!answers[currentIndex]}
+                                    onClick={nextQuestion}
                                   >
-                                    <RefreshCcw className="size-4" /> Қайта көру
+                                    {currentIndex === questions.length - 1 ? "Нәтижені көру" : "Келесі сұрақ"}
+                                    <ArrowRight className="size-4" />
                                   </Button>
                                 </div>
                               )}
 
-                              {/* AI Success View */}
-                              {aiExplanation && !isAiLoading && (
-                                <div className="space-y-6 animate-in slide-in-from-top-4 duration-500">
-                                  <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
-                                    <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
-                                      <ClipboardList className="size-4" /> 1. Берілгені
-                                    </h4>
-                                    <p className="text-sm leading-relaxed">{aiExplanation.given}</p>
+                              {practiceMode === "results" && (
+                                <div className="py-8 space-y-8 animate-in zoom-in-95 duration-300">
+                                  <div className="text-center space-y-4">
+                                    <div className="inline-flex size-20 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner">
+                                      <Trophy className="size-10" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-2xl font-black font-headline">Нәтиже: {testResult.score} / {testResult.total}</h3>
+                                      <p className="text-muted-foreground text-sm mt-1">
+                                        {testResult.score === testResult.total ? "Керемет! Тақырыпты толық меңгердіңіз! 🚀" : "Жақсы нәтиже! Қателермен жұмыс істеуді ұмытпаңыз."}
+                                      </p>
+                                    </div>
                                   </div>
-                                  <div className="space-y-3">
-                                    <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
-                                      <BookText className="size-4" /> 2. Теория
-                                    </h4>
-                                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.theory}</p>
-                                  </div>
-                                  <div className="p-5 rounded-2xl bg-yellow-50 border border-yellow-100">
-                                    <h4 className="flex items-center gap-2 text-sm font-black text-yellow-800 mb-2 uppercase tracking-wider">
-                                      <Calendar className="size-4" /> 5. Жаттап алу керек жылдар / Деректер
-                                    </h4>
-                                    <ul className="space-y-2">
-                                      {aiExplanation.yearsToMemorize.map((item, yi) => (
-                                        <li key={yi} className="flex gap-2 text-xs text-yellow-900">
-                                          <CheckCircle2 className="size-3 text-yellow-600 shrink-0 mt-0.5" />
-                                          {item}
-                                        </li>
+
+                                  <div className="space-y-4">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Сұрақтарды талдау:</h4>
+                                    <div className="grid gap-3">
+                                      {questions.map((q, i) => (
+                                        <div key={i} className={`p-4 rounded-xl border ${answers[i] === q.correctAnswer ? 'bg-green-50 border-green-100' : 'bg-destructive/5 border-destructive/10'}`}>
+                                          <div className="flex items-start gap-3">
+                                            {answers[i] === q.correctAnswer ? <CheckCircle2 className="size-4 text-green-600 mt-1 shrink-0" /> : <XCircle className="size-4 text-destructive mt-1 shrink-0" />}
+                                            <div className="space-y-2">
+                                              <p className="text-sm font-bold">{q.text}</p>
+                                              <div className="flex gap-4 text-[10px] font-black uppercase">
+                                                <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Жауабыңыз: {answers[i]}</span>
+                                                <span className="text-green-700">Дұрыс: {q.correctAnswer}</span>
+                                              </div>
+                                              <p className="text-xs text-muted-foreground italic leading-relaxed">{q.explanation}</p>
+                                            </div>
+                                          </div>
+                                        </div>
                                       ))}
-                                    </ul>
+                                    </div>
                                   </div>
-                                  <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
-                                    <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
-                                      <Target className="size-4" /> 6. ҰБТ-да көп келетін тақырыптар
-                                    </h4>
-                                    <p className="text-sm text-green-700 leading-relaxed whitespace-pre-wrap">
-                                      {aiExplanation.frequentUntTopics}
-                                    </p>
-                                  </div>
-                                  <Button 
-                                    variant="outline" 
-                                    className="w-full text-xs" 
-                                    onClick={() => setAiExplanation(null)}
-                                  >
-                                    Қарапайым нұсқаға қайту
+
+                                  <Button variant="outline" className="w-full h-12 font-bold" onClick={() => setPracticeMode("reading")}>
+                                    Теорияға қайту
                                   </Button>
                                 </div>
                               )}

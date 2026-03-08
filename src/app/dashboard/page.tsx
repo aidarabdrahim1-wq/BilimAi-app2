@@ -10,25 +10,46 @@ import {
   TrendingUp, 
   AlertCircle,
   PlayCircle,
-  BookMarked
+  BookMarked,
+  Trophy,
+  Zap,
+  CheckCircle2
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { profile } = useAuth();
 
-  // Calculate percentage to target
   const currentScore = profile?.currentScore || 0;
   const targetScore = profile?.targetScore || 140;
+  const rating = profile?.rating || 0;
+  const solvedCount = profile?.solvedQuestions || 0;
+  const correctCount = profile?.correctAnswers || 0;
+  const streak = profile?.streakDays || 0;
+
   const progressToTarget = Math.round((currentScore / targetScore) * 100);
+  const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
 
   return (
     <AppShell>
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight font-headline">
-          Сәлем, {profile?.fullName?.split(' ')[0] || "Оқушы"}! 👋
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight font-headline">
+            Сәлем, {profile?.fullName?.split(' ')[0] || "Оқушы"}! 👋
+          </h1>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
+              <Trophy className="size-3.5 fill-current" />
+              {rating} ұпай
+            </Badge>
+            <Badge variant="outline" className="px-3 py-1 gap-1.5 border-orange-200 bg-orange-50 text-orange-700">
+              <Zap className="size-3.5 fill-current" />
+              {streak} күн
+            </Badge>
+          </div>
+        </div>
         <p className="text-muted-foreground">Бүгін сіздің оқу жоспарыңыз бойынша 4 тапсырма бар.</p>
       </div>
 
@@ -41,7 +62,7 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-3xl font-bold">{currentScore}</div>
             <p className="text-xs opacity-70 mt-1">
-              +12 өткен аптадан бері
+              ҰБТ потенциалы: {Math.round(currentScore)} / 140
             </p>
             <div className="absolute -bottom-2 -right-2 opacity-10">
               <TrendingUp className="h-24 w-24" />
@@ -67,13 +88,13 @@ export default function Dashboard() {
 
         <Card className="shadow-sm border-none bg-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Бүгінгі уақыт</CardTitle>
-            <Clock className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Дәлдік (Accuracy)</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">2с 15м</div>
+            <div className="text-3xl font-bold">{accuracy}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Мақсат: 3 сағат
+              {correctCount} / {solvedCount} дұрыс жауап
             </p>
           </CardContent>
         </Card>
@@ -84,9 +105,9 @@ export default function Dashboard() {
             <AlertCircle className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">14%</div>
+            <div className="text-3xl font-bold">{100 - accuracy}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              -3% жақсару
+              Талдау қажет: {solvedCount - correctCount} сұрақ
             </p>
           </CardContent>
         </Card>
@@ -97,7 +118,7 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-xl font-headline">Бүгінгі оқу жоспары</CardTitle>
-              <CardDescription>22 ақпан, Сәрсенбі</CardDescription>
+              <CardDescription>Дайындықты жалғастырыңыз</CardDescription>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href="/plan">Толық жоспар</Link>
@@ -113,7 +134,7 @@ export default function Dashboard() {
               <div key={i} className="flex items-center justify-between p-4 rounded-xl border bg-accent/10 hover:bg-accent/20 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className={`size-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100 text-green-700' : task.status === 'in-progress' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {task.status === 'completed' ? '✓' : <PlayCircle className="size-5" />}
+                    {task.status === 'completed' ? <CheckCircle2 className="size-5" /> : <PlayCircle className="size-5" />}
                   </div>
                   <div>
                     <h4 className="font-semibold text-sm">{task.title}</h4>
@@ -125,7 +146,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {task.status === 'in-progress' && (
-                  <Button size="sm">Жалғастыру</Button>
+                  <Button size="sm" className="shadow-sm">Жалғастыру</Button>
                 )}
               </div>
             ))}
@@ -133,41 +154,43 @@ export default function Dashboard() {
         </Card>
 
         <div className="md:col-span-3 space-y-6">
-          <Card className="border-none shadow-sm bg-accent/5">
-            <CardHeader>
-              <CardTitle className="text-lg font-headline">Әлсіз тақырыптар</CardTitle>
-              <CardDescription>Жедел назар аудару керек</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {(profile?.weakTopics?.length ? profile.weakTopics.slice(0, 3) : ["Логарифмдік теңдеулер", "Кванттық физика", "Генетика негіздері"]).map((topic, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="font-medium">{topic}</span>
-                    <span className="text-destructive font-bold">{40 + (i * 10)}%</span>
-                  </div>
-                  <Progress value={40 + (i * 10)} className="h-1.5" />
-                </div>
-              ))}
-              <Button variant="link" className="w-full text-xs text-primary" asChild>
-                <Link href="/diagnostic">Диагностиканы жаңарту</Link>
-              </Button>
+          <Card className="border-none shadow-sm bg-accent/5 overflow-hidden">
+            <div className="p-4 bg-primary text-primary-foreground flex justify-between items-center">
+              <h3 className="font-bold">Рейтинг статистикасы</h3>
+              <Trophy className="size-5 opacity-50" />
+            </div>
+            <CardContent className="p-6 space-y-4">
+              <div className="flex justify-between items-end">
+                <span className="text-sm text-muted-foreground">Орындалған жоспарлар:</span>
+                <span className="font-bold">{profile?.completedPlans || 0} / 30</span>
+              </div>
+              <Progress value={((profile?.completedPlans || 0) / 30) * 100} className="h-1.5" />
+              
+              <div className="flex justify-between items-end pt-2">
+                <span className="text-sm text-muted-foreground">Дұрыс жауаптар:</span>
+                <span className="font-bold text-green-600">{correctCount}</span>
+              </div>
+              <div className="flex justify-between items-end">
+                <span className="text-sm text-muted-foreground">Барлық сұрақтар:</span>
+                <span className="font-bold">{solvedCount}</span>
+              </div>
             </CardContent>
           </Card>
 
           <Card className="border-none shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-headline flex items-center gap-2">
-                <BookMarked className="size-5 text-primary" />
-                Ұсынылған келесі тақырып
+              <CardTitle className="text-lg font-headline flex items-center gap-2 text-primary">
+                <BookMarked className="size-5" />
+                AI-дан ұсыныс
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="p-4 rounded-xl border bg-primary/5">
                 <h4 className="font-bold text-sm">Химия: Органикалық қосылыстар</h4>
                 <p className="text-xs text-muted-foreground mt-2">
-                  Бұл тақырып ҰБТ-да жиі кездеседі (8-10 сұрақ). Сіздің деңгейіңізге сай бастауға болады.
+                  Бұл тақырып бойынша 10 сұраққа жауап беріп, +20 рейтинг ұпайын алыңыз!
                 </p>
-                <Button className="w-full mt-4" size="sm">Оқуды бастау</Button>
+                <Button className="w-full mt-4 shadow-sm" size="sm">Оқуды бастау</Button>
               </div>
             </CardContent>
           </Card>

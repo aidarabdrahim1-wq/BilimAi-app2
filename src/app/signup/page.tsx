@@ -12,7 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -21,7 +22,6 @@ export default function SignupPage() {
     password: "",
     grade: "",
     targetScore: 120,
-    currentScore: 70,
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -41,18 +41,21 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // 1. Create User in Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Create Profile in Firestore
       if (db) {
         await setDoc(doc(db, "users", user.uid), {
           fullName: formData.fullName,
           email: formData.email,
           grade: formData.grade,
           targetScore: Number(formData.targetScore),
-          currentScore: Number(formData.currentScore),
+          currentScore: 0,
+          rating: 0, // Бастапқы рейтинг
+          solvedQuestions: 0,
+          correctAnswers: 0,
+          completedPlans: 0,
+          streakDays: 0,
           selectedSubjects: ["Математика", "Қазақстан тарихы"],
           weakTopics: [],
           createdAt: serverTimestamp(),
@@ -66,17 +69,13 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Signup error details:", error);
+      console.error("Signup error:", error);
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
       if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны 'Enable' етіңіз.";
+        errorMessage = "МАҢЫЗДЫ: Firebase консолінде Email/Password әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны қосыңыз.";
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
-      } else if (error.code === 'auth/weak-password') {
-        errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = "Email форматы дұрыс емес.";
       }
 
       toast({
@@ -94,7 +93,7 @@ export default function SignupPage() {
       <Card className="w-full max-w-lg border-none shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground">
+            <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
               <BrainCircuit className="size-8" />
             </div>
           </div>
@@ -102,6 +101,15 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
+          {!isConfigValid && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Назар аударыңыз</AlertTitle>
+              <AlertDescription>
+                Firebase конфигурациясы дұрыс емес. API кілтін тексеріңіз.
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -168,7 +176,7 @@ export default function SignupPage() {
               />
             </div>
             
-            <Button className="w-full h-11" type="submit" disabled={loading}>
+            <Button className="w-full h-11 shadow-md" type="submit" disabled={loading || !isConfigValid}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Тіркелу"}
             </Button>
           </form>

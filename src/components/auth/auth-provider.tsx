@@ -3,15 +3,20 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 
-interface UserProfile {
+export interface UserProfile {
   fullName: string;
   email: string;
   grade: string;
   targetScore: number;
   currentScore: number;
+  rating: number;
+  solvedQuestions: number;
+  correctAnswers: number;
+  completedPlans: number;
+  streakDays: number;
   selectedSubjects: string[];
   weakTopics: string[];
   createdAt: any;
@@ -47,43 +52,38 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(firebaseUser);
-        if (db) {
-          try {
-            const docRef = doc(db, "users", firebaseUser.uid);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              setProfile(docSnap.data() as UserProfile);
-            }
-          } catch (error) {
-            console.error("Error loading user profile:", error);
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
+      
+      if (firebaseUser && db) {
+        // Real-time профильді тыңдау (Рейтинг үшін маңызды)
+        const unsubscribeProfile = onSnapshot(doc(db, "users", firebaseUser.uid), (docSnap) => {
+          if (docSnap.exists()) {
+            setProfile(docSnap.data() as UserProfile);
           }
-        }
+          setLoading(false);
+        }, (error) => {
+          console.error("Profile listen error:", error);
+          setLoading(false);
+        });
+
+        return () => unsubscribeProfile();
       } else {
-        setUser(null);
         setProfile(null);
+        setLoading(false);
         
-        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory", "/admin", "/settings"];
+        const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/admin"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
         }
       }
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeAuth();
   }, [pathname, router]);
 
-  // Avoid Hydration mismatch
-  if (!mounted) {
-    return (
-      <div className="min-h-screen bg-background" aria-hidden="true" />
-    );
-  }
+  if (!mounted) return <div className="min-h-screen bg-background" />;
 
-  // Loading Screen
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

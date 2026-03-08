@@ -30,7 +30,7 @@ const DailyPlanActivitySchema = z.object({
 
 const WeeklyPlanDaySchema = z.object({
   day: z.string().describe('The day of the week in Kazakh, e.g., "Дүйсенбі", "Сейсенбі".'),
-  activities: z.array(z.string()).describe('A list of activities for the day in Kazakh, e.g., "жаңа тақырып", "бекіту", "тест", "әлсіз тақырып", "аралас тест", "толық пробник", "қателермен жұмыс".'),
+  activities: z.array(z.string()).describe('A list of activities for the day in Kazakh, e.g., "жаңа тақырып", "beкіту", "тест", "әлсіз тақырып", "аралас тест", "толық пробник", "қателермен жұмыс".'),
 });
 
 const GenerateStudyPlanOutputSchema = z.object({
@@ -58,7 +58,14 @@ const generateStudyPlanFlow = ai.defineFlow(
     outputSchema: GenerateStudyPlanOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const { output } = await prompt(input);
+      return output!;
+    } catch (error: any) {
+      if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error('AI_QUOTA_EXCEEDED');
+      }
+      throw error;
+    }
   }
 );

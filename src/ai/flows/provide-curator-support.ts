@@ -69,7 +69,14 @@ const curatorChatFlow = ai.defineFlow(
     outputSchema: CuratorChatOutputSchema,
   },
   async (input) => {
-    const { output } = await curatorChatPrompt(input);
-    return output!;
+    try {
+      const { output } = await curatorChatPrompt(input);
+      return output!;
+    } catch (error: any) {
+      if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
+        throw new Error('AI_QUOTA_EXCEEDED');
+      }
+      throw error;
+    }
   }
 );

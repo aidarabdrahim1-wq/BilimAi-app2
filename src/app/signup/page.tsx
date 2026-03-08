@@ -69,12 +69,14 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
+      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
+      // 2. Create Profile Data (matching firestore.rules requirements)
       if (db) {
         const profileData = {
-          id: user.uid,
+          id: user.uid, // Required by security rule: request.resource.data.id == studentId
           fullName: formData.fullName,
           email: formData.email,
           grade: formData.grade,
@@ -95,14 +97,8 @@ export default function SignupPage() {
         };
 
         const docRef = doc(db, "studentProfiles", user.uid);
-        setDoc(docRef, profileData)
-          .catch(async (error) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: docRef.path,
-              operation: 'create',
-              requestResourceData: profileData
-            }));
-          });
+        // CRITICAL: Must await the setDoc before redirecting
+        await setDoc(docRef, profileData);
       }
 
       toast({
@@ -112,6 +108,7 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         title: "Қате орын алды",
         description: error.message || "Тіркелу кезінде қате орын алды.",

@@ -9,12 +9,12 @@ export const userService = {
   /**
    * Жаңа пайдаланушы профилін жасау
    */
-  async createUserProfile(user: Partial<UserProfile>) {
+  async createUserProfile(user: Partial<UserProfile> & { uid: string }) {
     if (!user.uid) throw new Error('UID is required');
     
     const userRef = doc(db, 'studentProfiles', user.uid);
     const profile: any = {
-      id: user.uid,
+      id: user.uid, // Ensuring it's 'id' to match security rules
       fullName: user.fullName || '',
       email: user.email || '',
       grade: user.grade || '',
@@ -31,16 +31,17 @@ export const userService = {
       updatedAt: serverTimestamp(),
     };
 
-    setDoc(userRef, profile)
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: userRef.path,
-          operation: 'create',
-          requestResourceData: profile
-        }));
-      });
-    
-    return profile;
+    try {
+      await setDoc(userRef, profile);
+      return profile;
+    } catch (error) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'create',
+        requestResourceData: profile
+      }));
+      throw error;
+    }
   },
 
   /**
@@ -57,15 +58,18 @@ export const userService = {
    */
   async updateUserProfile(userId: string, data: Partial<UserProfile>) {
     const userRef = doc(db, 'studentProfiles', userId);
-    updateDoc(userRef, {
-      ...data,
-      updatedAt: serverTimestamp(),
-    }).catch(async (error) => {
+    try {
+      await updateDoc(userRef, {
+        ...data,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userRef.path,
         operation: 'update',
         requestResourceData: data
       }));
-    });
+      throw error;
+    }
   }
 };

@@ -6,7 +6,7 @@ import { Timestamp } from 'firebase/firestore';
  */
 
 export interface UserProfile {
-  uid: string;
+  id: string; // Corrected from uid to id to match firestore.rules
   fullName: string;
   email: string;
   grade: string;

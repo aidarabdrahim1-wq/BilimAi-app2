@@ -69,16 +69,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfile(null);
           }
           setLoading(false);
-        }, async (error) => {
-          const permissionError = new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'get',
-          });
-          
-          if (error.code !== 'permission-denied' || firebaseUser) {
-             errorEmitter.emit('permission-error', permissionError);
+        }, async (error: any) => {
+          // During login/signup transitions, permission-denied might briefly occur
+          // We only emit if it's not a race condition where the user is suddenly null
+          if (auth.currentUser) {
+            const permissionError = new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'get',
+            });
+            errorEmitter.emit('permission-error', permissionError);
           }
-          
           setLoading(false);
         });
 

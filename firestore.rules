@@ -1,50 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Пайдаланушы профилі және оның ішкі коллекциялары
+    // Helper function to check if the user is the owner of the document
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // User profiles and their subcollections
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
       
-      // Ішкі коллекцияларға (мысалы, messages) рұқсат
       match /{allSubcollections=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if isOwner(userId);
       }
     }
     
-    // Тест нәтижелері
+    // Test results - allow if the user is the owner
     match /test_results/{id} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
     }
     
-    // Қателер базасы
+    // User mistakes
     match /mistakes/{id} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
     }
     
-    // Оқу жоспарлары
+    // Study plans
     match /study_plans/{id} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
     }
     
-    // Диагностика нәтижелері
+    // Diagnostics
     match /diagnostics/{id} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, write: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
     }
     
-    // Теория материалдары (тек оқуға рұқсат)
+    // Progress
+    match /progress/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Theory materials - read only for authenticated users
     match /theory_materials/{id} {
       allow read: if request.auth != null;
     }
-    
-    // Жалпы прогресс
-    match /progress/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    // Default deny for everything else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

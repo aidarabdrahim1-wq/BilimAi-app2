@@ -25,7 +25,10 @@ import {
   Loader2,
   Lightbulb,
   CheckCircle2,
-  Target
+  Target,
+  Calendar,
+  ClipboardList,
+  AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +46,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { explainTopic, type ExplainTopicOutput } from "@/ai/flows/explain-topic-flow";
 
-// ҰБТ тақырыптарының ресми базасы
 const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Қазақстан тарихы": {
     description: "Ежелгі дәуірден бүгінгі күнге дейінгі Қазақстан тарихының толық курсы.",
@@ -110,7 +112,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
     ]
   },
   "География": {
-    description: "Табиғат ресурстары, демография және Қазақстанның экономикалық географиясы.",
+    description: "Табиғат ресурсовтары, демография және Қазақстанның экономикалық географиясы.",
     topics: [
       "Географиялық зерттеу әдістері", "Карта, масштаб, координаталар", "Литосфера, атмосфера, гидросфера, биосфера", 
       "Климат және климат түзуші факторлар", "Табиғат зоналары", "Демография", "Урбандалу", 
@@ -407,68 +409,44 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                               </div>
                             ) : aiExplanation ? (
                               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                                {/* 1. Берілгені */}
                                 <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
                                   <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
-                                    <Info className="size-4" /> Анықтама
+                                    <ClipboardList className="size-4" /> 1. Берілгені
                                   </h4>
-                                  <p className="text-sm leading-relaxed">{aiExplanation.definition}</p>
+                                  <p className="text-sm leading-relaxed">{aiExplanation.given}</p>
                                 </div>
 
+                                {/* 2. Теория */}
                                 <div className="space-y-3">
                                   <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
-                                    <BookText className="size-4" /> Толық түсіндірме
+                                    <BookText className="size-4" /> 2. Теория
                                   </h4>
-                                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.explanation}</p>
+                                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.theory}</p>
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-4">
-                                  <Card className="border-none shadow-sm bg-accent/5">
-                                    <CardHeader className="py-3 px-4">
-                                      <CardTitle className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
-                                        <ListChecks className="size-3 text-secondary" /> Маңызды ережелер
-                                      </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="py-0 px-4 pb-4">
-                                      <ul className="space-y-2">
-                                        {aiExplanation.keyRules.map((rule, ri) => (
-                                          <li key={ri} className="flex gap-2 text-xs">
-                                            <CheckCircle2 className="size-3 text-green-500 shrink-0 mt-0.5" />
-                                            {rule}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    </CardContent>
-                                  </Card>
-
-                                  <Card className="border-none shadow-sm bg-yellow-50/50 border border-yellow-100/50">
-                                    <CardHeader className="py-3 px-4">
-                                      <CardTitle className="text-xs font-black uppercase tracking-wider flex items-center gap-2 text-yellow-700">
-                                        <Lightbulb className="size-3" /> Memory Hack
-                                      </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="py-0 px-4 pb-4">
-                                      <p className="text-xs text-yellow-800 leading-relaxed italic">
-                                        "{aiExplanation.memoryHack}"
-                                      </p>
-                                    </CardContent>
-                                  </Card>
+                                {/* 5. Жаттап алу керек жылдар */}
+                                <div className="p-5 rounded-2xl bg-yellow-50 border border-yellow-100">
+                                  <h4 className="flex items-center gap-2 text-sm font-black text-yellow-800 mb-2 uppercase tracking-wider">
+                                    <Calendar className="size-4" /> 5. Жаттап алу керек жылдар / Маңызды деректер
+                                  </h4>
+                                  <ul className="space-y-2">
+                                    {aiExplanation.yearsToMemorize.map((item, yi) => (
+                                      <li key={yi} className="flex gap-2 text-xs text-yellow-900">
+                                        <CheckCircle2 className="size-3 text-yellow-600 shrink-0 mt-0.5" />
+                                        {item}
+                                      </li>
+                                    ))}
+                                  </ul>
                                 </div>
 
-                                <div className="p-4 rounded-xl border border-dashed border-primary/20 bg-white">
-                                  <h4 className="text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <Calculator className="size-3" /> Мысал
+                                {/* 6. ҰБТ-да көп келетін тақырыптар */}
+                                <div className="p-5 rounded-2xl bg-green-50 border border-green-100">
+                                  <h4 className="flex items-center gap-2 text-sm font-black text-green-800 mb-2 uppercase tracking-wider">
+                                    <Target className="size-4" /> 6. ҰБТ-да көп келетін тақырыптар
                                   </h4>
-                                  <p className="text-xs font-mono bg-muted p-3 rounded-lg leading-relaxed">
-                                    {aiExplanation.example}
-                                  </p>
-                                </div>
-
-                                <div className="p-4 rounded-xl bg-green-50 border border-green-100">
-                                  <h4 className="text-xs font-black uppercase tracking-wider mb-1 text-green-800 flex items-center gap-2">
-                                    <Target className="size-3" /> ҰБТ-да кездесуі
-                                  </h4>
-                                  <p className="text-xs text-green-700 leading-relaxed">
-                                    {aiExplanation.howItAppearsInUNT}
+                                  <p className="text-sm text-green-700 leading-relaxed whitespace-pre-wrap">
+                                    {aiExplanation.frequentUntTopics}
                                   </p>
                                 </div>
                               </div>

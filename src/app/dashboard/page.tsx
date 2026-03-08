@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -21,7 +21,11 @@ import {
   Clock,
   BookOpen,
   ClipboardList,
-  Sparkles
+  Sparkles,
+  Play,
+  Pause,
+  RotateCcw,
+  Check
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -30,19 +34,26 @@ import { differenceInDays, parseISO } from "date-fns";
 import { db } from "@/lib/firebase/config";
 import { doc, updateDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
+import { updateUserRating } from "@/lib/rating";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [newDate, setNewDate] = useState(profile?.untDate || "2025-06-20");
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [todayTasks, setTodayTasks] = useState<any[]>([]);
+  
+  // Timer states
+  const [activeTimerTask, setActiveTimerTask] = useState<any>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -70,7 +81,7 @@ export default function Dashboard() {
       snapshot.forEach((doc) => {
         const data = doc.data();
         if (data.tasks) {
-          tasks.push(...data.tasks.map((t: any) => ({ ...t, planId: doc.id })));
+          tasks.push(...data.tasks.map((t: any) => ({ ...t, planId: doc.id, fullPlan: data })));
         }
       });
       setTodayTasks(tasks);
@@ -78,6 +89,70 @@ export default function Dashboard() {
 
     return () => unsubscribe();
   }, [user]);
+
+  // Timer logic
+  useEffect(() => {
+    let interval: any;
+    if (isTimerRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1);
+      }, 1000);
+    } else if (timeLeft === 0 && isTimerRunning) {
+      setIsTimerRunning(false);
+      toast({
+        title: "Уақыт аяқталды!",
+        description: "Тапсырманы аяқтауды ұмытпаңыз.",
+      });
+    }
+    return () => clearInterval(interval);
+  }, [isTimerRunning, timeLeft, toast]);
+
+  const startTaskTimer = (task: any) => {
+    const minutes = parseInt(task.time) || 30;
+    setTimeLeft(minutes * 60);
+    setActiveTimerTask(task);
+    setIsTimerRunning(true);
+    setIsTimerDialogOpen(true);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const completeTaskFromTimer = async () => {
+    if (!activeTimerTask || !user) return;
+
+    const planId = activeTimerTask.planId;
+    const fullPlan = activeTimerTask.fullPlan;
+    
+    const updatedTasks = fullPlan.tasks.map((t: any) => 
+      t.id === activeTimerTask.id ? { ...t, status: "completed" } : t
+    );
+
+    const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
+    
+    try {
+      const planRef = doc(db, "study_plans", planId);
+      await updateDoc(planRef, {
+        tasks: updatedTasks,
+        completedCount,
+        updatedAt: serverTimestamp()
+      });
+
+      if (completedCount === fullPlan.totalCount) {
+        await updateUserRating(user.uid, 'PLAN_COMPLETED');
+        toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
+      }
+
+      setIsTimerDialogOpen(false);
+      setActiveTimerTask(null);
+      toast({ title: "Тапсырма орындалды!", variant: "default" });
+    } catch (error) {
+      toast({ title: "Қате", variant: "destructive" });
+    }
+  };
 
   const handleUpdateDate = async () => {
     if (!user || !db) return;
@@ -92,7 +167,7 @@ export default function Dashboard() {
         title: "Күн жаңартылды",
         description: `Жаңа ҰБТ күні: ${newDate}`,
       });
-      setIsDialogOpen(false);
+      setIsDateDialogOpen(false);
     } catch (error) {
       toast({
         title: "Қате",
@@ -150,7 +225,7 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDateDialogOpen} onOpenChange={setIsDateDialogOpen}>
               <DialogTrigger asChild>
                 <Card className="border-none shadow-sm bg-white flex items-center px-4 py-2 gap-3 cursor-pointer hover:bg-accent/5 transition-all group border-l-2 border-orange-500">
                   <div className="size-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
@@ -316,8 +391,12 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </div>
-                        <Button size="sm" className="h-8 rounded-full px-4 text-xs font-bold shadow-sm" asChild>
-                          <Link href={task.type === 'test' ? '/practice' : '/theory'}>Бастау</Link>
+                        <Button 
+                          size="sm" 
+                          className="h-8 rounded-full px-4 text-xs font-bold shadow-sm"
+                          onClick={() => startTaskTimer(task)}
+                        >
+                          Бастау
                         </Button>
                       </div>
                     ))}
@@ -412,6 +491,93 @@ export default function Dashboard() {
             </Card>
           </div>
         </div>
+
+        {/* Timer Dialog */}
+        <Dialog open={isTimerDialogOpen} onOpenChange={(open) => {
+          if (!open) setIsTimerRunning(false);
+          setIsTimerDialogOpen(open);
+        }}>
+          <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-center font-headline text-2xl font-bold flex flex-col items-center gap-3">
+                <div className="size-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center animate-pulse">
+                  <Clock className="size-8" />
+                </div>
+                {activeTimerTask?.title}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center justify-center py-12 gap-8">
+              <div className="relative size-48 flex items-center justify-center">
+                <svg className="size-full -rotate-90 transform">
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    className="text-accent/20"
+                  />
+                  <circle
+                    cx="96"
+                    cy="96"
+                    r="88"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    strokeDasharray={552}
+                    strokeDashoffset={552 - (552 * timeLeft) / ((parseInt(activeTimerTask?.time) || 30) * 60)}
+                    className="text-primary transition-all duration-1000"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-5xl font-black font-mono tracking-tighter">
+                    {formatTime(timeLeft)}
+                  </span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                    қалған уақыт
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="rounded-full size-12"
+                  onClick={() => {
+                    const mins = parseInt(activeTimerTask?.time) || 30;
+                    setTimeLeft(mins * 60);
+                  }}
+                >
+                  <RotateCcw className="size-5" />
+                </Button>
+                <Button 
+                  variant={isTimerRunning ? "secondary" : "default"} 
+                  size="icon" 
+                  className="rounded-full size-16 shadow-xl"
+                  onClick={() => setIsTimerRunning(!isTimerRunning)}
+                >
+                  {isTimerRunning ? <Pause className="size-8 fill-current" /> : <Play className="size-8 fill-current ml-1" />}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  className="rounded-full size-12 text-green-600 hover:text-green-700 hover:bg-green-50"
+                  onClick={completeTaskFromTimer}
+                >
+                  <Check className="size-5" />
+                </Button>
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-center border-t pt-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Тәртіп — жеңістің кілті. Назарыңды тапсырмаға аудар! 🚀
+              </p>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppShell>
   );

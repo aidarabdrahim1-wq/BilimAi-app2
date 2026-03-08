@@ -77,6 +77,19 @@ export default function AnalysisPage() {
     }
   };
 
+  const clearAllMistakes = async () => {
+    if (!user || mistakes.length === 0) return;
+    if (!confirm("Барлық қателерді өшіргіңіз келе ме?")) return;
+    
+    try {
+      for (const m of mistakes) {
+        await deleteDoc(doc(db, "studentProfiles", user.uid, "mistakes", m.id));
+      }
+    } catch (error) {
+      console.error("Clear error:", error);
+    }
+  };
+
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
@@ -89,14 +102,21 @@ export default function AnalysisPage() {
             <p className="text-muted-foreground text-sm">Тест кезінде жіберген қателеріңіз осы жерге жиналады.</p>
           </div>
           
-          <Button 
-            onClick={handleAiAnalysis} 
-            disabled={mistakes.length === 0 || isAiLoading}
-            className="gap-2 shadow-lg shadow-primary/20 animate-pulse hover:animate-none"
-          >
-            {isAiLoading ? <Loader2 className="size-4 animate-spin" /> : <BrainCircuit className="size-4" />}
-            AI Талдау жасау
-          </Button>
+          <div className="flex items-center gap-3">
+            {mistakes.length > 0 && (
+              <Button variant="outline" size="sm" onClick={clearAllMistakes} className="text-destructive hover:bg-destructive/10">
+                <Trash2 className="size-4 mr-2" /> Барлығын өшіру
+              </Button>
+            )}
+            <Button 
+              onClick={handleAiAnalysis} 
+              disabled={mistakes.length === 0 || isAiLoading}
+              className="gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90"
+            >
+              {isAiLoading ? <Loader2 className="size-4 animate-spin" /> : <BrainCircuit className="size-4" />}
+              AI Талдау жасау
+            </Button>
+          </div>
         </div>
 
         {aiReport && (

@@ -145,11 +145,10 @@ export default function PracticePage() {
   const nextStep = async () => {
     const currentConfig = subjectConfigs[currentSubjectIndex];
     
-    // Collect current subject's answers
     const subjectAnswers = questions.map((q, idx) => ({
       question: q.text,
       correctAnswer: q.correctAnswer,
-      studentAnswer: answers[idx],
+      studentAnswer: answers[idx] || "Жауап берілмеді",
       isCorrect: answers[idx] === q.correctAnswer,
       subject: currentConfig.name,
       explanation: q.explanation,
@@ -214,7 +213,7 @@ export default function PracticePage() {
         const sessionRef = doc(db, "studentProfiles", user.uid, "testSessions", sessionId);
         await setDoc(sessionRef, testSession);
         
-        // Save missed questions
+        // Save missed questions to mistakes collection
         const missed = finalAnswers.filter(ans => !ans.isCorrect);
         const mistakesRef = collection(db, "studentProfiles", user.uid, "mistakes");
         
@@ -238,6 +237,11 @@ export default function PracticePage() {
         }
 
         await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
+        
+        toast({
+          title: "Тест аяқталды!",
+          description: `Сіздің нәтижеңіз: ${totalScore} балл. Қателер талдау бетіне қосылды.`,
+        });
       } catch (e) {
         console.error("Save result error:", e);
       }
@@ -336,7 +340,9 @@ export default function PracticePage() {
           </div>
 
           <div className="flex justify-center gap-4 pt-4">
-            <Button variant="outline" size="lg" className="px-8" onClick={() => setTestState("idle")}>Басты бетке</Button>
+            <Button variant="outline" size="lg" className="px-8" asChild>
+              <a href="/analysis">Қателерді талдау</a>
+            </Button>
             <Button size="lg" className="px-8 font-bold" onClick={startTest}>Қайта тапсыру</Button>
           </div>
         </div>

@@ -77,12 +77,14 @@ export default function SignupPage() {
       console.error("Signup error:", error);
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/operation-not-allowed') {
+        errorMessage = "Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Оны Authentication > Sign-in method бөлімінен қосыңыз.";
+      } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
-      } else if (error.code === 'auth/invalid-api-key' || error.message.includes('api-key-not-valid')) {
-        errorMessage = "Жүйе баптауларында (API Key) қате бар. Қайта көріңіз.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Email форматы дұрыс емес.";
       }
 
       toast({

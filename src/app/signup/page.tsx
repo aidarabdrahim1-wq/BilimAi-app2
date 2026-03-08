@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -54,6 +55,7 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
+      // Создание профиля пользователя в Firestore
       await setDoc(doc(db, "users", user.uid), {
         fullName: formData.fullName,
         email: formData.email,
@@ -80,7 +82,7 @@ export default function SignupPage() {
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
       } else if (error.code === 'auth/invalid-api-key' || error.message.includes('api-key-not-valid')) {
-        errorMessage = "Жүйе баптауларында (API Key) қате бар. Қайта көріңіз немесе қолдау көрсету қызметіне жазыңыз.";
+        errorMessage = "Жүйе баптауларында (API Key) қате бар. Қайта көріңіз.";
       }
 
       toast({

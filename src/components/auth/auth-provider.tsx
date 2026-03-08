@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setUser(null);
         setProfile(null);
-        // Protected routes check
+        // Редирект на логин, если страница защищена
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
@@ -77,26 +77,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Prevent hydration error: wait until mounted
+  // Важно для предотвращения Hydration Error
   if (!mounted) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  // If still loading auth state, show a loading indicator
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {children}
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-4">
+            <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
+          </div>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 };

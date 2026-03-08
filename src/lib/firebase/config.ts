@@ -14,7 +14,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Check for valid API key to prevent app from crashing during initialization
+// Проверка валидности конфигурации
 const isConfigValid = !!firebaseConfig.apiKey && 
                      firebaseConfig.apiKey !== "undefined" && 
                      firebaseConfig.apiKey.length > 10;
@@ -32,7 +32,9 @@ if (isConfigValid) {
     console.error("Firebase initialization error:", error);
   }
 } else {
-  console.warn("Firebase configuration is missing or invalid. Auth and Firestore will be unavailable.");
+  // В режиме разработки, если конфиг не задан, мы не инициализируем Firebase, 
+  // чтобы приложение не падало с ошибкой auth/invalid-api-key
+  console.warn("Firebase configuration is missing. Please check your .env file.");
 }
 
 export { auth, db, isConfigValid };

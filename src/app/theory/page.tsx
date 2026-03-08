@@ -16,19 +16,71 @@ import {
   FlaskConical, 
   Globe, 
   Dna,
-  Scale
+  Scale,
+  ListChecks,
+  Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-// Пәндерге сәйкес иконкаларды анықтау
+// ҰБТ тақырыптарының базасы
+const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
+  "Математика": {
+    description: "Алгебра және геометрия курсы",
+    topics: ["Нақты сандар", "Көпмүшелер", "Тригонометрия", "Функциялар", "Туынды және оның қолданылуы", "Интеграл", "Планиметрия", "Стереометрия", "Векторлар"]
+  },
+  "Физика": {
+    description: "Механикадан кванттық физикаға дейін",
+    topics: ["Кинематика", "Динамика", "Статика және гидростатика", "Термодинамика", "Электр өрісі", "Тұрақты ток", "Магнитизм", "Оптика", "Кванттық және ядролық физика"]
+  },
+  "Қазақстан тарихы": {
+    description: "Ежелгі дәуірден бүгінгі күнге дейін",
+    topics: ["Ежелгі Қазақстан", "Орта ғасырлардағы Қазақстан", "Қазақ хандығының құрылуы", "XVIII-XIX ғғ. Қазақстан", "XX ғасыр басындағы Қазақстан", "Кеңестік кезең", "Тәуелсіз Қазақстан"]
+  },
+  "Математикалық сауаттылық": {
+    description: "Логика және есептеу дағдылары",
+    topics: ["Логикалық есептер", "Пайыздар мен қатынастар", "Диаграммалар және графиктер", "Мәтіндік есептер", "Жиындар теориясы", "Комбинаторика элементтері"]
+  },
+  "Оқу сауаттылығы": {
+    description: "Мәтінді талдау және түсіну",
+    topics: ["Мәтін түрлерін анықтау", "Мәтіннің негізгі ойы", "Ақпаратты салыстыру", "Сөйлемдегі сөз мағынасы", "Тұжырымдама жасау"]
+  },
+  "Биология": {
+    description: "Тірі ағзалар және олардың дамуы",
+    topics: ["Ботаника (Өсімдіктер)", "Зоология (Жануарлар)", "Адам анатомиясы", "Цитология", "Генетика негіздері", "Эволюция теориясы", "Экология"]
+  },
+  "Химия": {
+    description: "Заттар мен олардың өзгерістері",
+    topics: ["Периодтық заң", "Химиялық байланыстар", "Бейорганикалық химия", "Органикалық химия", "Ерітінділер", "Металдар мен бейметалдар"]
+  },
+  "География": {
+    description: "Жер және оның ресурстары",
+    topics: ["Физикалық география", "Дүниежүзі географиясы", "Қазақстанның экономикалық географиясы", "Халықтар географиясы", "Экологиялық мәселелер"]
+  },
+  "Ағылшын тілі": {
+    description: "Грамматика және лексика",
+    topics: ["Tenses", "Articles", "Modals", "Passive Voice", "Conditionals", "Vocabulary", "Reading Comprehension"]
+  }
+};
+
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes("тарих")) return GraduationCap;
-  if (n.includes("мат")) return Calculator;
+  if (n.includes("мат") && !n.includes("сауаттылық")) return Calculator;
   if (n.includes("сауаттылық") && n.includes("оқу")) return Languages;
+  if (n.includes("математикалық сауаттылық")) return ListChecks;
   if (n.includes("физика")) return Atom;
   if (n.includes("химия")) return FlaskConical;
   if (n.includes("география")) return Globe;
@@ -43,7 +95,6 @@ export default function TheoryPage() {
 
   if (!profile) return null;
 
-  // Пәндерді топтарға бөлу
   const mandatorySubjects = profile.selectedSubjects.slice(0, 3);
   const choiceSubjects = profile.selectedSubjects.slice(3);
 
@@ -140,27 +191,73 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {subjects.map((subject, i) => {
           const Icon = getSubjectIcon(subject);
+          const ubtInfo = UBT_TOPICS[subject] || { topics: ["Негізгі тақырыптар", "Практикалық есептер"], description: "ҰБТ-ға дайындық материалдары" };
+
           return (
-            <Card key={i} className="hover:border-primary cursor-pointer transition-all group bg-white shadow-sm border-none overflow-hidden">
-              <div className="h-1 bg-primary/20 group-hover:bg-primary transition-colors" />
-              <CardHeader className="pb-2">
-                <div className="size-12 rounded-xl bg-primary/5 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-sm">
-                  <Icon className="size-6" />
+            <Dialog key={i}>
+              <DialogTrigger asChild>
+                <Card className="hover:border-primary cursor-pointer transition-all group bg-white shadow-sm border-none overflow-hidden h-full flex flex-col">
+                  <div className="h-1 bg-primary/20 group-hover:bg-primary transition-colors" />
+                  <CardHeader className="pb-2">
+                    <div className="size-12 rounded-xl bg-primary/5 text-primary flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-sm">
+                      <Icon className="size-6" />
+                    </div>
+                    <CardTitle className="text-lg font-bold">{subject}</CardTitle>
+                    <CardDescription className="text-xs">
+                      {ubtInfo.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="mt-auto">
+                    <div className="flex items-center justify-between mt-4">
+                      <span className="text-xs font-bold text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
+                        Оқуды бастау <ChevronRight className="size-4" />
+                      </span>
+                      <Badge variant="secondary" className="text-[9px] bg-accent/30 font-bold">
+                        {ubtInfo.topics.length} тақырып
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl bg-white border-none shadow-2xl">
+                <DialogHeader>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <Icon className="size-5" />
+                    </div>
+                    <DialogTitle className="text-2xl font-bold font-headline">{subject}</DialogTitle>
+                  </div>
+                  <DialogDescription className="text-sm font-medium">
+                    ҰБТ-да кездесетін негізгі тақырыптар тізімі. Әр тақырыпты меңгеру сіздің баллыңызды арттырады.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] mt-4 pr-4">
+                  <div className="grid gap-3">
+                    {ubtInfo.topics.map((topic, idx) => (
+                      <div 
+                        key={idx} 
+                        className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-black group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
+                            {idx + 1}
+                          </div>
+                          <span className="text-sm font-bold">{topic}</span>
+                        </div>
+                        <Button size="sm" variant="ghost" className="text-xs font-bold gap-1 h-8 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                          <Info className="size-3" /> Ашу
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+                <div className="mt-6 flex gap-3">
+                  <Button className="flex-1 font-bold shadow-md shadow-primary/20">
+                    <ListChecks className="size-4 mr-2" /> Барлық конспектіні жүктеу
+                  </Button>
                 </div>
-                <CardTitle className="text-lg font-bold">{subject}</CardTitle>
-                <CardDescription className="text-xs">
-                  {subject === "Математикалық сауаттылық" ? "10 негізгі тақырып" : "20+ тереңдетілген тақырып"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mt-2">
-                  <span className="text-xs font-medium text-primary flex items-center gap-1 group-hover:gap-2 transition-all">
-                    Оқуды бастау <ChevronRight className="size-4" />
-                  </span>
-                  <Badge variant="secondary" className="text-[10px] bg-accent/30">ҰБТ 2025</Badge>
-                </div>
-              </CardContent>
-            </Card>
+              </DialogContent>
+            </Dialog>
           );
         })}
       </div>

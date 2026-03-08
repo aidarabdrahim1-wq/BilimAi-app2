@@ -9,7 +9,7 @@ import {
   Search, 
   GraduationCap, 
   ChevronRight, 
-  History, 
+  Star, 
   Calculator, 
   Languages, 
   Atom, 
@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // Пәндерге сәйкес иконкаларды анықтау
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
-  if (n.includes("тарих")) return History;
+  if (n.includes("тарих")) return GraduationCap;
   if (n.includes("мат")) return Calculator;
   if (n.includes("сауаттылық") && n.includes("оқу")) return Languages;
   if (n.includes("физика")) return Atom;
@@ -43,9 +43,7 @@ export default function TheoryPage() {
 
   if (!profile) return null;
 
-  // Пәндерді топтарға бөлу (signup-тағы логика бойынша)
-  // Index 0, 1, 2 - Міндетті пәндер
-  // Index 3, 4 - Таңдау пәндері
+  // Пәндерді топтарға бөлу
   const mandatorySubjects = profile.selectedSubjects.slice(0, 3);
   const choiceSubjects = profile.selectedSubjects.slice(3);
 
@@ -60,7 +58,7 @@ export default function TheoryPage() {
             <BookOpen className="size-8 text-primary" />
             Теориялық база
           </h1>
-          <p className="text-muted-foreground">ҰБТ-да кездесетін барлық тақырыптар бойынша құрылымдалған конспектілер.</p>
+          <p className="text-muted-foreground text-sm">ҰБТ-да кездесетін барлық тақырыптар бойынша құрылымдалған конспектілер.</p>
         </div>
 
         <div className="relative max-w-md">
@@ -94,28 +92,35 @@ export default function TheoryPage() {
           </TabsContent>
         </Tabs>
 
-        <div className="mt-8 space-y-4">
-          <h2 className="text-xl font-bold font-headline">Соңғы оқылғандар</h2>
-          <div className="space-y-3">
+        <div className="mt-12 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold font-headline flex items-center gap-2">
+              <Star className="size-5 text-yellow-500 fill-yellow-500" />
+              Таңдаулы тақырыптар
+            </h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
             {[
-              { title: "Квадрат теңдеулер", subject: "Математика", progress: 80 },
-              { title: "Ньютон заңдары", subject: "Физика", progress: 45 },
+              { title: "Логарифмдік теңдеулер", subject: "Математика", difficulty: "Орта" },
+              { title: "Қазақ хандығының құрылуы", subject: "Қазақстан тарихы", difficulty: "Оңай" },
+              { title: "Ньютонның екінші заңы", subject: "Физика", difficulty: "Орта" },
+              { title: "Аминқышқылдары", subject: "Биология", difficulty: "Қиын" },
             ].map((item, i) => (
               <Card key={i} className="border-none shadow-sm flex items-center justify-between p-4 bg-white hover:shadow-md transition-shadow cursor-pointer group">
                 <div className="flex items-center gap-4">
-                  <div className="size-10 rounded-full bg-accent flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <div className="size-10 rounded-xl bg-yellow-50 text-yellow-600 flex items-center justify-center group-hover:bg-yellow-100 transition-colors">
                     <BookOpen className="size-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm">{item.title}</h4>
-                    <p className="text-xs text-muted-foreground">{item.subject}</p>
+                    <h4 className="font-bold text-sm leading-none mb-1">{item.title}</h4>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{item.subject}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    {item.progress}% аяқталды
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-[9px] font-bold">
+                    {item.difficulty}
                   </Badge>
-                  <ChevronRight className="size-4 text-muted-foreground" />
+                  <ChevronRight className="size-4 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>
               </Card>
             ))}

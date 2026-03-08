@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,18 +15,21 @@ import {
   Zap,
   CheckCircle2,
   CalendarDays,
-  Edit2
+  Edit2,
+  PlusCircle,
+  BellRing
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
-import { differenceInDays, parseISO, format } from "date-fns";
+import { differenceInDays, parseISO } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -35,6 +37,7 @@ export default function Dashboard() {
   const [newDate, setNewDate] = useState(profile?.untDate || "2025-06-20");
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [todayTasks, setTodayTasks] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,6 +50,30 @@ export default function Dashboard() {
 
     calculateDiff();
   }, [profile?.untDate]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Бүгінгі жоспарды алу
+    const q = query(
+      collection(db, "study_plans"),
+      where("userId", "==", user.uid),
+      where("status", "==", "active")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tasks: any[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.tasks) {
+          tasks.push(...data.tasks.map((t: any) => ({ ...t, planId: doc.id })));
+        }
+      });
+      setTodayTasks(tasks);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleUpdateDate = async () => {
     if (!user || !db) return;
@@ -86,12 +113,30 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
+        {/* Reminder Alert */}
+        {todayTasks.length === 0 && (
+          <Alert className="bg-orange-50 border-orange-200 animate-pulse">
+            <BellRing className="h-4 w-4 text-orange-600" />
+            <AlertTitle className="text-orange-800 font-bold">Оқу жоспары бос!</AlertTitle>
+            <AlertDescription className="text-orange-700 flex flex-col md:flex-row md:items-center justify-between gap-2">
+              <span>Бүгінгі күніңізді тиімді өткізу үшін оқу жоспарын құрыңыз. Тәртіп - жетістік кепілі!</span>
+              <Button size="sm" variant="outline" className="border-orange-300 text-orange-700 bg-white hover:bg-orange-100" asChild>
+                <Link href="/plan">Жоспар құру</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold tracking-tight font-headline">
               Сәлем, {profile?.fullName?.split(' ')[0] || "Оқушы"}! 👋
             </h1>
-            <p className="text-muted-foreground">Бүгін сіздің оқу жоспарыңыз бойынша 4 тапсырма бар.</p>
+            <p className="text-muted-foreground">
+              {todayTasks.length > 0 
+                ? `Бүгінгі жоспарда ${todayTasks.length} тапсырма бар.` 
+                : "Бүгінге әлі жоспар құрылмаған."}
+            </p>
           </div>
           
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -212,35 +257,47 @@ export default function Dashboard() {
                 <CardDescription>Дайындықты жалғастырыңыз</CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild>
-                <Link href="/plan">Толық жоспар</Link>
+                <Link href="/plan">
+                  {todayTasks.length > 0 ? "Басқару" : "Құру"}
+                </Link>
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              {[
-                { time: "30 мин", title: "Тригонометрия теориясы", type: "Теория", status: "completed" },
-                { time: "40 мин", title: "Математикадан бақылау тесті", type: "Тест", status: "in-progress" },
-                { time: "20 мин", title: "Физика: Динамика қателерін талдау", type: "Талдау", status: "pending" },
-                { time: "10 мин", title: "Күнделікті қайталау", type: "Қайталау", status: "pending" },
-              ].map((task, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-xl border bg-accent/10 hover:bg-accent/20 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`size-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100 text-green-700' : task.status === 'in-progress' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                      {task.status === 'completed' ? <CheckCircle2 className="size-5" /> : <PlayCircle className="size-5" />}
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm">{task.title}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">{task.time}</span>
-                        <span className="text-[10px] text-muted-foreground">•</span>
-                        <span className="text-xs text-muted-foreground">{task.type}</span>
+              {todayTasks.length > 0 ? (
+                todayTasks.map((task, i) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-xl border bg-accent/10 hover:bg-accent/20 transition-colors">
+                    <div className="flex items-center gap-4">
+                      <div className={`size-10 rounded-full flex items-center justify-center ${task.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-primary text-primary-foreground'}`}>
+                        {task.status === 'completed' ? <CheckCircle2 className="size-5" /> : <PlayCircle className="size-5" />}
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm">{task.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-muted-foreground">{task.time}</span>
+                          <span className="text-[10px] text-muted-foreground">•</span>
+                          <span className="text-xs text-muted-foreground capitalize">{task.type}</span>
+                        </div>
                       </div>
                     </div>
+                    {task.status !== 'completed' && (
+                      <Button size="sm" className="shadow-sm">Бастау</Button>
+                    )}
                   </div>
-                  {task.status === 'in-progress' && (
-                    <Button size="sm" className="shadow-sm">Жалғастыру</Button>
-                  )}
+                ))
+              ) : (
+                <div className="text-center py-12 flex flex-col items-center gap-4 bg-muted/20 rounded-2xl border border-dashed">
+                  <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+                    <PlusCircle className="size-8 text-muted-foreground" />
+                  </div>
+                  <div className="max-w-[200px]">
+                    <h4 className="font-bold text-sm">Жоспар жоқ</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Бүгінгі күніңізге мақсат қойыңыз.</p>
+                  </div>
+                  <Button size="sm" asChild>
+                    <Link href="/plan">Жоспар құру</Link>
+                  </Button>
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
 

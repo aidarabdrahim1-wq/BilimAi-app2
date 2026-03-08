@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -21,7 +20,11 @@ import {
   Info,
   Terminal,
   BookText,
-  FileText
+  FileText,
+  Sparkles,
+  Loader2,
+  Lightbulb,
+  CheckCircle2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { explainTopic, type ExplainTopicOutput } from "@/ai/flows/explain-topic-flow";
 
 // ҰБТ тақырыптарының ресми базасы
 const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
@@ -115,7 +119,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
     ]
   },
   "Дүниежүзі тарихы": {
-    description: "Әлемдік өркениеттердің дамуы мен халықаралық қатынастар тарихы.",
+    description: "Әлемдік өркениеттердин дамуы мен халықаралық қатынастар тарихы.",
     topics: [
       "Ежелгі өркениеттер", "Антикалық дүние", "Орта ғасырлар", "Феодалдық қоғам", "Ислам өркениеті", 
       "Қайта өрлеу", "Реформация", "Ұлы географиялық ашулар", "Буржуазиялық революциялар", 
@@ -168,7 +172,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Орыс тілі": {
     description: "Русский язык и культура речи.",
     topics: [
-      "Фонетика, лексика, грамматика", "Морфология, синтаксис, пунктуация", "Мәтінді түсіну (Understanding text)", 
+      "Фонетика, лексика, грамматика", "Морфология, синтаксис, пунктуация", "Мәтінді түсіну", 
       "Стилистика", "Языковые нормы", "Культура речи"
     ]
   },
@@ -292,6 +296,24 @@ export default function TheoryPage() {
 }
 
 function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }) {
+  const [explainingTopic, setExplainingTopic] = useState<string | null>(null);
+  const [aiExplanation, setAiExplanation] = useState<ExplainTopicOutput | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const handleExplain = async (subject: string, topic: string) => {
+    setExplainingTopic(topic);
+    setIsAiLoading(true);
+    setAiExplanation(null);
+    try {
+      const result = await explainTopic({ subject, topic });
+      setAiExplanation(result);
+    } catch (error) {
+      console.error("AI Explanation error:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   if (subjects.length === 0) return null;
 
   return (
@@ -337,34 +359,130 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                     <DialogTitle className="text-2xl font-bold font-headline">{subject}</DialogTitle>
                   </div>
                   <DialogDescription className="text-sm font-medium">
-                    ҰТО спецификациясына сай бекітілген тақырыптар тізімі.
+                    ҰТО спецификациясына сай бекітілген тақырыптар тізімі. AI арқылы кез келген тақырыпты түсіндіріп алыңыз.
                   </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[60vh] mt-4 pr-4">
                   <div className="grid gap-3">
                     {ubtInfo.topics.map((topic, idx) => (
-                      <div 
-                        key={idx} 
-                        className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-black group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
-                            {idx + 1}
+                      <Dialog key={idx}>
+                        <DialogTrigger asChild>
+                          <div 
+                            onClick={() => handleExplain(subject, topic)}
+                            className="flex items-center justify-between p-4 rounded-xl border hover:bg-accent/5 hover:border-primary/30 transition-all group/item cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-black group-hover/item:bg-primary group-hover/item:text-primary-foreground transition-colors">
+                                {idx + 1}
+                              </div>
+                              <span className="text-sm font-bold">{topic}</span>
+                            </div>
+                            <Button size="sm" variant="ghost" className="text-xs font-bold gap-1 h-8 text-primary group-hover/item:bg-primary/10">
+                              <Sparkles className="size-3" /> AI Түсіндіру
+                            </Button>
                           </div>
-                          <span className="text-sm font-bold">{topic}</span>
-                        </div>
-                        <Button size="sm" variant="ghost" className="text-xs font-bold gap-1 h-8 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                          <Info className="size-3" /> Ашу
-                        </Button>
-                      </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+                          <DialogHeader className="p-6 pb-2">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline" className="text-[10px] uppercase">{subject}</Badge>
+                              <Sparkles className="size-4 text-primary animate-pulse" />
+                            </div>
+                            <DialogTitle className="text-2xl font-bold font-headline">{topic}</DialogTitle>
+                            <DialogDescription>BilimAI оқушыға арналған түсіндірмесі</DialogDescription>
+                          </DialogHeader>
+                          
+                          <ScrollArea className="flex-1 px-6 pb-6">
+                            {isAiLoading ? (
+                              <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
+                                <div className="relative">
+                                  <Loader2 className="size-12 animate-spin text-primary" />
+                                  <Sparkles className="absolute -top-2 -right-2 size-6 text-yellow-400 animate-bounce" />
+                                </div>
+                                <div className="space-y-1">
+                                  <p className="font-bold">AI ойлануда...</p>
+                                  <p className="text-xs text-muted-foreground">Тақырыпты ең қарапайым тілмен құрастырып жатырмыз.</p>
+                                </div>
+                              </div>
+                            ) : aiExplanation ? (
+                              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10">
+                                  <h4 className="flex items-center gap-2 text-sm font-black text-primary mb-2 uppercase tracking-wider">
+                                    <Info className="size-4" /> Анықтама
+                                  </h4>
+                                  <p className="text-sm leading-relaxed">{aiExplanation.definition}</p>
+                                </div>
+
+                                <div className="space-y-3">
+                                  <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
+                                    <BookText className="size-4" /> Толық түсіндірме
+                                  </h4>
+                                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aiExplanation.explanation}</p>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4">
+                                  <Card className="border-none shadow-sm bg-accent/5">
+                                    <CardHeader className="py-3 px-4">
+                                      <CardTitle className="text-xs font-black uppercase tracking-wider flex items-center gap-2">
+                                        <ListChecks className="size-3 text-secondary" /> Маңызды ережелер
+                                      </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="py-0 px-4 pb-4">
+                                      <ul className="space-y-2">
+                                        {aiExplanation.keyRules.map((rule, ri) => (
+                                          <li key={ri} className="flex gap-2 text-xs">
+                                            <CheckCircle2 className="size-3 text-green-500 shrink-0 mt-0.5" />
+                                            {rule}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </CardContent>
+                                  </Card>
+
+                                  <Card className="border-none shadow-sm bg-yellow-50/50 border border-yellow-100/50">
+                                    <CardHeader className="py-3 px-4">
+                                      <CardTitle className="text-xs font-black uppercase tracking-wider flex items-center gap-2 text-yellow-700">
+                                        <Lightbulb className="size-3" /> Memory Hack
+                                      </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="py-0 px-4 pb-4">
+                                      <p className="text-xs text-yellow-800 leading-relaxed italic">
+                                        "{aiExplanation.memoryHack}"
+                                      </p>
+                                    </CardContent>
+                                  </Card>
+                                </div>
+
+                                <div className="p-4 rounded-xl border border-dashed border-primary/20 bg-white">
+                                  <h4 className="text-xs font-black uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Calculator className="size-3" /> Мысал
+                                  </h4>
+                                  <p className="text-xs font-mono bg-muted p-3 rounded-lg leading-relaxed">
+                                    {aiExplanation.example}
+                                  </p>
+                                </div>
+
+                                <div className="p-4 rounded-xl bg-green-50 border border-green-100">
+                                  <h4 className="text-xs font-black uppercase tracking-wider mb-1 text-green-800 flex items-center gap-2">
+                                    <Target className="size-3" /> ҰБТ-да кездесуі
+                                  </h4>
+                                  <p className="text-xs text-green-700 leading-relaxed">
+                                    {aiExplanation.howItAppearsInUNT}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : null}
+                          </ScrollArea>
+                          <div className="p-4 border-t bg-muted/20 flex justify-center">
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Sparkles className="size-2.5" /> BilimAI Куратор сізге сәттілік тілейді!
+                            </p>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     ))}
                   </div>
                 </ScrollArea>
-                <div className="mt-6 flex gap-3">
-                  <Button className="flex-1 font-bold shadow-md shadow-primary/20">
-                    <ListChecks className="size-4 mr-2" /> Барлық конспектіні жүктеу
-                  </Button>
-                </div>
               </DialogContent>
             </Dialog>
           );

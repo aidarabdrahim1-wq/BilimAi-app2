@@ -426,7 +426,7 @@ export default function Dashboard() {
                   {todayTasks.length > 0 ? "Басқару" : "Құру"} <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            </Header>
+            </CardHeader>
             <CardContent className="p-0">
               {todayTasks.length > 0 ? (
                 pendingTasks.length > 0 ? (
@@ -506,7 +506,7 @@ export default function Dashboard() {
           </Card>
 
           <div className="md:col-span-3 space-y-6">
-            <Card className="border-none shadow-sm bg-white overflow-hidden flex flex-col">
+            <Card className="border-none shadow-sm overflow-hidden flex flex-col">
               <CardHeader className="pb-2 border-b bg-accent/5">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <BarChart className="size-4 text-primary" />
@@ -600,7 +600,7 @@ export default function Dashboard() {
         {/* Timer Dialog */}
         <Dialog open={isTimerDialogOpen} onOpenChange={(open) => {
           if (!open) setIsTimerRunning(false);
-          setIsTimerDialogOpen(open);
+          isTimerDialogOpen && setIsTimerDialogOpen(open);
         }}>
           <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl">
             <DialogHeader>

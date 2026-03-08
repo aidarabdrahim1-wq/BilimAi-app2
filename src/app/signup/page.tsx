@@ -12,8 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { BrainCircuit, Loader2 } from "lucide-react";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -42,19 +41,23 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
+      // 1. Create User in Auth
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      await setDoc(doc(db, "users", user.uid), {
-        fullName: formData.fullName,
-        email: formData.email,
-        grade: formData.grade,
-        targetScore: Number(formData.targetScore),
-        currentScore: Number(formData.currentScore),
-        selectedSubjects: ["Математика", "Қазақстан тарихы"],
-        weakTopics: [],
-        createdAt: serverTimestamp(),
-      });
+      // 2. Create Profile in Firestore
+      if (db) {
+        await setDoc(doc(db, "users", user.uid), {
+          fullName: formData.fullName,
+          email: formData.email,
+          grade: formData.grade,
+          targetScore: Number(formData.targetScore),
+          currentScore: Number(formData.currentScore),
+          selectedSubjects: ["Математика", "Қазақстан тарихы"],
+          weakTopics: [],
+          createdAt: serverTimestamp(),
+        });
+      }
 
       toast({
         title: "Тіркелу сәтті аяқталды!",
@@ -67,15 +70,17 @@ export default function SignupPage() {
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
       if (error.code === 'auth/operation-not-allowed') {
-        errorMessage = "МАҢЫЗДЫ: Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны 'Enable' етіңіз және 'Save' басыңыз.";
+        errorMessage = "Firebase консолінде 'Email/Password' тіркелу әдісі қосылмаған. Authentication > Sign-in method бөліміне өтіп, оны 'Enable' етіңіз.";
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Бұл email мекенжайы бос емес.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Құпия сөз тым қысқа (кемінде 6 таңба).";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Email форматы дұрыс емес.";
       }
 
       toast({
-        title: "Firebase қатесі",
+        title: "Қате орын алды",
         description: errorMessage,
         variant: "destructive",
       });

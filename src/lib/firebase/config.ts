@@ -4,7 +4,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Пайдаланушы берген нақты Firebase конфигурациясы
+// User provided Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyD4h_rErcBSKWhiI1U3CBpF8vDpWAfMRMY",
   authDomain: "studio-5303827652-38d67.firebaseapp.com",
@@ -14,7 +14,7 @@ const firebaseConfig = {
   appId: "1:434230863781:web:17ed6d12afbccb348f2a4c"
 };
 
-// Конфигурацияның бар-жоғын тексеру
+// Check if config is valid
 const isConfigValid = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY";
 
 let app;

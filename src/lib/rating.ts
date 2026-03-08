@@ -1,6 +1,8 @@
 
 import { db } from "@/lib/firebase/config";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 /**
  * Рейтингті өсіру ережелері
@@ -21,28 +23,31 @@ export type RatingReason = keyof typeof RATING_RULES;
  * @param reason Рейтингтің қосылу себебі
  */
 export async function updateUserRating(userId: string, reason: RatingReason) {
-  if (!db) return;
+  if (!db || !userId) return;
 
-  // Updated to match firestore.rules: /studentProfiles/{studentId}
+  // Қауіпсіздік ережесіне сай: /studentProfiles/{studentId}
   const userRef = doc(db, "studentProfiles", userId);
   const points = RATING_RULES[reason];
 
-  try {
-    const updateData: any = {
-      rating: increment(points),
-      updatedAt: serverTimestamp(),
-    };
+  const updateData: any = {
+    rating: increment(points),
+    updatedAt: serverTimestamp(),
+  };
 
-    // Қосымша статистиканы жаңарту (себебіне байланысты)
-    if (reason === 'CORRECT_ANSWER') {
-      updateData.correctAnswers = increment(1);
-      updateData.solvedQuestions = increment(1);
-    } else if (reason === 'PLAN_COMPLETED') {
-      updateData.completedPlans = increment(1);
-    }
-
-    await updateDoc(userRef, updateData);
-  } catch (error) {
-    console.error("Error updating rating:", error);
+  // Қосымша статистиканы жаңарту
+  if (reason === 'CORRECT_ANSWER') {
+    updateData.correctAnswers = increment(1);
+    updateData.solvedQuestions = increment(1);
+  } else if (reason === 'PLAN_COMPLETED') {
+    updateData.completedPlans = increment(1);
   }
+
+  updateDoc(userRef, updateData)
+    .catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: updateData
+      }));
+    });
 }

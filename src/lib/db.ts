@@ -1,16 +1,9 @@
+
 import { db } from './firebase/config';
 import { 
   collection, 
   doc, 
-  setDoc, 
   getDoc, 
-  updateDoc, 
-  query, 
-  where, 
-  getDocs, 
-  serverTimestamp,
-  increment,
-  addDoc
 } from 'firebase/firestore';
 
 /**
@@ -18,16 +11,9 @@ import {
  */
 
 export const collections = {
-  users: () => collection(db, 'users'),
-  tests: () => collection(db, 'tests'),
-  questions: () => collection(db, 'questions'),
-  testResults: () => collection(db, 'test_results'),
-  studyPlans: () => collection(db, 'study_plans'),
-  diagnostics: () => collection(db, 'diagnostics'),
-  mistakes: () => collection(db, 'mistakes'),
-  theory: () => collection(db, 'theory_materials'),
-  progress: () => collection(db, 'progress'),
-  ratingHistory: () => collection(db, 'ratings_history'),
+  studentProfiles: () => collection(db, 'studentProfiles'),
+  subjects: () => collection(db, 'subjects'),
+  mistakePatterns: () => collection(db, 'mistakePatterns'),
 };
 
 export const getDocById = async <T>(collectionName: string, id: string): Promise<T | null> => {

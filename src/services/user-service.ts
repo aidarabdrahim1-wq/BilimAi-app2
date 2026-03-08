@@ -1,6 +1,9 @@
+
 import { db } from '@/lib/firebase/config';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { UserProfile } from '@/types/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export const userService = {
   /**
@@ -9,9 +12,9 @@ export const userService = {
   async createUserProfile(user: Partial<UserProfile>) {
     if (!user.uid) throw new Error('UID is required');
     
-    const userRef = doc(db, 'users', user.uid);
-    const profile: UserProfile = {
-      uid: user.uid,
+    const userRef = doc(db, 'studentProfiles', user.uid);
+    const profile: any = {
+      id: user.uid,
       fullName: user.fullName || '',
       email: user.email || '',
       grade: user.grade || '',
@@ -24,11 +27,19 @@ export const userService = {
       streakDays: 0,
       selectedSubjects: user.selectedSubjects || [],
       weakTopics: [],
-      createdAt: serverTimestamp() as any,
-      updatedAt: serverTimestamp() as any,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     };
 
-    await setDoc(userRef, profile);
+    setDoc(userRef, profile)
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'create',
+          requestResourceData: profile
+        }));
+      });
+    
     return profile;
   },
 
@@ -36,7 +47,7 @@ export const userService = {
    * Пайдаланушы профилін алу
    */
   async getUserProfile(userId: string): Promise<UserProfile | null> {
-    const userRef = doc(db, 'users', userId);
+    const userRef = doc(db, 'studentProfiles', userId);
     const snap = await getDoc(userRef);
     return snap.exists() ? (snap.data() as UserProfile) : null;
   },
@@ -45,10 +56,16 @@ export const userService = {
    * Профильді жаңарту
    */
   async updateUserProfile(userId: string, data: Partial<UserProfile>) {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
+    const userRef = doc(db, 'studentProfiles', userId);
+    updateDoc(userRef, {
       ...data,
       updatedAt: serverTimestamp(),
+    }).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: data
+      }));
     });
   }
 };

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -463,16 +463,16 @@ export default function PracticePage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-100 shadow-none">
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-none">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2 text-orange-800">
-                  <AlertTriangle className="size-4" />
-                  2026 Өзгерістері
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-blue-800">
+                  <Info className="size-4" />
+                  Маңызды ақпарат
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="p-3 rounded-xl bg-white/60 text-[10px] leading-relaxed text-orange-900 border border-orange-200">
-                  Бейіндік пәндердегі <strong>31-40</strong> сұрақтар <strong>2 балл</strong> береді. Шекті баллдарды сақтау маңызды!
+                <div className="p-3 rounded-xl bg-white/60 text-[10px] leading-relaxed text-blue-900 border border-blue-200">
+                  Әр пән бойынша шекті балл жинау міндетті. Грант конкурсына қатысу үшін барлық пәннен сәтті өтуіңіз керек!
                 </div>
               </CardContent>
             </Card>

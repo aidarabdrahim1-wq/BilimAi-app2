@@ -4,7 +4,7 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StudentProfile",
       "type": "object",
-      "description": "Represents a student's profile, containing personal information, academic goals, and learning preferences.",
+      "description": "Represents a student's personal learning profile, including their settings, progress, and preferences.",
       "properties": {
         "id": {
           "type": "string",
@@ -14,21 +14,9 @@
           "type": "string",
           "description": "The full name of the student."
         },
-        "email": {
+        "className": {
           "type": "string",
-          "description": "The student's email address, used for identification and communication. (Not authentication credentials)",
-          "format": "email"
-        },
-        "classGrade": {
-          "type": "string",
-          "description": "The student's current class or grade level."
-        },
-        "selectedSubjectIds": {
-          "type": "array",
-          "description": "An array of IDs referencing subjects the student has selected for study. (Relationship: StudentProfile N:N Subject)",
-          "items": {
-            "type": "string"
-          }
+          "description": "The student's current academic class or grade level."
         },
         "currentScore": {
           "type": "number",
@@ -36,64 +24,83 @@
         },
         "targetScore": {
           "type": "number",
-          "description": "The student's desired target score for the ҰБТ exam."
+          "description": "The student's desired target score or goal."
+        },
+        "dailyAvailableStudyTimeMinutes": {
+          "type": "number",
+          "description": "The amount of time (in minutes) the student can dedicate to studying daily."
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "description": "The student's preferred interface and content language (e.g., 'Kazakh')."
+        },
+        "preferredFormat": {
+          "type": "string",
+          "description": "The student's preferred content format (e.g., 'short' for concise, 'detailed' for in-depth explanations)."
+        },
+        "selectedSubjectIds": {
+          "type": "array",
+          "description": "References to Subjects chosen by the student. (Relationship: StudentProfile N:N Subject)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "weakSubjectIds": {
+          "type": "array",
+          "description": "References to Subjects identified as weak areas for the student. (Relationship: StudentProfile N:N Subject)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "strongSubjectIds": {
+          "type": "array",
+          "description": "References to Subjects identified as strong areas for the student. (Relationship: StudentProfile N:N Subject)",
+          "items": {
+            "type": "string"
+          }
         },
         "weakTopicIds": {
           "type": "array",
-          "description": "An array of IDs referencing topics identified as weak areas for the student. (Relationship: StudentProfile N:N Topic)",
+          "description": "References to Topics identified as weak areas for the student. (Relationship: StudentProfile N:N Topic)",
           "items": {
             "type": "string"
           }
         },
         "strongTopicIds": {
           "type": "array",
-          "description": "An array of IDs referencing topics identified as strong areas for the student. (Relationship: StudentProfile N:N Topic)",
+          "description": "References to Topics identified as strong areas for the student. (Relationship: StudentProfile N:N Topic)",
           "items": {
             "type": "string"
           }
         },
-        "dailyAvailableStudyTimeMinutes": {
-          "type": "number",
-          "description": "The number of minutes the student is available to study daily."
-        },
-        "preferredLanguage": {
-          "type": "string",
-          "description": "The student's preferred interface language (e.g., 'Kazakh')."
-        },
-        "preferredContentFormat": {
-          "type": "string",
-          "description": "The student's preferred content format ('short' or 'detailed')."
-        },
         "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the student profile was created.",
+          "description": "Timestamp when the student profile was created.",
           "format": "date-time"
         },
         "updatedAt": {
           "type": "string",
-          "description": "Timestamp indicating when the student profile was last updated.",
+          "description": "Timestamp when the student profile was last updated.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
         "name",
-        "email",
-        "classGrade",
+        "class",
         "currentScore",
         "targetScore",
         "dailyAvailableStudyTimeMinutes",
         "preferredLanguage",
-        "preferredContentFormat",
-        "createdAt",
-        "updatedAt"
+        "preferredFormat",
+        "createdAt"
       ]
     },
     "Subject": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Subject",
       "type": "object",
-      "description": "Represents an academic subject available for study, such as 'Математика' or 'Физика'.",
+      "description": "Represents an academic subject offered in the platform, e.g., 'Математика', 'Физика'.",
       "properties": {
         "id": {
           "type": "string",
@@ -101,30 +108,29 @@
         },
         "name": {
           "type": "string",
-          "description": "The localized name of the subject (e.g., 'Математика')."
+          "description": "The name of the subject (e.g., 'Математика')."
         },
         "description": {
           "type": "string",
           "description": "A brief description of the subject."
         },
-        "imageUrl": {
+        "iconUrl": {
           "type": "string",
-          "description": "URL to an icon or illustration representing the subject.",
+          "description": "URL for an icon representing the subject.",
           "format": "uri"
         }
       },
       "required": [
         "id",
         "name",
-        "description",
-        "imageUrl"
+        "description"
       ]
     },
     "Topic": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Topic",
       "type": "object",
-      "description": "Represents a specific learning topic within a subject, containing theory and educational content.",
+      "description": "Represents a specific learning topic within a subject, containing theoretical content.",
       "properties": {
         "id": {
           "type": "string",
@@ -132,23 +138,23 @@
         },
         "subjectId": {
           "type": "string",
-          "description": "Reference to the parent Subject. (Relationship: Subject 1:N Topic)"
+          "description": "Reference to the Subject this topic belongs to. (Relationship: Subject 1:N Topic)"
         },
-        "name": {
+        "title": {
           "type": "string",
-          "description": "The title or name of the topic."
+          "description": "The title of the topic."
         },
         "definition": {
           "type": "string",
-          "description": "A concise definition of the topic."
+          "description": "The definition or main concept of the topic."
         },
         "keyRule": {
           "type": "string",
-          "description": "The most important rule or principle related to the topic."
+          "description": "The core rule or principle associated with the topic."
         },
-        "formulaDateLaw": {
+        "formulaOrDate": {
           "type": "string",
-          "description": "Relevant formulas, historical dates, or scientific laws pertaining to the topic."
+          "description": "Relevant formula, date, or law related to the topic."
         },
         "explanation": {
           "type": "string",
@@ -158,55 +164,58 @@
           "type": "string",
           "description": "A straightforward example illustrating the topic."
         },
-        "ubtFormatAppearance": {
+        "howItAppearsInUBT": {
           "type": "string",
-          "description": "Description of how this topic typically appears in ҰБТ exams."
+          "description": "Description of how this topic is typically presented or tested in ҰБТ exams."
         },
-        "commonMistakesText": {
+        "commonMistakes": {
           "type": "string",
-          "description": "Information about common mistakes students make with this topic."
+          "description": "Common errors students make when dealing with this topic."
         },
         "memoryHack": {
           "type": "string",
-          "description": "A tip or technique to help remember the topic's content."
+          "description": "Tips or techniques to aid in memorizing or understanding the topic."
         },
-        "difficultyLevel": {
+        "difficulty": {
           "type": "string",
-          "description": "The perceived difficulty level of the topic ('easy', 'medium', 'hard')."
+          "description": "The perceived difficulty level of the topic (e.g., 'оңай', 'орта', 'қиын')."
+        },
+        "order": {
+          "type": "number",
+          "description": "The sequential order of the topic within its subject or section."
         }
       },
       "required": [
         "id",
         "subjectId",
-        "name",
+        "title",
         "definition",
-        "keyRule",
         "explanation",
-        "ubtFormatAppearance",
-        "difficultyLevel"
+        "difficulty",
+        "order"
       ]
     },
     "Question": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Question",
       "type": "object",
-      "description": "Represents a single test question with its options, correct answer, and explanations.",
+      "description": "Represents a single practice or test question.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the Question entity."
         },
-        "topicId": {
-          "type": "string",
-          "description": "Reference to the Topic this question belongs to. (Relationship: Topic 1:N Question)"
-        },
         "subjectId": {
           "type": "string",
-          "description": "Reference to the Subject this question belongs to, for easier querying. (Relationship: Subject 1:N Question)"
+          "description": "Reference to the Subject this question belongs to. (Relationship: Subject 1:N Question)"
+        },
+        "topicId": {
+          "type": "string",
+          "description": "Reference to the Topic this question primarily tests. (Relationship: Topic 1:N Question)"
         },
         "text": {
           "type": "string",
-          "description": "The actual text of the question."
+          "description": "The text content of the question."
         },
         "options": {
           "type": "array",
@@ -215,90 +224,108 @@
             "type": "string"
           }
         },
-        "correctOptionIndex": {
+        "correctAnswerIndex": {
           "type": "number",
           "description": "The zero-based index of the correct answer within the 'options' array."
         },
         "explanation": {
           "type": "string",
-          "description": "An explanation for why the correct answer is correct."
+          "description": "A detailed explanation for the correct answer."
         },
-        "wrongOptionExplanation": {
+        "whyOtherAnswersWrong": {
           "type": "string",
-          "description": "An explanation for why other options are incorrect."
+          "description": "Explanation of why the other answer options are incorrect."
         },
         "commonMistakeWarning": {
           "type": "string",
           "description": "A warning about common mistakes related to this question or topic."
         },
-        "difficultyLevel": {
+        "difficulty": {
           "type": "string",
-          "description": "The difficulty level of the question ('easy', 'medium', 'hard')."
+          "description": "The difficulty level of the question (e.g., 'оңай', 'орта', 'қиын')."
         },
         "type": {
           "type": "string",
           "description": "The type of question (e.g., 'multiple_choice', 'true_false')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the question was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the question was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
         "id",
-        "topicId",
         "subjectId",
+        "topicId",
         "text",
         "options",
-        "correctOptionIndex",
+        "correctAnswerIndex",
         "explanation",
-        "difficultyLevel",
-        "type"
+        "difficulty",
+        "type",
+        "createdAt"
       ]
     },
-    "TestAttempt": {
+    "TestSession": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TestAttempt",
+      "title": "TestSession",
       "type": "object",
-      "description": "Records a student's attempt at a practice test, diagnostic test, or mock exam.",
+      "description": "Records a student's attempt at a test, diagnostic, or quiz.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the TestAttempt entity."
+          "description": "Unique identifier for the TestSession entity."
         },
         "studentId": {
           "type": "string",
-          "description": "Reference to the StudentProfile who made this test attempt. (Relationship: StudentProfile 1:N TestAttempt)"
+          "description": "Reference to the StudentProfile who took the test. (Relationship: StudentProfile 1:N TestSession)"
         },
         "type": {
           "type": "string",
-          "description": "The type of test attempt ('diagnostic', 'practice', 'mini_test', 'mock_exam')."
+          "description": "The type of test session (e.g., 'diagnostic', 'practice', 'weekly_mock', 'mini_test')."
         },
         "subjectId": {
           "type": "string",
-          "description": "Optional reference to the Subject if the test is subject-specific. (Relationship: Subject 1:N TestAttempt)"
+          "description": "Reference to the Subject, if the test is subject-specific. (Relationship: Subject 1:N TestSession)"
         },
-        "topicId": {
-          "type": "string",
-          "description": "Optional reference to the Topic if the test is topic-specific. (Relationship: Topic 1:N TestAttempt)"
+        "topicIds": {
+          "type": "array",
+          "description": "References to Topics covered in this test session. (Relationship: TestSession N:N Topic)",
+          "items": {
+            "type": "string"
+          }
         },
-        "startedAt": {
+        "startTime": {
           "type": "string",
-          "description": "Timestamp indicating when the test attempt started.",
+          "description": "Timestamp when the test session started.",
           "format": "date-time"
         },
-        "completedAt": {
+        "endTime": {
           "type": "string",
-          "description": "Timestamp indicating when the test attempt was completed. Null if not yet completed.",
+          "description": "Timestamp when the test session ended.",
           "format": "date-time"
         },
-        "durationSeconds": {
+        "durationMinutes": {
           "type": "number",
-          "description": "The total duration of the test attempt in seconds."
+          "description": "The total duration of the test session in minutes."
         },
         "score": {
           "type": "number",
-          "description": "The numerical score obtained by the student in this test attempt."
+          "description": "The raw score obtained by the student in this test session."
+        },
+        "percentageScore": {
+          "type": "number",
+          "description": "The percentage score obtained by the student."
         },
         "totalQuestions": {
           "type": "number",
-          "description": "The total number of questions in the test."
+          "description": "The total number of questions in the test session."
         },
         "correctAnswersCount": {
           "type": "number",
@@ -312,51 +339,47 @@
           "type": "number",
           "description": "The number of questions skipped by the student."
         },
-        "accuracyPercentage": {
-          "type": "number",
-          "description": "The percentage of correct answers in this test attempt."
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the test session was completed by the student."
         },
-        "speedAnalysisData": {
+        "createdAt": {
           "type": "string",
-          "description": "Serialized data containing insights into the student's speed for this test."
+          "description": "Timestamp when the test session record was created.",
+          "format": "date-time"
         },
-        "status": {
+        "updatedAt": {
           "type": "string",
-          "description": "The current status of the test attempt ('pending', 'in_progress', 'completed')."
+          "description": "Timestamp when the test session record was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
         "id",
         "studentId",
         "type",
-        "startedAt",
-        "durationSeconds",
-        "score",
-        "totalQuestions",
-        "correctAnswersCount",
-        "incorrectAnswersCount",
-        "skippedQuestionsCount",
-        "accuracyPercentage",
-        "status"
+        "startTime",
+        "isCompleted",
+        "createdAt"
       ]
     },
-    "QuestionAttempt": {
+    "StudentQuestionAttempt": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "QuestionAttempt",
+      "title": "StudentQuestionAttempt",
       "type": "object",
-      "description": "Records a student's individual response to a single question within a TestAttempt.",
+      "description": "Details a student's attempt on a specific question within a test session.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the QuestionAttempt entity."
+          "description": "Unique identifier for the StudentQuestionAttempt entity."
         },
-        "testAttemptId": {
+        "testSessionId": {
           "type": "string",
-          "description": "Reference to the TestAttempt this question attempt belongs to. (Relationship: TestAttempt 1:N QuestionAttempt)"
+          "description": "Reference to the TestSession this attempt belongs to. (Relationship: TestSession 1:N StudentQuestionAttempt)"
         },
         "questionId": {
           "type": "string",
-          "description": "Reference to the Question that was attempted. (Relationship: Question 1:N QuestionAttempt)"
+          "description": "Reference to the Question attempted. (Relationship: Question 1:N StudentQuestionAttempt)"
         },
         "studentAnswerIndex": {
           "type": "number",
@@ -364,32 +387,79 @@
         },
         "isCorrect": {
           "type": "boolean",
-          "description": "Indicates whether the student's chosen answer was correct."
+          "description": "Indicates whether the student's answer was correct."
         },
         "timeTakenSeconds": {
           "type": "number",
-          "description": "The time taken by the student to answer this question, in seconds."
+          "description": "The time taken by the student to answer this question in seconds."
         },
-        "attemptedAt": {
+        "createdAt": {
           "type": "string",
-          "description": "Timestamp indicating when the question was attempted.",
+          "description": "Timestamp when the attempt was recorded.",
           "format": "date-time"
         }
       },
       "required": [
         "id",
-        "testAttemptId",
+        "testSessionId",
         "questionId",
         "isCorrect",
         "timeTakenSeconds",
-        "attemptedAt"
+        "createdAt"
+      ]
+    },
+    "MistakePattern": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MistakePattern",
+      "type": "object",
+      "description": "Defines common mistake patterns or frequently confused concepts for targeted analysis.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MistakePattern entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "A short, descriptive name for the mistake pattern (e.g., 'arithmetic progression vs geometric progression')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of what makes this a common mistake or confusion point."
+        },
+        "type": {
+          "type": "string",
+          "description": "The category of the confusion (e.g., 'formula', 'date', 'term')."
+        },
+        "comparisonContent": {
+          "type": "string",
+          "description": "Content for a comparison card, explaining the nuances between confused items."
+        },
+        "warningMessage": {
+          "type": "string",
+          "description": "A warning message to alert students about this particular mistake (e.g., 'Осы жерде абай бол')."
+        },
+        "relatedTopicIds": {
+          "type": "array",
+          "description": "References to Topics where this mistake pattern is commonly encountered. (Relationship: MistakePattern N:N Topic)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "type",
+        "comparisonContent",
+        "warningMessage"
       ]
     },
     "StudyPlan": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StudyPlan",
       "type": "object",
-      "description": "Represents a personalized daily or weekly study plan generated for a student.",
+      "description": "Represents a generated daily or weekly study plan for a student.",
       "properties": {
         "id": {
           "type": "string",
@@ -397,282 +467,225 @@
         },
         "studentId": {
           "type": "string",
-          "description": "Reference to the StudentProfile for whom this plan was generated. (Relationship: StudentProfile 1:N StudyPlan)"
+          "description": "Reference to the StudentProfile for whom the plan was generated. (Relationship: StudentProfile 1:N StudyPlan)"
         },
-        "type": {
+        "planType": {
           "type": "string",
-          "description": "The type of the study plan ('daily' or 'weekly')."
+          "description": "The type of study plan (e.g., 'daily', 'weekly')."
         },
-        "planDate": {
+        "startDate": {
           "type": "string",
-          "description": "The specific date for a 'daily' plan.",
+          "description": "The start date of the study plan.",
           "format": "date"
         },
-        "planStartDate": {
+        "endDate": {
           "type": "string",
-          "description": "The start date for a 'weekly' plan.",
+          "description": "The end date of the study plan (relevant for weekly plans).",
           "format": "date"
         },
-        "planEndDate": {
-          "type": "string",
-          "description": "The end date for a 'weekly' plan.",
-          "format": "date"
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the study plan ('active', 'completed', 'archived')."
-        },
-        "isGeneratedByAI": {
+        "generatedByAI": {
           "type": "boolean",
-          "description": "Indicates if the study plan was generated by the AI curator."
+          "description": "Indicates if the study plan was generated by an AI."
         },
         "targetScoreRange": {
           "type": "string",
-          "description": "The target score range for which this plan is designed (e.g., '50-70 балл')."
+          "description": "The score range this study plan is tailored for (e.g., '50-70 балл')."
         },
-        "activities": {
-          "type": "array",
-          "description": "An array of objects, each describing a study activity within the plan.",
-          "items": {
-            "type": "string"
-          }
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates if all items in the study plan have been completed."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the study plan was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the study plan was last updated.",
+          "format": "date-time"
         }
       },
       "required": [
         "id",
         "studentId",
-        "type",
-        "status",
-        "isGeneratedByAI",
-        "activities"
+        "planType",
+        "startDate",
+        "generatedByAI",
+        "isCompleted",
+        "createdAt"
       ]
     },
-    "StudyPlanActivity": {
+    "StudyPlanItem": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StudyPlanActivity",
+      "title": "StudyPlanItem",
       "type": "object",
-      "description": "Represents a single activity within a student's study plan.",
+      "description": "An individual task or activity within a StudyPlan.",
       "properties": {
-        "activityType": {
+        "id": {
           "type": "string",
-          "description": "The type of study activity ('theory', 'test', 'mistake_analysis', 'revision', 'diagnostic')."
+          "description": "Unique identifier for the StudyPlanItem entity."
+        },
+        "studyPlanId": {
+          "type": "string",
+          "description": "Reference to the StudyPlan this item belongs to. (Relationship: StudyPlan 1:N StudyPlanItem)"
+        },
+        "itemType": {
+          "type": "string",
+          "description": "The type of activity (e.g., 'theory_study', 'practice_test', 'mistake_analysis', 'full_mock_test')."
         },
         "subjectId": {
           "type": "string",
-          "description": "Reference to the Subject involved in this activity. (Relationship: Subject 1:N StudyPlanActivity)"
+          "description": "Reference to the Subject involved in this plan item. (Relationship: Subject 1:N StudyPlanItem)"
         },
         "topicId": {
           "type": "string",
-          "description": "Reference to the Topic involved in this activity. (Relationship: Topic 1:N StudyPlanActivity)"
+          "description": "Reference to the Topic involved in this plan item. (Relationship: Topic 1:N StudyPlanItem)"
         },
         "durationMinutes": {
           "type": "number",
-          "description": "The recommended duration for this activity in minutes."
-        },
-        "status": {
-          "type": "string",
-          "description": "The completion status of the activity ('pending', 'completed', 'skipped')."
-        },
-        "completionDate": {
-          "type": "string",
-          "description": "Timestamp indicating when the activity was completed. Null if not yet completed.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "activityType",
-        "subjectId",
-        "topicId",
-        "durationMinutes",
-        "status"
-      ]
-    },
-    "ProgressSnapshot": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ProgressSnapshot",
-      "type": "object",
-      "description": "Captures a snapshot of a student's overall progress at a specific point in time.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ProgressSnapshot entity."
-        },
-        "studentId": {
-          "type": "string",
-          "description": "Reference to the StudentProfile whose progress is being tracked. (Relationship: StudentProfile 1:N ProgressSnapshot)"
-        },
-        "snapshotDate": {
-          "type": "string",
-          "description": "Timestamp indicating when this progress snapshot was recorded.",
-          "format": "date-time"
-        },
-        "currentOverallScore": {
-          "type": "number",
-          "description": "The student's current overall score or performance at the time of the snapshot."
-        },
-        "totalQuestionsSolvedCumulative": {
-          "type": "number",
-          "description": "The cumulative total number of questions solved by the student up to this snapshot."
-        },
-        "totalMistakesCumulative": {
-          "type": "number",
-          "description": "The cumulative total number of mistakes made by the student up to this snapshot."
-        },
-        "scoreGrowthPercentageSinceLast": {
-          "type": "number",
-          "description": "The percentage growth in score since the previous progress snapshot."
-        },
-        "hardestTopicIds": {
-          "type": "array",
-          "description": "An array of IDs referencing topics identified as the hardest for the student at this point. (Relationship: ProgressSnapshot N:N Topic)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "studyTimeMinutesToday": {
-          "type": "number",
-          "description": "Total study time recorded for the day of this snapshot, in minutes."
-        },
-        "completedLessonsToday": {
-          "type": "number",
-          "description": "The number of lessons completed on the day of this snapshot."
-        }
-      },
-      "required": [
-        "id",
-        "studentId",
-        "snapshotDate",
-        "currentOverallScore",
-        "totalQuestionsSolvedCumulative",
-        "totalMistakesCumulative"
-      ]
-    },
-    "CuratorMessage": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "CuratorMessage",
-      "type": "object",
-      "description": "Represents a message exchanged between a student and the AI curator.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CuratorMessage entity."
-        },
-        "studentId": {
-          "type": "string",
-          "description": "Reference to the StudentProfile involved in the conversation. (Relationship: StudentProfile 1:N CuratorMessage)"
-        },
-        "senderType": {
-          "type": "string",
-          "description": "Indicates who sent the message ('student' or 'ai_curator')."
-        },
-        "text": {
-          "type": "string",
-          "description": "The content of the message."
-        },
-        "sentAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the message was sent.",
-          "format": "date-time"
-        },
-        "contextId": {
-          "type": "string",
-          "description": "Optional reference to a broader conversation context or thread ID."
-        },
-        "suggestedReplyOptions": {
-          "type": "array",
-          "description": "An array of text options suggested as replies by the AI curator.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "motivationCardId": {
-          "type": "string",
-          "description": "Optional reference to a MotivationCard if one was sent by the AI curator. (Relationship: MotivationCard 1:N CuratorMessage)"
-        }
-      },
-      "required": [
-        "id",
-        "studentId",
-        "senderType",
-        "text",
-        "sentAt"
-      ]
-    },
-    "MotivationCard": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MotivationCard",
-      "type": "object",
-      "description": "Represents a pre-defined motivational message or card used by the AI curator.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the MotivationCard entity."
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the motivation card."
-        },
-        "message": {
-          "type": "string",
-          "description": "The motivational message content."
-        },
-        "category": {
-          "type": "string",
-          "description": "The category of the motivation card (e.g., 'exam_stress', 'low_score_recovery', 'discipline', 'general')."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "Optional URL to an image associated with the motivation card.",
-          "format": "uri"
-        }
-      },
-      "required": [
-        "id",
-        "title",
-        "message",
-        "category"
-      ]
-    },
-    "ContentBlock": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ContentBlock",
-      "type": "object",
-      "description": "Represents a configurable content block for dynamic UI elements or templates, managed via an admin interface.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the ContentBlock entity."
-        },
-        "title": {
-          "type": "string",
-          "description": "A descriptive title for the content block (e.g., '01_Профиль')."
-        },
-        "contentType": {
-          "type": "string",
-          "description": "The type of content this block represents (e.g., 'profile_section', 'theory_chapter', 'motivation_text')."
-        },
-        "subjectId": {
-          "type": "string",
-          "description": "Optional reference to a Subject if the content is subject-specific. (Relationship: Subject 1:N ContentBlock)"
-        },
-        "topicId": {
-          "type": "string",
-          "description": "Optional reference to a Topic if the content is topic-specific. (Relationship: Topic 1:N ContentBlock)"
-        },
-        "contentData": {
-          "type": "string",
-          "description": "The actual content data, which could be text, HTML, or JSON depending on the contentType."
+          "description": "The planned duration for this item in minutes (primarily for daily plans)."
         },
         "description": {
           "type": "string",
-          "description": "A brief explanation or internal note about the content block's purpose."
+          "description": "A description of the plan item (e.g., '30 min theory', 'жаңа тақырып')."
+        },
+        "dayOfWeek": {
+          "type": "string",
+          "description": "The day of the week for this plan item (e.g., 'Дүйсенбі' for weekly plans)."
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Indicates whether the student has completed this plan item."
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Timestamp when this plan item was marked as completed.",
+          "format": "date-time"
+        },
+        "order": {
+          "type": "number",
+          "description": "The sequential order of this item within its study plan."
         }
       },
       "required": [
         "id",
-        "title",
-        "contentType",
-        "contentData"
+        "studyPlanId",
+        "itemType",
+        "description",
+        "isCompleted",
+        "order"
+      ]
+    },
+    "ProgressEntry": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProgressEntry",
+      "type": "object",
+      "description": "Logs a student's daily study activity and performance metrics.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ProgressEntry entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the StudentProfile associated with this progress entry. (Relationship: StudentProfile 1:N ProgressEntry)"
+        },
+        "date": {
+          "type": "string",
+          "description": "The date for which this progress entry is recorded.",
+          "format": "date"
+        },
+        "subjectId": {
+          "type": "string",
+          "description": "Reference to the Subject, if the progress is specific to one subject. (Relationship: Subject 1:N ProgressEntry)"
+        },
+        "topicId": {
+          "type": "string",
+          "description": "Reference to the Topic, if the progress is specific to one topic. (Relationship: Topic 1:N ProgressEntry)"
+        },
+        "lessonsCompletedCount": {
+          "type": "number",
+          "description": "The number of theory lessons or topics completed on this day."
+        },
+        "questionsSolvedCount": {
+          "type": "number",
+          "description": "The total number of questions solved on this day."
+        },
+        "mistakesCount": {
+          "type": "number",
+          "description": "The total number of mistakes made on this day."
+        },
+        "studyTimeMinutes": {
+          "type": "number",
+          "description": "The total time spent studying on this day in minutes."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any additional notes or remarks for this progress entry (e.g., 'ескерту')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when this progress entry was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "date",
+        "lessonsCompletedCount",
+        "questionsSolvedCount",
+        "mistakesCount",
+        "studyTimeMinutes",
+        "createdAt"
+      ]
+    },
+    "CuratorInteraction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CuratorInteraction",
+      "type": "object",
+      "description": "Records interactions between a student and the AI curator, including messages and motivational content.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CuratorInteraction entity."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "Reference to the StudentProfile involved in the interaction. (Relationship: StudentProfile 1:N CuratorInteraction)"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp when the interaction occurred.",
+          "format": "date-time"
+        },
+        "messageType": {
+          "type": "string",
+          "description": "The type of message (e.g., 'student_query', 'ai_response', 'motivation_card')."
+        },
+        "content": {
+          "type": "string",
+          "description": "The text content of the message or a reference/ID to a motivation card template."
+        },
+        "suggestedRepliesUsed": {
+          "type": "array",
+          "description": "An array of suggested replies that were presented to the student (if applicable).",
+          "items": {
+            "type": "string"
+          }
+        },
+        "sentiment": {
+          "type": "string",
+          "description": "Analyzed sentiment of the student's message (e.g., 'positive', 'neutral', 'negative')."
+        }
+      },
+      "required": [
+        "id",
+        "studentId",
+        "timestamp",
+        "messageType",
+        "content"
       ]
     }
   },
@@ -685,19 +698,13 @@
   "firestore": {
     "structure": [
       {
-        "path": "/users/{studentId}",
+        "path": "/studentProfiles/{studentId}",
         "definition": {
           "entityName": "StudentProfile",
           "schema": {
             "$ref": "#/backend/entities/StudentProfile"
           },
-          "description": "Stores individual student profiles. The document ID (`{studentId}`) MUST be the Firebase Authentication User ID (UID). Each StudentProfile document also includes a denormalized 'id' field that mirrors its document ID (UID) for consistent querying and simplified security rules.",
-          "params": [
-            {
-              "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
-            }
-          ]
+          "description": "Stores a student's personal learning profile. Access is restricted to the student whose ID matches 'studentId' in the path (i.e., request.auth.uid)."
         }
       },
       {
@@ -707,208 +714,204 @@
           "schema": {
             "$ref": "#/backend/entities/Subject"
           },
-          "description": "Contains globally accessible academic subjects. These documents are read-only for all authenticated students and do not contain sensitive user-specific data. They are accessible by all authenticated users.",
+          "description": "Contains global academic subjects. This content is read-only for all authenticated users (students) and managed by administrators.",
           "params": [
             {
               "name": "subjectId",
-              "description": "The unique identifier for a specific subject."
+              "description": "The unique identifier for the subject."
             }
           ]
         }
       },
       {
-        "path": "/topics/{topicId}",
+        "path": "/subjects/{subjectId}/topics/{topicId}",
         "definition": {
           "entityName": "Topic",
           "schema": {
             "$ref": "#/backend/entities/Topic"
           },
-          "description": "Stores globally accessible learning topics, categorized under subjects. These documents are read-only for all authenticated students and do not contain sensitive user-specific data. They are accessible by all authenticated users.",
+          "description": "Contains theoretical learning topics, organized under specific subjects. This content is read-only for all authenticated users. Includes denormalized 'subjectId' for explicit association.",
           "params": [
             {
+              "name": "subjectId",
+              "description": "The unique identifier of the parent subject."
+            },
+            {
               "name": "topicId",
-              "description": "The unique identifier for a specific topic."
+              "description": "The unique identifier for the topic."
             }
           ]
         }
       },
       {
-        "path": "/questions/{questionId}",
+        "path": "/subjects/{subjectId}/topics/{topicId}/questions/{questionId}",
         "definition": {
           "entityName": "Question",
           "schema": {
             "$ref": "#/backend/entities/Question"
           },
-          "description": "Houses globally accessible test questions, linked to specific topics and subjects. These documents are read-only for all authenticated students and do not contain sensitive user-specific data. They are accessible by all authenticated users.",
+          "description": "Contains practice and test questions, organized under specific topics and subjects. This content is read-only for all authenticated users. Includes denormalized 'subjectId' and 'topicId' for explicit association.",
           "params": [
+            {
+              "name": "subjectId",
+              "description": "The unique identifier of the parent subject."
+            },
+            {
+              "name": "topicId",
+              "description": "The unique identifier of the parent topic."
+            },
             {
               "name": "questionId",
-              "description": "The unique identifier for a specific question."
+              "description": "The unique identifier for the question."
             }
           ]
         }
       },
       {
-        "path": "/motivationCards/{cardId}",
+        "path": "/studentProfiles/{studentId}/testSessions/{testSessionId}",
         "definition": {
-          "entityName": "MotivationCard",
+          "entityName": "TestSession",
           "schema": {
-            "$ref": "#/backend/entities/MotivationCard"
+            "$ref": "#/backend/entities/TestSession"
           },
-          "description": "Stores pre-defined motivational content cards, accessible globally to all authenticated students. These are read-only and static content.",
-          "params": [
-            {
-              "name": "cardId",
-              "description": "The unique identifier for a motivation card."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/contentBlocks/{blockId}",
-        "definition": {
-          "entityName": "ContentBlock",
-          "schema": {
-            "$ref": "#/backend/entities/ContentBlock"
-          },
-          "description": "Stores configurable content blocks for dynamic UI elements or templates, accessible globally to all authenticated students. These are read-only and static content.",
-          "params": [
-            {
-              "name": "blockId",
-              "description": "The unique identifier for a content block."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{studentId}/testAttempts/{testAttemptId}",
-        "definition": {
-          "entityName": "TestAttempt",
-          "schema": {
-            "$ref": "#/backend/entities/TestAttempt"
-          },
-          "description": "Records individual student test attempts. This collection is user-specific; '{studentId}' in the path ensures authorization independence, allowing direct comparison with 'request.auth.uid'. Each document contains a 'studentId' field, which is redundant for path-based authorization but useful for collection group queries.",
+          "description": "Records a student's attempt at a test. Access is restricted to the owner student. Includes denormalized 'studentId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student who owns this test session."
             },
             {
-              "name": "testAttemptId",
-              "description": "The unique identifier for a specific test attempt."
+              "name": "testSessionId",
+              "description": "The unique identifier for the test session."
             }
           ]
         }
       },
       {
-        "path": "/users/{studentId}/testAttempts/{testAttemptId}/questionAttempts/{questionAttemptId}",
+        "path": "/studentProfiles/{studentId}/testSessions/{testSessionId}/questionAttempts/{attemptId}",
         "definition": {
-          "entityName": "QuestionAttempt",
+          "entityName": "StudentQuestionAttempt",
           "schema": {
-            "$ref": "#/backend/entities/QuestionAttempt"
+            "$ref": "#/backend/entities/StudentQuestionAttempt"
           },
-          "description": "Stores individual question responses within a specific test attempt. This subcollection is deeply user-specific, with '{studentId}' and '{testAttemptId}' ensuring full authorization context within the path, eliminating the need for 'get()' operations in security rules.",
+          "description": "Details a student's attempt on a specific question within a test session. Access is restricted to the owner student. Includes denormalized 'studentId' and 'testSessionId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student who owns this attempt."
             },
             {
-              "name": "testAttemptId",
-              "description": "The unique identifier of the parent test attempt."
+              "name": "testSessionId",
+              "description": "The unique identifier of the parent test session."
             },
             {
-              "name": "questionAttemptId",
-              "description": "The unique identifier for a specific question attempt."
+              "name": "attemptId",
+              "description": "The unique identifier for the question attempt."
             }
           ]
         }
       },
       {
-        "path": "/users/{studentId}/studyPlans/{studyPlanId}",
+        "path": "/mistakePatterns/{mistakePatternId}",
+        "definition": {
+          "entityName": "MistakePattern",
+          "schema": {
+            "$ref": "#/backend/entities/MistakePattern"
+          },
+          "description": "Defines global common mistake patterns for analysis. This content is read-only for all authenticated users and managed by administrators.",
+          "params": [
+            {
+              "name": "mistakePatternId",
+              "description": "The unique identifier for the mistake pattern."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/studentProfiles/{studentId}/studyPlans/{studyPlanId}",
         "definition": {
           "entityName": "StudyPlan",
           "schema": {
             "$ref": "#/backend/entities/StudyPlan"
           },
-          "description": "Manages personalized study plans for students. Access is restricted to the owning student, with '{studentId}' in the path enabling authorization independence. Includes a 'studentId' field for consistency and query flexibility.",
+          "description": "Represents a generated daily or weekly study plan for a student. Access is restricted to the owner student. Includes denormalized 'studentId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student who owns this study plan."
             },
             {
               "name": "studyPlanId",
-              "description": "The unique identifier for a specific study plan."
+              "description": "The unique identifier for the study plan."
             }
           ]
         }
       },
       {
-        "path": "/users/{studentId}/studyPlans/{studyPlanId}/activities/{activityId}",
+        "path": "/studentProfiles/{studentId}/studyPlans/{studyPlanId}/items/{itemId}",
         "definition": {
-          "entityName": "StudyPlanActivity",
+          "entityName": "StudyPlanItem",
           "schema": {
-            "$ref": "#/backend/entities/StudyPlanActivity"
+            "$ref": "#/backend/entities/StudyPlanItem"
           },
-          "description": "Details individual activities within a student's study plan. The full hierarchical path ensures that the '{studentId}' and '{studyPlanId}' context is available for authorization rules without performing 'get()' operations.",
+          "description": "An individual task or activity within a StudyPlan. Access is restricted to the owner student. Includes denormalized 'studentId' and 'studyPlanId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student who owns this study plan item."
             },
             {
               "name": "studyPlanId",
               "description": "The unique identifier of the parent study plan."
             },
             {
-              "name": "activityId",
-              "description": "The unique identifier for a specific study plan activity."
+              "name": "itemId",
+              "description": "The unique identifier for the study plan item."
             }
           ]
         }
       },
       {
-        "path": "/users/{studentId}/progressSnapshots/{progressSnapshotId}",
+        "path": "/studentProfiles/{studentId}/progressEntries/{progressEntryId}",
         "definition": {
-          "entityName": "ProgressSnapshot",
+          "entityName": "ProgressEntry",
           "schema": {
-            "$ref": "#/backend/entities/ProgressSnapshot"
+            "$ref": "#/backend/entities/ProgressEntry"
           },
-          "description": "Captures snapshots of a student's overall progress over time. The '{studentId}' in the path ensures direct ownership for security rules, avoiding 'get()' dependencies. Includes a 'studentId' field for query flexibility.",
+          "description": "Logs a student's daily study activity and performance metrics. Access is restricted to the owner student. Includes denormalized 'studentId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student who owns this progress entry."
             },
             {
-              "name": "progressSnapshotId",
-              "description": "The unique identifier for a specific progress snapshot."
+              "name": "progressEntryId",
+              "description": "The unique identifier for the progress entry."
             }
           ]
         }
       },
       {
-        "path": "/users/{studentId}/curatorMessages/{curatorMessageId}",
+        "path": "/studentProfiles/{studentId}/curatorInteractions/{interactionId}",
         "definition": {
-          "entityName": "CuratorMessage",
+          "entityName": "CuratorInteraction",
           "schema": {
-            "$ref": "#/backend/entities/CuratorMessage"
+            "$ref": "#/backend/entities/CuratorInteraction"
           },
-          "description": "Stores messages exchanged between a student and the AI curator. The '{studentId}' in the path provides immediate authorization context, simplifying security rules to check against 'request.auth.uid'. Includes a 'studentId' field for querying.",
+          "description": "Records interactions between a student and the AI curator. Access is restricted to the owner student. Includes denormalized 'studentId' for authorization independence.",
           "params": [
             {
               "name": "studentId",
-              "description": "The unique identifier of the student, matching 'request.auth.uid'."
+              "description": "The unique identifier of the student involved in the interaction."
             },
             {
-              "name": "curatorMessageId",
-              "description": "The unique identifier for a specific curator message."
+              "name": "interactionId",
+              "description": "The unique identifier for the curator interaction."
             }
           ]
         }
       }
     ],
-    "reasoning": "The recommended Firestore structure prioritizes security, scalability, and debuggability by adhering to the core design principles, especially Authorization Independence and enabling Query-Able Paths (QAPs). **1. Authorization Independence via Denormalization:** To achieve authorization independence, all user-specific data is organized under a strict hierarchical path: /users/{studentId}/[subcollection]/{documentId}. *User Profiles (StudentProfile):* The primary users collection stores StudentProfile documents, where the document ID ({studentId}) MUST be the Firebase Authentication request.auth.uid. This direct mapping means security rules for a user's profile can simply check request.auth.uid == studentId, eliminating any need for get() operations on parent documents. The StudentProfile document also contains an id field that mirrors its document ID (the UID) for internal data consistency and easier querying outside of security rules. *User-Owned Subcollections (e.g., testAttempts, studyPlans, progressSnapshots, curatorMessages):* These are direct subcollections of the user's profile (/users/{studentId}/...). The full path intrinsically provides the studentId context, allowing security rules to authorize access based solely on request.auth.uid == studentId without fetching the parent StudentProfile document. This enables atomic creation and manipulation of related user data. *Nested Subcollections (e.g., questionAttempts under testAttempts, activities under studyPlans):* For deeper hierarchies, like /users/{studentId}/testAttempts/{testAttemptId}/questionAttempts/{questionAttemptId}, the complete authorization context (studentId, testAttemptId) is available within the path itself. This robustly eliminates authorization dependencies, making security rules simple and highly performant. *Global Content (e.g., subjects, topics, questions, motivationCards, contentBlocks):* These collections hold universal, read-only content. Their security posture is homogeneous (accessible to all authenticated users for reading). They inherently have authorization independence as their access does not depend on any user-specific or related document data, thus requiring no get() calls in their rules. **2. Support for QAPs (Queries Are Not Filters):** *User-Specific Data:* The hierarchical structure /users/{studentId}/... inherently scopes queries. When a user queries a subcollection like testAttempts, they are implicitly querying within their own studentId subtree. Security rules will enforce request.auth.uid == studentId for all list operations on these subcollections, ensuring that a user can only retrieve their own data. This guarantees that list operations are secure by design, as the structure itself prevents unauthorized access to other users' data. *Global Content:* Collections like /subjects or /questions are designed for global read access by authenticated users. Because all documents within these collections share the same access policy, list operations are secure. There is no mixing of public and private data within these collections, adhering to the Structural Segregation mandate and ensuring that any list query returns only appropriately authorized data. **3. Firebase Authentication and User Profile Integration (StudentProfile):** The StudentProfile entity is directly mapped to the Firebase Authentication user. *Signup:* When a user signs up via Firebase Auth, a new document is created in the /users collection with the document ID set to the newly generated request.auth.uid. The StudentProfile.id field within this document will also be set to this uid. *Login:* Upon successful login, the application loads the user's profile from /users/{request.auth.uid}, ensuring the correct and authenticated profile is retrieved. This setup facilitates simple, robust security rules for profile data: allow read, write: if request.auth.uid == studentId;. **4. Missing Components:** This recommendation provides the Firestore data structure. The actual implementation details for Firebase Authentication, client-side code to save/load user profiles, and the detailed Firestore Security Rules based on this structure would be provided separately. Admin roles or other advanced authorization mechanisms (beyond basic user ownership) are not explicitly detailed here as they were not required for this initial scope, but the structure easily accommodates them (e.g., a separate /roles_admin/{uid} collection for DBAC)."
+    "reasoning": "The Firestore data structure is designed to adhere strictly to the core design principles and mandates, prioritizing security, scalability, and debuggability. All user-specific data is organized under a top-level `/studentProfiles/{studentId}` collection, ensuring strong ownership and clear access patterns. Global, static content such as Subjects, Topics, Questions, and Mistake Patterns are stored in separate top-level collections or logical subcollections. This structural segregation ensures that documents with different security postures are not mixed, simplifying security rules.\n\n**Authorization Independence via Denormalization:** This is a critical aspect of the design. For all user-owned subcollections (e.g., `testSessions`, `studyPlans`, `questionAttempts`, `studyPlanItems`, `progressEntries`, `curatorInteractions`), the `studentId` (which corresponds to `request.auth.uid`) is explicitly denormalized and included within each document of the subcollection. For example, a `StudentQuestionAttempt` document will contain `studentId` in addition to its parent `testSessionId`. This eliminates the need for expensive and complex `get()` calls in security rules to check parent document ownership, enabling atomic operations and making rules robust and easy to debug. The path itself also contains the `{studentId}` wildcard, providing a primary layer of authorization.\n\n**Support for QAPs (Rules are not Filters):**\n1.  **Public Content (Subjects, Topics, Questions, Mistake Patterns):** These collections are designed for broad read access by all authenticated students. Since all documents within these collections share the same 'read-only for all' security posture, `list` operations are inherently secure and efficient. Rules will simply allow `read` for `request.auth != null`.\n2.  **Private User-Owned Content (StudentProfile and its subcollections):** The structure `/studentProfiles/{studentId}/...` directly ties data to the authenticated user's UID. For `list` operations on collections like `/studentProfiles/{studentId}/testSessions`, the `studentId` wildcard in the path *must* match `request.auth.uid`. Additionally, the denormalized `studentId` field within each document provides an explicit check (e.g., `resource.data.studentId == request.auth.uid`), which ensures that even if a query attempts to list data for a different student (which would be blocked by the path matching), individual document access is also secured. This layered approach ensures `list` queries are only successful when the path matches the authenticated user, thus preventing rules from acting as filters and promoting secure, performant access.\n\nGlobal roles for administrative access, while not explicitly mapped to an entity schema, would be handled via an existence-based collection like `/roles_admin/{uid}`, further simplifying rule logic for content management."
   }
 }

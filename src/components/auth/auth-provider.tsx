@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
@@ -52,8 +51,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (firebaseUser) {
         setUser(firebaseUser);
         if (db) {
-          const docRef = doc(db, "users", firebaseUser.uid);
           try {
+            const docRef = doc(db, "users", firebaseUser.uid);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               setProfile(docSnap.data() as UserProfile);
@@ -65,7 +64,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setUser(null);
         setProfile(null);
-        // Редирект на логин, если страница защищена
+        
+        // Protected routes check
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/progress", "/practice", "/theory"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
@@ -77,23 +77,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  // Важно для предотвращения Hydration Error
+  // Hydration қатесін болдырмау үшін: 
+  // Егер компонент әлі браузерде жүктелмесе (mounted), бос контейнер қайтарамыз.
   if (!mounted) {
-    return <div className="min-h-screen bg-background" />;
+    return <div className="min-h-screen bg-background" aria-hidden="true" />;
+  }
+
+  // Жүктелу кезіндегі UI
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <AuthContext.Provider value={{ user, profile, loading }}>
-      {loading ? (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="flex flex-col items-center gap-4">
-            <div className="size-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted-foreground animate-pulse font-medium">BilimAI жүктелуде...</p>
-          </div>
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </AuthContext.Provider>
   );
 };

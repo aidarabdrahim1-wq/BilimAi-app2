@@ -1,4 +1,3 @@
-
 'use client';
 
 import { initializeApp, getApps, getApp } from "firebase/app";
@@ -14,10 +13,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Проверка валидности конфигурации
-const isConfigValid = !!firebaseConfig.apiKey && 
-                     firebaseConfig.apiKey !== "undefined" && 
-                     firebaseConfig.apiKey.length > 10;
+// Конфигурацияның бар-жоғын және форматын тексеру
+const isConfigValid = 
+  !!firebaseConfig.apiKey && 
+  firebaseConfig.apiKey !== "undefined" && 
+  firebaseConfig.apiKey.length > 10;
 
 let app;
 let auth: any = null;
@@ -32,9 +32,7 @@ if (isConfigValid) {
     console.error("Firebase initialization error:", error);
   }
 } else {
-  // В режиме разработки, если конфиг не задан, мы не инициализируем Firebase, 
-  // чтобы приложение не падало с ошибкой auth/invalid-api-key
-  console.warn("Firebase configuration is missing. Please check your .env file.");
+  console.warn("Firebase configuration is missing or invalid. Please set your environment variables.");
 }
 
 export { auth, db, isConfigValid };

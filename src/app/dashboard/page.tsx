@@ -27,8 +27,7 @@ import {
   RotateCcw,
   Check,
   BarChart,
-  PieChart,
-  LineChart
+  PieChart
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -47,8 +46,10 @@ export default function Dashboard() {
   const { user, profile } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
   const [newDate, setNewDate] = useState(profile?.untDate || "2025-06-20");
+  const [newScore, setNewScore] = useState(profile?.currentScore || 0);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
+  const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
   const [todayTasks, setTodayTasks] = useState<any[]>([]);
   
   // Timer states
@@ -69,6 +70,12 @@ export default function Dashboard() {
 
     calculateDiff();
   }, [profile?.untDate]);
+
+  useEffect(() => {
+    if (profile?.currentScore !== undefined) {
+      setNewScore(profile.currentScore);
+    }
+  }, [profile?.currentScore]);
 
   useEffect(() => {
     if (!user) return;
@@ -147,7 +154,6 @@ export default function Dashboard() {
 
       if (completedCount === fullPlan.totalCount) {
         await updateUserRating(user.uid, 'PLAN_COMPLETED');
-        // Update plan status to completed if all tasks are done
         await updateDoc(planRef, { status: 'completed' });
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
@@ -178,6 +184,31 @@ export default function Dashboard() {
       toast({
         title: "Қате",
         description: "Күнді жаңарту мүмкін болмады.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleUpdateScore = async () => {
+    if (!user || !db) return;
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        currentScore: Number(newScore),
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Балл жаңартылды",
+        description: `Жаңа ағымдағы балл: ${newScore}`,
+      });
+      setIsScoreDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Қате",
+        description: "Баллды жаңарту мүмкін болмады.",
         variant: "destructive",
       });
     } finally {
@@ -285,19 +316,47 @@ export default function Dashboard() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="shadow-sm border-none bg-primary text-primary-foreground overflow-hidden relative group">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Ағымдағы балл</CardTitle>
-              <TrendingUp className="h-4 w-4 opacity-70 group-hover:scale-110 transition-transform" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{currentScore}</div>
-              <p className="text-xs opacity-70 mt-1">
-                ҰБТ потенциалы: {Math.round(currentScore)} / 140
-              </p>
-            </CardContent>
-            <div className="absolute top-0 right-0 size-16 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
-          </Card>
+          <Dialog open={isScoreDialogOpen} onOpenChange={setIsScoreDialogOpen}>
+            <DialogTrigger asChild>
+              <Card className="shadow-sm border-none bg-primary text-primary-foreground overflow-hidden relative group cursor-pointer hover:brightness-105 transition-all">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Ағымдағы балл</CardTitle>
+                  <TrendingUp className="h-4 w-4 opacity-70 group-hover:scale-110 transition-transform" />
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-baseline gap-2">
+                    <div className="text-3xl font-bold">{currentScore}</div>
+                    <Edit2 className="size-3 opacity-0 group-hover:opacity-70" />
+                  </div>
+                  <p className="text-xs opacity-70 mt-1">
+                    ҰБТ потенциалы: {Math.round(currentScore)} / 140
+                  </p>
+                </CardContent>
+                <div className="absolute top-0 right-0 size-16 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Ағымдағы баллды жаңарту</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="scoreInput">Соңғы тест нәтижесін енгізіңіз (0-140)</Label>
+                  <Input
+                    id="scoreInput"
+                    type="number"
+                    min="0"
+                    max="140"
+                    value={newScore}
+                    onChange={(e) => setNewScore(Number(e.target.value))}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>
+                  {isUpdating ? "Жаңартылуда..." : "Сақтау"}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Card className="shadow-sm border-none bg-secondary text-secondary-foreground overflow-hidden relative group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -334,7 +393,7 @@ export default function Dashboard() {
               <AlertCircle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{100 - accuracy}%</div>
+              <div className="text-3xl font-bold">{solvedCount > 0 ? 100 - accuracy : 0}%</div>
               <p className="text-xs text-muted-foreground mt-1">
                 Талдау қажет: {solvedCount - correctCount} сұрақ
               </p>
@@ -367,7 +426,7 @@ export default function Dashboard() {
                   {todayTasks.length > 0 ? "Басқару" : "Құру"} <ArrowRight className="size-4" />
                 </Link>
               </Button>
-            </CardHeader>
+            </Header>
             <CardContent className="p-0">
               {todayTasks.length > 0 ? (
                 pendingTasks.length > 0 ? (
@@ -458,7 +517,6 @@ export default function Dashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6 space-y-6">
-                {/* Daily Progress in Stats */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
@@ -473,7 +531,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Overall Plans Progress */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">

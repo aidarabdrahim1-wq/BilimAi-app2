@@ -17,7 +17,10 @@ import {
   Zap,
   Loader2,
   Sparkles,
-  Wand2
+  Wand2,
+  Trash2,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
@@ -27,6 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { updateUserRating } from "@/lib/rating";
 import { generateStudyPlan } from "@/ai/flows/generate-study-plan-flow";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function PlanPage() {
   const { user, profile } = useAuth();
@@ -36,6 +40,7 @@ export default function PlanPage() {
   const [activePlan, setActivePlan] = useState<any>(null);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiPreview, setAiPreview] = useState<any[] | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -124,7 +129,7 @@ export default function PlanPage() {
         studentName: profile.fullName,
         currentScore: profile.currentScore || 0,
         targetScore: profile.targetScore || 140,
-        weakSubjects: profile.selectedSubjects.slice(3, 5), // Sample weak subjects
+        weakSubjects: profile.selectedSubjects.slice(3, 5),
         weakTopics: profile.weakTopics || [],
         dailyAvailableStudyTimeMinutes: 120,
         studyGoals: `${profile.targetCareer} мамандығына түсу`,
@@ -132,7 +137,6 @@ export default function PlanPage() {
         levelSegmentation: "70-90 балл"
       });
 
-      // Convert AI activities to tasks
       const newTasks = response.dailyPlan.map(p => ({
         id: Math.random().toString(36).substring(7),
         title: p.description,
@@ -194,6 +198,9 @@ export default function PlanPage() {
       toast({ title: "Қате", variant: "destructive" });
     }
   };
+
+  const activeTasks = activePlan?.tasks?.filter((t: any) => t.status !== "completed") || [];
+  const completedTasks = activePlan?.tasks?.filter((t: any) => t.status === "completed") || [];
 
   return (
     <AppShell>
@@ -329,10 +336,10 @@ export default function PlanPage() {
             </CardFooter>
           </Card>
 
-          <Card className="md:col-span-2 border-none shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
+          <Card className="md:col-span-2 border-none shadow-sm h-fit">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div>
-                <CardTitle className="text-lg">Бүгінгі тізім</CardTitle>
+                <CardTitle className="text-lg">Белсенді тізім</CardTitle>
                 <CardDescription>
                   {activePlan ? `Прогресс: ${activePlan.completedCount} / ${activePlan.totalCount}` : "Тізім бос"}
                 </CardDescription>
@@ -345,44 +352,47 @@ export default function PlanPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-4">
-              {activePlan && activePlan.tasks && activePlan.tasks.length > 0 ? (
-                activePlan.tasks.map((task: any) => (
-                  <div 
-                    key={task.id} 
-                    className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                      task.status === 'completed' ? 'bg-green-50/50 border-green-100 opacity-80' : 'bg-white shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <button 
-                        onClick={() => toggleTaskStatus(task.id, task.status)}
-                        className={`size-6 rounded-md border flex items-center justify-center transition-colors ${
-                          task.status === 'completed' ? 'bg-green-500 border-green-500 text-white' : 'border-muted-foreground/30 hover:border-primary'
-                        }`}
-                      >
-                        {task.status === 'completed' && <CheckCircle2 className="size-4" />}
-                      </button>
-                      <div>
-                        <h4 className={`text-sm font-semibold ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                          {task.title}
-                        </h4>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] bg-accent/20 px-2 py-0.5 rounded text-accent-foreground font-bold uppercase tracking-wider">
-                            {task.subject}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <Clock className="size-3" /> {task.time}
-                          </span>
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            {task.type === 'theory' ? <BookOpen className="size-3" /> : <ClipboardList className="size-3" />}
-                            {task.type === 'theory' ? 'Теория' : task.type === 'test' ? 'Тест' : 'Талдау'}
-                          </span>
+              {activeTasks.length > 0 ? (
+                <div className="space-y-3">
+                  {activeTasks.map((task: any) => (
+                    <div 
+                      key={task.id} 
+                      className="flex items-center justify-between p-4 rounded-xl border bg-white shadow-sm hover:border-primary/30 transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <button 
+                          onClick={() => toggleTaskStatus(task.id, task.status)}
+                          className="size-6 rounded-md border border-muted-foreground/30 flex items-center justify-center transition-colors hover:border-primary"
+                        >
+                          <CheckCircle2 className="size-4 text-transparent hover:text-primary/30" />
+                        </button>
+                        <div>
+                          <h4 className="text-sm font-semibold">
+                            {task.title}
+                          </h4>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-[10px] bg-accent/20 px-2 py-0.5 rounded text-accent-foreground font-bold uppercase tracking-wider">
+                              {task.subject}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <Clock className="size-3" /> {task.time}
+                            </span>
+                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              {task.type === 'theory' ? <BookOpen className="size-3" /> : <ClipboardList className="size-3" />}
+                              {task.type === 'theory' ? 'Теория' : task.type === 'test' ? 'Тест' : 'Талдау'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : (
+                  ))}
+                </div>
+              ) : activePlan && completedTasks.length < activePlan.totalCount ? (
+                <div className="text-center py-10 flex flex-col items-center gap-4 bg-muted/10 rounded-2xl border border-dashed">
+                  <CalendarCheck className="size-10 text-muted-foreground opacity-20" />
+                  <p className="text-xs text-muted-foreground">Барлық тапсырмалар орындалды!</p>
+                </div>
+              ) : !activePlan ? (
                 <div className="text-center py-20 flex flex-col items-center gap-4 bg-muted/10 rounded-2xl border border-dashed">
                   <CalendarCheck className="size-12 text-muted-foreground opacity-20" />
                   <div className="space-y-1">
@@ -390,6 +400,44 @@ export default function PlanPage() {
                     <p className="text-xs text-muted-foreground">AI-дан көмек алыңыз немесе қолмен қосыңыз.</p>
                   </div>
                 </div>
+              ) : null}
+
+              {completedTasks.length > 0 && (
+                <Collapsible open={showArchive} onOpenChange={setShowArchive} className="mt-6 border-t pt-4">
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full flex justify-between items-center text-muted-foreground hover:text-foreground">
+                      <div className="flex items-center gap-2">
+                        <Trash2 className="size-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Мұрағат (Орындалғандар)</span>
+                        <Badge variant="secondary" className="text-[10px]">{completedTasks.length}</Badge>
+                      </div>
+                      {showArchive ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-3 mt-4">
+                    {completedTasks.map((task: any) => (
+                      <div 
+                        key={task.id} 
+                        className="flex items-center justify-between p-3 rounded-xl border bg-accent/5 opacity-60 grayscale-[0.5]"
+                      >
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => toggleTaskStatus(task.id, task.status)}
+                            className="size-5 rounded-md bg-green-500 flex items-center justify-center text-white"
+                          >
+                            <CheckCircle2 className="size-3" />
+                          </button>
+                          <div>
+                            <h4 className="text-xs font-medium line-through text-muted-foreground">
+                              {task.title}
+                            </h4>
+                            <span className="text-[9px] text-muted-foreground uppercase">{task.subject}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </CardContent>
           </Card>

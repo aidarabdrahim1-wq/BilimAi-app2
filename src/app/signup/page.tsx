@@ -71,7 +71,9 @@ export default function SignupPage() {
       const user = userCredential.user;
 
       if (db) {
-        await setDoc(doc(db, "users", user.uid), {
+        // Updated to match firestore.rules: /studentProfiles/{studentId}
+        await setDoc(doc(db, "studentProfiles", user.uid), {
+          id: user.uid,
           fullName: formData.fullName,
           email: formData.email,
           grade: formData.grade,
@@ -85,7 +87,7 @@ export default function SignupPage() {
           selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
           subjectCombination: currentCombo.label,
           targetCareer: formData.targetCareer,
-          untDate: "2025-06-20", // Default value
+          untDate: "2025-06-20", 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });

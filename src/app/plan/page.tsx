@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -31,6 +32,8 @@ import { updateUserRating } from "@/lib/rating";
 import { generateStudyPlan } from "@/ai/flows/generate-study-plan-flow";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function PlanPage() {
   const { user, profile } = useAuth();
@@ -57,16 +60,24 @@ export default function PlanPage() {
   }, [user]);
 
   const fetchActivePlan = async () => {
+    // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans
+    const plansRef = collection(db, "studentProfiles", user?.uid!, "studyPlans");
     const q = query(
-      collection(db, "study_plans"),
-      where("userId", "==", user?.uid),
+      plansRef,
       where("status", "==", "active")
     );
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      setActivePlan({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-    } else {
-      setActivePlan(null);
+    try {
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        setActivePlan({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+      } else {
+        setActivePlan(null);
+      }
+    } catch (error) {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: plansRef.path,
+          operation: 'list'
+       }));
     }
   };
 
@@ -90,15 +101,22 @@ export default function PlanPage() {
     setIsLoading(true);
     try {
       if (activePlan) {
-        const planRef = doc(db, "study_plans", activePlan.id);
-        await updateDoc(planRef, {
+        // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans/{planId}
+        const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", activePlan.id);
+        updateDoc(planRef, {
           tasks: arrayUnion(taskToSave),
           totalCount: (activePlan.totalCount || 0) + 1,
           updatedAt: serverTimestamp()
+        }).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: planRef.path,
+            operation: 'update',
+            requestResourceData: { totalCount: (activePlan.totalCount || 0) + 1 }
+          }));
         });
       } else {
         const newPlan = {
-          userId: user.uid,
+          studentId: user.uid,
           title: `Бүгінгі жоспар - ${new Date().toLocaleDateString()}`,
           tasks: [taskToSave],
           status: "active",
@@ -107,13 +125,20 @@ export default function PlanPage() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         };
-        await addDoc(collection(db, "study_plans"), newPlan);
+        const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
+        addDoc(plansRef, newPlan).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: plansRef.path,
+            operation: 'create',
+            requestResourceData: newPlan
+          }));
+        });
       }
 
       if (!taskData) {
         setNewTask({ title: "", time: "30 мин", type: "theory", subject: "" });
       }
-      fetchActivePlan();
+      setTimeout(fetchActivePlan, 1000);
     } catch (error) {
       toast({ title: "Қате", variant: "destructive" });
     } finally {
@@ -132,7 +157,7 @@ export default function PlanPage() {
         weakSubjects: profile.selectedSubjects.slice(3, 5),
         weakTopics: profile.weakTopics || [],
         dailyAvailableStudyTimeMinutes: 120,
-        studyGoals: `${profile.targetCareer} мамандығына түсу`,
+        studyGoals: `${profile.targetCareer || "Университетке"} түсу`,
         performanceSummary: "Соңғы тесттерде орташа балл жақсарып келеді.",
         levelSegmentation: "70-90 балл"
       });
@@ -181,11 +206,17 @@ export default function PlanPage() {
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
     
     try {
-      const planRef = doc(db, "study_plans", activePlan.id);
-      await updateDoc(planRef, {
+      const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", activePlan.id);
+      updateDoc(planRef, {
         tasks: updatedTasks,
         completedCount,
         updatedAt: serverTimestamp()
+      }).catch(err => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: planRef.path,
+          operation: 'update',
+          requestResourceData: { completedCount }
+        }));
       });
 
       if (completedCount === activePlan.totalCount && currentStatus !== "completed") {
@@ -193,7 +224,7 @@ export default function PlanPage() {
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
 
-      fetchActivePlan();
+      setTimeout(fetchActivePlan, 500);
     } catch (error) {
       toast({ title: "Қате", variant: "destructive" });
     }

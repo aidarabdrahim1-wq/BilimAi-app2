@@ -60,7 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(firebaseUser);
       
       if (firebaseUser && db) {
-        const userDocRef = doc(db, "users", firebaseUser.uid);
+        // Updated to match firestore.rules: /studentProfiles/{studentId}
+        const userDocRef = doc(db, "studentProfiles", firebaseUser.uid);
         
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {

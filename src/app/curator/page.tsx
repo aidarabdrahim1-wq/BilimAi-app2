@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -31,17 +32,24 @@ export default function CuratorPage() {
   useEffect(() => {
     if (!user || !db) return;
 
-    const messagesRef = collection(db, "users", user.uid, "messages");
+    // Updated to match firestore.rules: /studentProfiles/{studentId}/curatorInteractions
+    const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
     const q = query(
-      messagesRef,
-      orderBy("createdAt", "asc"),
+      interactionsRef,
+      orderBy("timestamp", "asc"),
       limit(50)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = [];
       snapshot.forEach((doc) => {
-        msgs.push({ id: doc.id, ...doc.data() } as Message);
+        const data = doc.data();
+        msgs.push({ 
+          id: doc.id, 
+          role: data.messageType === 'ai_response' ? 'ai' : 'user',
+          content: data.content,
+          createdAt: data.timestamp 
+        } as Message);
       });
       if (msgs.length === 0) {
         setMessages([
@@ -55,7 +63,7 @@ export default function CuratorPage() {
       }
     }, async (error) => {
       const permissionError = new FirestorePermissionError({
-        path: messagesRef.path,
+        path: interactionsRef.path,
         operation: 'list',
       });
       errorEmitter.emit('permission-error', permissionError);
@@ -75,21 +83,23 @@ export default function CuratorPage() {
     if (!textToSend.trim() || isLoading || !user || !db) return;
 
     const userMessage = textToSend.trim();
-    const messagesRef = collection(db, "users", user.uid, "messages");
+    // Updated to match firestore.rules: /studentProfiles/{studentId}/curatorInteractions
+    const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
     setInput("");
     setIsLoading(true);
 
     try {
       // 1. Save user message to Firestore
-      addDoc(messagesRef, {
-        role: "user",
+      addDoc(interactionsRef, {
+        studentId: user.uid,
+        messageType: "student_query",
         content: userMessage,
-        createdAt: serverTimestamp(),
+        timestamp: serverTimestamp(),
       }).catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: messagesRef.path,
+          path: interactionsRef.path,
           operation: 'create',
-          requestResourceData: { role: "user", content: userMessage }
+          requestResourceData: { studentId: user.uid, content: userMessage }
         }));
       });
 
@@ -107,15 +117,16 @@ export default function CuratorPage() {
       });
 
       // 3. Save AI response to Firestore
-      addDoc(messagesRef, {
-        role: "ai",
+      addDoc(interactionsRef, {
+        studentId: user.uid,
+        messageType: "ai_response",
         content: aiResponse,
-        createdAt: serverTimestamp(),
+        timestamp: serverTimestamp(),
       }).catch(async () => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: messagesRef.path,
+          path: interactionsRef.path,
           operation: 'create',
-          requestResourceData: { role: "ai", content: aiResponse }
+          requestResourceData: { studentId: user.uid, content: aiResponse }
         }));
       });
     } catch (error) {

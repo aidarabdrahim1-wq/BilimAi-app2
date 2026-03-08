@@ -1,3 +1,4 @@
+
 import { db } from "@/lib/firebase/config";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 
@@ -22,7 +23,8 @@ export type RatingReason = keyof typeof RATING_RULES;
 export async function updateUserRating(userId: string, reason: RatingReason) {
   if (!db) return;
 
-  const userRef = doc(db, "users", userId);
+  // Updated to match firestore.rules: /studentProfiles/{studentId}
+  const userRef = doc(db, "studentProfiles", userId);
   const points = RATING_RULES[reason];
 
   try {

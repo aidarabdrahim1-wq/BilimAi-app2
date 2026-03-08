@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -41,6 +42,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { updateUserRating } from "@/lib/rating";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function Dashboard() {
   const { user, profile } = useAuth();
@@ -80,10 +83,10 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
-    // Fetch active plans (today's tasks)
+    // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans
+    const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
     const q = query(
-      collection(db, "study_plans"),
-      where("userId", "==", user.uid),
+      plansRef,
       where("status", "==", "active")
     );
 
@@ -96,6 +99,11 @@ export default function Dashboard() {
         }
       });
       setTodayTasks(tasks);
+    }, (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: plansRef.path,
+        operation: 'list'
+      }));
     });
 
     return () => unsubscribe();
@@ -145,16 +153,23 @@ export default function Dashboard() {
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
     
     try {
-      const planRef = doc(db, "study_plans", planId);
-      await updateDoc(planRef, {
+      // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans/{planId}
+      const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
+      updateDoc(planRef, {
         tasks: updatedTasks,
         completedCount,
         updatedAt: serverTimestamp()
+      }).catch(err => {
+         errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: planRef.path,
+            operation: 'update',
+            requestResourceData: { completedCount }
+         }));
       });
 
       if (completedCount === fullPlan.totalCount) {
         await updateUserRating(user.uid, 'PLAN_COMPLETED');
-        await updateDoc(planRef, { status: 'completed' });
+        updateDoc(planRef, { status: 'completed' });
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
 
@@ -170,7 +185,7 @@ export default function Dashboard() {
     if (!user || !db) return;
     setIsUpdating(true);
     try {
-      const userRef = doc(db, "users", user.uid);
+      const userRef = doc(db, "studentProfiles", user.uid);
       await updateDoc(userRef, {
         untDate: newDate,
         updatedAt: serverTimestamp(),
@@ -195,7 +210,7 @@ export default function Dashboard() {
     if (!user || !db) return;
     setIsUpdating(true);
     try {
-      const userRef = doc(db, "users", user.uid);
+      const userRef = doc(db, "studentProfiles", user.uid);
       await updateDoc(userRef, {
         currentScore: Number(newScore),
         updatedAt: serverTimestamp(),

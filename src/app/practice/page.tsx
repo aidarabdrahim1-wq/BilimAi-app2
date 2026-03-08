@@ -12,7 +12,9 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { format } from "date-fns";
+import { kk } from "date-fns/locale";
 
 type Question = {
   id: string;
@@ -31,6 +33,13 @@ type SubjectResult = {
   total: number;
 };
 
+type TestSession = {
+  id: string;
+  score: number;
+  createdAt: any;
+  type: string;
+};
+
 export default function PracticePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -41,8 +50,27 @@ export default function PracticePage() {
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [results, setResults] = useState<SubjectResult[]>([]);
+  const [recentSessions, setRecentSessions] = useState<TestSession[]>([]);
   
   const subjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
+
+  // Fetch recent sessions
+  useEffect(() => {
+    if (!user) return;
+
+    const sessionsRef = collection(db, "studentProfiles", user.uid, "testSessions");
+    const q = query(sessionsRef, orderBy("createdAt", "desc"), limit(5));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const sessions = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as TestSession[];
+      setRecentSessions(sessions);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const startTest = async () => {
     setTestState("loading");
@@ -55,7 +83,7 @@ export default function PracticePage() {
     try {
       const { questions: newQuestions } = await generateUntQuestions({ 
         subject, 
-        count: subject.includes("сауаттылық") ? 3 : 5 // MVP үшін аз сұрақ, бірақ шкала сақталады
+        count: subject.includes("сауаттылық") ? 3 : 5 
       });
       setQuestions(newQuestions);
       setCurrentQuestionIndex(0);
@@ -75,7 +103,6 @@ export default function PracticePage() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Calculate current subject result
       let score = 0;
       let correct = 0;
       let maxScore = 0;
@@ -113,10 +140,6 @@ export default function PracticePage() {
   const finishTest = async (finalResults: SubjectResult[]) => {
     setTestState("results");
     
-    // 140 балдық шкалаға айналдыру
-    // ҰБТ: Міндетті (20+10+10=40) + Таңдау (50+50=100) = 140
-    // Біздің коэффициент: (Алынған балл / Макс балл) * ҰБТ тиісті баллы
-    
     let totalUntScore = 0;
     finalResults.forEach((r, idx) => {
       let weight = idx < 3 ? (idx === 0 ? 20 : 10) : 50;
@@ -126,7 +149,6 @@ export default function PracticePage() {
     const finalScore = Math.round(totalUntScore);
 
     if (user) {
-      // Сақтау
       const testSession = {
         studentId: user.uid,
         type: "practice",
@@ -319,22 +341,29 @@ export default function PracticePage() {
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {[
-                    { title: "Толық тест №4", score: "118/140", date: "Бүгін", status: "success" },
-                    { title: "Толық тест №3", score: "94/140", date: "Кеше", status: "warning" },
-                  ].map((item, i) => (
-                    <div key={i} className="flex justify-between items-center p-4 hover:bg-accent/5 transition-colors">
-                      <div className="space-y-1">
-                        <p className="font-bold text-sm">{item.title}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{item.date}</p>
+                  {recentSessions.length > 0 ? (
+                    recentSessions.map((item) => (
+                      <div key={item.id} className="flex justify-between items-center p-4 hover:bg-accent/5 transition-colors">
+                        <div className="space-y-1">
+                          <p className="font-bold text-sm">Толық ҰБТ Тесті</p>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                            {item.createdAt?.seconds 
+                              ? format(new Date(item.createdAt.seconds * 1000), "d MMMM, HH:mm", { locale: kk }) 
+                              : "Жақында"}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-sm font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                            {item.score}/140
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <span className={`text-sm font-black ${item.status === 'success' ? 'text-green-600' : 'text-orange-600'}`}>
-                          {item.score}
-                        </span>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center text-xs text-muted-foreground">
+                      Әлі тест тапсырылмаған
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>

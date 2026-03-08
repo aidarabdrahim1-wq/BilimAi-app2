@@ -13,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { BrainCircuit, Loader2 } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -38,7 +37,6 @@ export default function SignupPage() {
     targetScore: 120,
     subjectComboIndex: "",
     targetCareer: "",
-    untDate: "2025-06-20", // Default date
   });
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -67,15 +65,6 @@ export default function SignupPage() {
       return;
     }
 
-    if (!formData.targetCareer) {
-      toast({
-        title: "Мамандықты таңдаңыз",
-        description: "Болашақ мамандықты таңдау міндетті.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
@@ -96,8 +85,7 @@ export default function SignupPage() {
           selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
           subjectCombination: currentCombo.label,
           targetCareer: formData.targetCareer,
-          untDate: formData.untDate,
-          weakTopics: [],
+          untDate: "2025-06-20", // Default value
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
@@ -110,15 +98,9 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Signup error:", error);
-      let errorMessage = "Тіркелу кезінде қате орын алды.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = "Бұл email мекенжайы бос емес.";
-      }
-
       toast({
         title: "Қате орын алды",
-        description: errorMessage,
+        description: error.message || "Тіркелу кезінде қате орын алды.",
         variant: "destructive",
       });
     } finally {
@@ -182,12 +164,13 @@ export default function SignupPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="untDate">ҰБТ күні</Label>
+                <Label htmlFor="password">Құпия сөз</Label>
                 <Input
-                  id="untDate"
-                  type="date"
-                  value={formData.untDate}
-                  onChange={(e) => setFormData({ ...formData, untDate: e.target.value })}
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
               </div>
@@ -245,17 +228,6 @@ export default function SignupPage() {
                   max="140"
                   value={formData.targetScore}
                   onChange={(e) => setFormData({ ...formData, targetScore: parseInt(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Құпия сөз</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                 />
               </div>

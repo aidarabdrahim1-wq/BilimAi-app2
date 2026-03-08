@@ -8,7 +8,6 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { 
   Target, 
-  Clock, 
   TrendingUp, 
   AlertCircle,
   PlayCircle,
@@ -16,21 +15,31 @@ import {
   Trophy,
   Zap,
   CheckCircle2,
-  CalendarDays
+  CalendarDays,
+  Edit2
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
-import { differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, parseISO, format } from "date-fns";
+import { db } from "@/lib/firebase/config";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Dashboard() {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [newDate, setNewDate] = useState(profile?.untDate || "2025-06-20");
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const calculateDiff = () => {
       const now = new Date();
-      // Default to 2025-06-20 if no date set in profile
       const targetDate = profile?.untDate ? parseISO(profile.untDate) : new Date("2025-06-20");
       const diff = differenceInDays(targetDate, now);
       setDaysLeft(diff > 0 ? diff : 0);
@@ -38,6 +47,31 @@ export default function Dashboard() {
 
     calculateDiff();
   }, [profile?.untDate]);
+
+  const handleUpdateDate = async () => {
+    if (!user || !db) return;
+    setIsUpdating(true);
+    try {
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        untDate: newDate,
+        updatedAt: serverTimestamp(),
+      });
+      toast({
+        title: "Күн жаңартылды",
+        description: `Жаңа ҰБТ күні: ${newDate}`,
+      });
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Қате",
+        description: "Күнді жаңарту мүмкін болмады.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const currentScore = profile?.currentScore || 0;
   const targetScore = profile?.targetScore || 140;
@@ -60,21 +94,46 @@ export default function Dashboard() {
             <p className="text-muted-foreground">Бүгін сіздің оқу жоспарыңыз бойынша 4 тапсырма бар.</p>
           </div>
           
-          {/* ҰБТ-ға дейін кері санақ */}
-          <Card className="border-none shadow-sm bg-white overflow-hidden flex items-center px-6 py-3 gap-4">
-            <div className="size-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-              <CalendarDays className="size-6" />
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">ҰБТ-ға қалды:</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-orange-600">
-                  {daysLeft !== null ? daysLeft : "..."}
-                </span>
-                <span className="text-sm font-bold text-muted-foreground">күн</span>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Card className="border-none shadow-sm bg-white overflow-hidden flex items-center px-6 py-3 gap-4 cursor-pointer hover:bg-accent/5 transition-colors group">
+                <div className="size-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <CalendarDays className="size-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">ҰБТ-ға қалды:</p>
+                    <Edit2 className="size-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-orange-600">
+                      {daysLeft !== null ? daysLeft : "..."}
+                    </span>
+                    <span className="text-sm font-bold text-muted-foreground">күн</span>
+                  </div>
+                </div>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>ҰБТ күнін таңдау</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="untDate">Тапсыратын күніңізді белгілеңіз</Label>
+                  <Input
+                    id="untDate"
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                  />
+                </div>
+                <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>
+                  {isUpdating ? "Жаңартылуда..." : "Сақтау"}
+                </Button>
               </div>
-            </div>
-          </Card>
+            </DialogContent>
+          </Dialog>
 
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
@@ -99,9 +158,6 @@ export default function Dashboard() {
               <p className="text-xs opacity-70 mt-1">
                 ҰБТ потенциалы: {Math.round(currentScore)} / 140
               </p>
-              <div className="absolute -bottom-2 -right-2 opacity-10">
-                <TrendingUp className="h-24 w-24" />
-              </div>
             </CardContent>
           </Card>
 

@@ -16,7 +16,8 @@ import {
   Loader2,
   FileJson,
   XCircle,
-  CheckCircle2
+  Info,
+  Code
 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { doc, setDoc } from "firebase/firestore";
@@ -42,10 +43,9 @@ export default function AdminPage() {
     try {
       let data;
       try {
-        // Тікелей JSON.parse қолданбас бұрын, оны қателік үшін тексереміз
         data = JSON.parse(jsonInput);
       } catch (e: any) {
-        throw new Error(`JSON форматы дұрыс емес: Жақшаларды, үтірлерді немесе тырнақшаларды тексеріңіз. (Техникалық қате: ${e.message})`);
+        throw new Error(`JSON форматы дұрыс емес: Жақшаларды немесе тырнақшаларды тексеріңіз. (Қате: ${e.message})`);
       }
       
       if (data.subjects && Array.isArray(data.subjects)) {
@@ -73,18 +73,17 @@ export default function AdminPage() {
         }
         toast({ 
           title: "Деректер сәтті жүктелді!", 
-          description: `${data.subjects.length} пән және ${count} тақырып базаға қосылды.`,
+          description: `${data.subjects.length} пән және ${count} тақырып қосылды.`,
         });
         setJsonInput("");
       } else {
-        throw new Error("JSON файлында 'subjects' массиві болуы керек. Мысалы: { \"subjects\": [] }");
+        throw new Error("JSON файлында 'subjects' массиві болуы керек.");
       }
     } catch (err: any) {
-      console.error("Upload error:", err);
       setError(err.message);
       toast({ 
         title: "Жүктеу қатесі", 
-        description: "JSON форматын тексеріңіз.", 
+        description: "Форматты тексеріңіз.", 
         variant: "destructive" 
       });
     } finally {
@@ -97,14 +96,99 @@ export default function AdminPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline">Контентті басқару</h1>
-          <p className="text-muted-foreground">Платформаның құрылымы мен мазмұнын басқару және деректерді жүктеу.</p>
+          <p className="text-muted-foreground">Базаны жаңарту және деректерді жүктеу орталығы.</p>
         </div>
 
-        <Tabs defaultValue="structure" className="w-full">
+        <Tabs defaultValue="import" className="w-full">
           <TabsList>
+            <TabsTrigger value="import" className="font-bold">Деректерді жүктеу</TabsTrigger>
             <TabsTrigger value="structure" className="font-bold">Құрылым</TabsTrigger>
-            <TabsTrigger value="import" className="font-bold">Деректерді жүктеу (JSON)</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="import" className="mt-6">
+            <div className="grid gap-6 lg:grid-cols-3">
+              <Card className="lg:col-span-2 border-none shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileJson className="size-5 text-primary" />
+                    JSON Импорт
+                  </CardTitle>
+                  <CardDescription>
+                    Google Docs-тан көшірілген деректерді осында қойыңыз.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {error && (
+                    <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs flex items-start gap-3 border border-destructive/20 animate-in fade-in slide-in-from-top-2">
+                      <XCircle className="size-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Қате:</p>
+                        <p>{error}</p>
+                      </div>
+                    </div>
+                  )}
+                  <Textarea 
+                    placeholder='{ "subjects": [...] }' 
+                    className={`min-h-[400px] font-mono text-xs ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
+                    value={jsonInput}
+                    onChange={(e) => {
+                      setJsonInput(e.target.value);
+                      if (error) setError(null);
+                    }}
+                  />
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1" onClick={() => setJsonInput("")}>Тазалау</Button>
+                    <Button className="flex-[2] gap-2" onClick={handleBulkUpload} disabled={isLoading || !jsonInput.trim()}>
+                      {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+                      Базаға жүктеу
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-6">
+                <Card className="border-none shadow-sm bg-accent/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Info className="size-4 text-primary" />
+                      Қалай жүктеймін?
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-xs space-y-3 leading-relaxed">
+                    <p>1. Google Docs-тағы базаны маған (чатқа) жіберіңіз.</p>
+                    <p>2. Мен оны JSON форматына айналдырып беремін.</p>
+                    <p>3. Сол JSON-ды көшіріп, сол жақтағы терезеге қойыңыз.</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Code className="size-4 text-primary" />
+                      Формат үлгісі
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="p-3 rounded-lg bg-black text-[10px] text-green-400 overflow-x-auto">
+{`{
+  "subjects": [
+    {
+      "name": "Математика",
+      "topics": [
+        {
+          "title": "Логарифмдер",
+          "content": "Толық теория..."
+        }
+      ]
+    }
+  ]
+}`}
+                    </pre>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
 
           <TabsContent value="structure" className="mt-6">
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +206,7 @@ export default function AdminPage() {
                   <CardContent>
                     <ul className="space-y-2">
                       {section.items.map((item, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary cursor-pointer transition-colors group">
+                        <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground group">
                           <div className="size-1 bg-muted group-hover:bg-primary rounded-full" />
                           {item}
                         </li>
@@ -132,62 +216,6 @@ export default function AdminPage() {
                 </Card>
               ))}
             </div>
-          </TabsContent>
-
-          <TabsContent value="import" className="mt-6">
-            <Card className="border-none shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileJson className="size-5 text-primary" />
-                  JSON импорт
-                </CardTitle>
-                <CardDescription>
-                  Төмендегі терезеге JSON форматындағы деректерді қойыңыз. 
-                  Үлгі: {"{ \"subjects\": [ { \"name\": \"Математика\", \"topics\": [...] } ] }"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {error && (
-                  <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs flex items-start gap-3 border border-destructive/20 animate-in fade-in slide-in-from-top-2">
-                    <XCircle className="size-4 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                      <p className="font-bold">JSON қатесі:</p>
-                      <p className="leading-relaxed">{error}</p>
-                    </div>
-                  </div>
-                )}
-                <Textarea 
-                  placeholder='{ "subjects": [...] }' 
-                  className={`min-h-[300px] font-mono text-xs ${error ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-                  value={jsonInput}
-                  onChange={(e) => {
-                    setJsonInput(e.target.value);
-                    if (error) setError(null);
-                  }}
-                />
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => {
-                      setJsonInput("");
-                      setError(null);
-                    }}
-                    disabled={isLoading || !jsonInput}
-                  >
-                    Тазалау
-                  </Button>
-                  <Button 
-                    className="flex-[2] gap-2" 
-                    onClick={handleBulkUpload} 
-                    disabled={isLoading || !jsonInput.trim()}
-                  >
-                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
-                    Базаға жүктеу
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -51,7 +51,8 @@ export default function PracticePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  const [testState, setTestState] = useState<"idle" | "loading" | "testing" | "results">("idle");
+  const [testState, setTestState] = useState<"idle" | "loading" | "testing" | "results" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -59,7 +60,6 @@ export default function PracticePage() {
   const [results, setResults] = useState<SubjectResult[]>([]);
   const [recentSessions, setRecentSessions] = useState<TestSession[]>([]);
   
-  // 2026 UBT Structure
   const getSubjectConfigs = (): SubjectConfig[] => {
     const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
     
@@ -86,33 +86,32 @@ export default function PracticePage() {
         ...doc.data()
       })) as TestSession[];
       setRecentSessions(sessions);
+    }, (err) => {
+      console.error("Firestore snapshot error:", err);
     });
 
     return () => unsubscribe();
   }, [user]);
 
   const startTest = async () => {
+    setErrorMessage(null);
     setTestState("loading");
     setCurrentSubjectIndex(0);
     setResults([]);
-    await loadSubjectQuestions(subjectConfigs[0]);
+    await loadSubjectQuestions(subjectConfigs[0], 0);
   };
 
-  const loadSubjectQuestions = async (config: SubjectConfig) => {
+  const loadSubjectQuestions = async (config: SubjectConfig, subjectIdx: number) => {
     try {
-      // In a real app, 40 questions might be slow to generate at once. 
-      // For the prototype, we use the specified counts.
       const { questions: newQuestions } = await generateUntQuestions({ 
         subject: config.name, 
         count: config.count 
       });
       
-      // Update points based on 2026 rules for elective subjects
       const updatedQuestions = newQuestions.map((q, idx) => {
         let points = 1;
-        // Rules for Choice Subjects (Index 3 and 4)
-        if (currentSubjectIndex >= 3) {
-          if (idx >= 30) points = 2; // 31-40 questions are 2 points
+        if (subjectIdx >= 3) {
+          if (idx >= 30) points = 2; 
         }
         return { ...q, points };
       });
@@ -121,10 +120,15 @@ export default function PracticePage() {
       setCurrentQuestionIndex(0);
       setAnswers({});
       setTestState("testing");
-    } catch (error) {
-      console.error("Load error:", error);
-      toast({ title: "Қате", description: "Сұрақтарды жүктеу мүмкін болмады.", variant: "destructive" });
-      setTestState("idle");
+    } catch (error: any) {
+      console.error("AI Generation Error:", error);
+      let msg = "Сұрақтарды жүктеу мүмкін болмады.";
+      if (error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
+      }
+      setErrorMessage(msg);
+      setTestState("error");
+      toast({ title: "Қате", description: msg, variant: "destructive" });
     }
   };
 
@@ -136,7 +140,6 @@ export default function PracticePage() {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Calculate subject result
       let score = 0;
       let correct = 0;
       let maxScore = 0;
@@ -166,7 +169,7 @@ export default function PracticePage() {
         setTestState("loading");
         const nextIdx = currentSubjectIndex + 1;
         setCurrentSubjectIndex(nextIdx);
-        await loadSubjectQuestions(subjectConfigs[nextIdx]);
+        await loadSubjectQuestions(subjectConfigs[nextIdx], nextIdx);
       } else {
         finishTest(newResults);
       }
@@ -187,8 +190,12 @@ export default function PracticePage() {
         createdAt: serverTimestamp(),
       };
       
-      await addDoc(collection(db, "studentProfiles", user.uid, "testSessions"), testSession);
-      await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
+      try {
+        await addDoc(collection(db, "studentProfiles", user.uid, "testSessions"), testSession);
+        await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
+      } catch (e) {
+        console.error("Save result error:", e);
+      }
     }
   };
 
@@ -207,6 +214,30 @@ export default function PracticePage() {
             <p className="text-sm text-muted-foreground animate-pulse">
               {subjectConfigs[currentSubjectIndex].count} сұрақ дайындалуда...
             </p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (testState === "error") {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center max-w-md mx-auto">
+          <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+            <AlertTriangle className="size-10" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold font-headline">Байланыс қатесі</h2>
+            <p className="text-muted-foreground text-sm">
+              {errorMessage || "AI жүйесіне қосылу кезінде қате орын алды."}
+            </p>
+          </div>
+          <div className="flex gap-4 w-full">
+            <Button variant="outline" className="flex-1" onClick={() => setTestState("idle")}>Артқа қайту</Button>
+            <Button className="flex-1 gap-2" onClick={startTest}>
+              <RefreshCcw className="size-4" /> Қайта көру
+            </Button>
           </div>
         </div>
       </AppShell>
@@ -250,7 +281,7 @@ export default function PracticePage() {
                   <div className="flex justify-between text-[10px] font-bold mb-1.5 uppercase">
                     <span>Дұрыс: {r.correct} / {r.total}</span>
                     <span className={r.isThresholdPassed ? "text-green-600" : "text-destructive"}>
-                      {r.isThresholdPassed ? "Өтті" : "Шекті балл: " + subjectConfigs[i].threshold}
+                      {r.isThresholdPassed ? "Өтті" : "Шекті: " + subjectConfigs[i].threshold}
                     </span>
                   </div>
                   <Progress value={(r.score / r.maxScore) * 100} className="h-2 rounded-full" />
@@ -271,7 +302,6 @@ export default function PracticePage() {
   if (testState === "testing") {
     const q = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-    const totalProgress = ((currentSubjectIndex * 20 + currentQuestionIndex) / 120) * 100; // rough visual progress
 
     return (
       <AppShell>

@@ -9,7 +9,6 @@ import {
   Target, 
   TrendingUp, 
   AlertCircle,
-  PlayCircle,
   BookMarked,
   Trophy,
   Zap,
@@ -21,7 +20,8 @@ import {
   ArrowRight,
   Clock,
   BookOpen,
-  ClipboardList
+  ClipboardList,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -115,6 +115,7 @@ export default function Dashboard() {
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
   
   const completedToday = todayTasks.filter(t => t.status === 'completed').length;
+  const pendingTasks = todayTasks.filter(t => t.status !== 'completed');
   const dailyProgress = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
 
   return (
@@ -271,7 +272,13 @@ export default function Dashboard() {
                     </Badge>
                   )}
                 </CardTitle>
-                <CardDescription>Күнделікті мақсаттарыңыз</CardDescription>
+                <CardDescription>
+                  {pendingTasks.length > 0 
+                    ? `Орындауды күтіп тұр: ${pendingTasks.length} тапсырма` 
+                    : todayTasks.length > 0 
+                      ? "Бүгінгі барлық мақсаттар орындалды! 🔥" 
+                      : "Күнделікті мақсаттарыңыз"}
+                </CardDescription>
               </div>
               <Button variant="ghost" size="sm" asChild className="text-primary hover:text-primary hover:bg-primary/5">
                 <Link href="/plan" className="flex items-center gap-1 font-bold">
@@ -281,61 +288,59 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent className="p-0">
               {todayTasks.length > 0 ? (
-                <div className="divide-y">
-                  {todayTasks.map((task, i) => (
-                    <div 
-                      key={i} 
-                      className={cn(
-                        "flex items-center justify-between p-5 hover:bg-accent/5 transition-colors group",
-                        task.status === 'completed' && "bg-accent/5"
-                      )}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "size-12 rounded-xl flex items-center justify-center transition-all shadow-sm",
-                          task.status === 'completed' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-primary/10 text-primary group-hover:scale-105'
-                        )}>
-                          {task.status === 'completed' 
-                            ? <CheckCircle2 className="size-6" /> 
-                            : task.type === 'test' 
+                pendingTasks.length > 0 ? (
+                  <div className="divide-y">
+                    {pendingTasks.map((task, i) => (
+                      <div 
+                        key={i} 
+                        className="flex items-center justify-between p-5 hover:bg-accent/5 transition-colors group"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-all shadow-sm group-hover:scale-105">
+                            {task.type === 'test' 
                               ? <ClipboardList className="size-6" /> 
                               : <BookOpen className="size-6" />
-                          }
-                        </div>
-                        <div className="space-y-1">
-                          <h4 className={cn(
-                            "font-bold text-sm leading-none",
-                            task.status === 'completed' && "line-through text-muted-foreground"
-                          )}>
-                            {task.title}
-                          </h4>
-                          <div className="flex items-center gap-3">
-                            <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                              <Clock className="size-3" /> {task.time}
-                            </span>
-                            <Badge variant="outline" className="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4 font-bold border-muted-foreground/20">
-                              {task.subject}
-                            </Badge>
+                            }
+                          </div>
+                          <div className="space-y-1">
+                            <h4 className="font-bold text-sm leading-none">
+                              {task.title}
+                            </h4>
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                                <Clock className="size-3" /> {task.time}
+                              </span>
+                              <Badge variant="outline" className="text-[9px] uppercase tracking-wider py-0 px-1.5 h-4 font-bold border-muted-foreground/20">
+                                {task.subject}
+                              </Badge>
+                            </div>
                           </div>
                         </div>
+                        <Button size="sm" className="h-8 rounded-full px-4 text-xs font-bold shadow-sm" asChild>
+                          <Link href={task.type === 'test' ? '/practice' : '/theory'}>Бастау</Link>
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {task.status === 'completed' ? (
-                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 shadow-none">Орындалды</Badge>
-                        ) : (
-                          <Button size="sm" className="h-8 rounded-full px-4 text-xs font-bold shadow-sm" asChild>
-                            <Link href={task.type === 'test' ? '/practice' : '/theory'}>Бастау</Link>
-                          </Button>
-                        )}
-                      </div>
+                    ))}
+                    <div className="p-4 bg-accent/5 flex items-center justify-center">
+                      <Progress value={dailyProgress} className="h-1.5 flex-1 max-w-xs mx-auto" />
                     </div>
-                  ))}
-                  <div className="p-4 bg-accent/5 flex items-center justify-center">
-                    <Progress value={dailyProgress} className="h-1.5 flex-1 max-w-xs mx-auto" />
                   </div>
-                </div>
+                ) : (
+                  <div className="text-center py-20 flex flex-col items-center gap-4 bg-green-50/30 rounded-2xl m-6 border border-dashed border-green-200">
+                    <div className="size-20 rounded-full bg-green-100 flex items-center justify-center mb-2">
+                      <Sparkles className="size-10 text-green-600 animate-bounce" />
+                    </div>
+                    <div className="max-w-[280px]">
+                      <h4 className="font-bold text-lg text-green-800">Керемет жұмыс! 🚀</h4>
+                      <p className="text-sm text-green-700/80 mt-2 leading-relaxed">
+                        Бүгінгі жоспарланған барлық тапсырмаларды аяқтадыңыз. ҰБТ-ға тағы бір қадам жақындадыңыз!
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="mt-4 border-green-200 text-green-700 hover:bg-green-100" asChild>
+                      <Link href="/plan">Жоспарды көру</Link>
+                    </Button>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-20 flex flex-col items-center gap-4 bg-muted/5 rounded-2xl m-6 border border-dashed border-muted-foreground/20">
                   <div className="size-20 rounded-full bg-primary/5 flex items-center justify-center mb-2">

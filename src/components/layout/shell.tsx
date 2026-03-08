@@ -1,12 +1,17 @@
+
 "use client";
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./app-sidebar";
-import { Search, Bell } from "lucide-react";
+import { Search, Bell, Trophy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/auth/auth-provider";
+import { Badge } from "@/components/ui/badge";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { profile } = useAuth();
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -28,9 +33,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Bell className="h-5 w-5" />
               <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-primary" />
             </Button>
-            <div className="hidden sm:flex flex-col items-end mr-2">
-              <span className="text-sm font-semibold">124 балл</span>
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Ағымдағы рейтинг</span>
+            <div className="hidden sm:flex flex-col items-end mr-4">
+              <span className="text-sm font-bold text-primary">{profile?.rating || 0} ұпай</span>
+              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Рейтинг</span>
+            </div>
+            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/50 border border-accent">
+               <Trophy className="size-3.5 text-yellow-600" />
+               <span className="text-xs font-bold">{profile?.currentScore || 0} балл</span>
             </div>
           </div>
         </header>

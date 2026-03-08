@@ -88,6 +88,7 @@ export default function SignupPage() {
           selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
           subjectCombination: currentCombo.label,
           targetCareer: formData.targetCareer,
+          weakTopics: [],
           untDate: "2025-06-20", 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),

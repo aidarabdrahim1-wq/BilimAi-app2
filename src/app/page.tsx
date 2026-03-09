@@ -8,7 +8,11 @@ import {
   ShieldCheck, 
   Users, 
   MessageSquare, 
-  BookOpen 
+  BookOpen,
+  Quote,
+  Sparkles,
+  Zap,
+  Star
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -23,7 +27,7 @@ export default function LandingPage() {
           <nav className="hidden md:flex gap-6">
             <Link href="#features" className="text-sm font-medium hover:text-primary transition-colors">Мүмкіндіктер</Link>
             <Link href="#subjects" className="text-sm font-medium hover:text-primary transition-colors">Пәндер</Link>
-            <Link href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">Тарифтер</Link>
+            <Link href="#motivation" className="text-sm font-medium hover:text-primary transition-colors">Мотивация</Link>
           </nav>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">Кіру</Link>
@@ -105,13 +109,74 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Motivation Section */}
+        <section id="motivation" className="py-24 container px-4 md:px-8 overflow-hidden">
+          <div className="flex flex-col items-center text-center mb-16 space-y-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="size-3" />
+              Жеңімпаздар рухы
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold font-headline">Сенің қолыңнан бәрі келеді</h2>
+            <p className="text-muted-foreground max-w-2xl">
+              ҰБТ — бұл тек емтихан емес, бұл сенің өз болашағыңды қалыптастыруға жасаған алғашқы үлкен қадамың.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+            <div className="p-8 rounded-3xl bg-white border shadow-sm hover:shadow-md transition-all relative group overflow-hidden">
+              <Quote className="size-12 text-primary/10 absolute -top-2 -left-2" />
+              <div className="relative z-10 space-y-4">
+                <div className="size-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                  <Zap className="size-6" />
+                </div>
+                <p className="text-lg font-medium leading-relaxed italic">
+                  "Жетістіктің құпиясы — бастауда. Ал бүгінгі 1 сағаттық дайындық ертеңгі үлкен жеңістің негізі."
+                </p>
+                <div className="pt-4 border-t border-dashed">
+                  <p className="text-sm font-bold">BilimAI Мотивация</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 rounded-3xl bg-primary text-primary-foreground shadow-xl hover:scale-[1.02] transition-all relative overflow-hidden">
+              <Star className="size-32 text-white/5 absolute -bottom-8 -right-8 rotate-12" />
+              <div className="relative z-10 space-y-4">
+                <div className="size-12 rounded-2xl bg-white/20 text-white flex items-center justify-center">
+                  <Target className="size-6" />
+                </div>
+                <p className="text-lg font-bold leading-relaxed">
+                  "Сен бүгін шаршаған шығарсың, бірақ ертең грант иегері атанғанда бұл қиындықтардың бәрі тек жағымды естелікке айналады."
+                </p>
+                <div className="pt-4 border-t border-white/20">
+                  <p className="text-sm font-medium opacity-80">Сенімділік жолы</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-8 rounded-3xl bg-white border shadow-sm hover:shadow-md transition-all relative group overflow-hidden">
+              <Quote className="size-12 text-primary/10 absolute -top-2 -left-2" />
+              <div className="relative z-10 space-y-4">
+                <div className="size-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <Users className="size-6" />
+                </div>
+                <p className="text-lg font-medium leading-relaxed italic">
+                  "Ең үлкен бәсекелесің — кешегі өзің. Күн сайын 1%-ға болса да жақсару сені шыңға шығарады."
+                </p>
+                <div className="pt-4 border-t border-dashed">
+                  <p className="text-sm font-bold">Даму қағидасы</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* CTA Section */}
         <section className="py-24 container px-4 md:px-8">
           <div className="rounded-3xl bg-primary p-8 md:p-16 text-center text-primary-foreground relative overflow-hidden">
             <div className="relative z-10 mx-auto max-w-2xl">
               <h2 className="text-3xl font-bold font-headline md:text-5xl mb-6">Бүгіннен бастап ҰБТ-ға дайындықты жеңілдетіңіз</h2>
               <p className="text-primary-foreground/80 mb-10 text-lg">
-                Диагностикадан өтіп, жеке оқу жоспарыңызды тегін алыңыз. 
+                Жеке оқу жоспарыңызды тегін алыңыз және AI куратордың қолдауын сезініңіз. 
                 Мақсатыңызға бір қадам жақындаңыз!
               </p>
               <Button size="lg" variant="secondary" className="h-12 px-10 text-base font-bold shadow-lg" asChild>
@@ -140,8 +205,8 @@ export default function LandingPage() {
               <h4 className="font-bold mb-4">Платформа</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/" className="hover:text-primary">Басты бет</Link></li>
-                <li><Link href="/diagnostic" className="hover:text-primary">Диагностика</Link></li>
                 <li><Link href="/signup" className="hover:text-primary">Тіркелу</Link></li>
+                <li><Link href="/login" className="hover:text-primary">Кіру</Link></li>
               </ul>
             </div>
             <div>

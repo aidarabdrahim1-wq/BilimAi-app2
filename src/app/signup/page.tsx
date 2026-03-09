@@ -50,7 +50,7 @@ export default function SignupPage() {
     if (!isConfigValid || !auth) {
       toast({
         title: "Конфигурация қатесі",
-        description: "Firebase API кілті дұрыс орнатылмаған немесе жоба бапталмаған.",
+        description: "Firebase бапталмаған.",
         variant: "destructive",
       });
       return;
@@ -107,25 +107,26 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Signup error details:", error);
+      console.error("Firebase Signup Error:", error);
       
       let errorMessage = "Тіркелу кезінде қате орын алды.";
-      
-      // Detailed error handling for blocked methods
-      if (error.message?.includes("signup-are-blocked") || error.message?.includes("method-google.cloud.identitytoolkit.v1.authenticationservice.signup-are-blocked")) {
-        errorMessage = "Тіркелу қызметі бұғатталған. Firebase Console -> Authentication -> Settings -> User actions бөлімінде 'Enable create' белгісінің тұрғанын тексеріңіз. Сонымен қатар, API Key шектеулерін тексеріңіз.";
-      } else if (error.message?.includes("identitytoolkit.googleapis.com") || error.code === "auth/api-not-available") {
-        errorMessage = "Identity Toolkit API іске қосылмаған. Google Cloud Console-дан оны іске қосу керек.";
+      let errorTitle = "Жүйелік шектеу";
+
+      // Handle the specific "signup-are-blocked" error
+      if (error.message?.includes("signup-are-blocked")) {
+        errorMessage = "Тіркелу блокталып тұр. Firebase Console -> Authentication -> Settings -> User actions бөлімінде 'Enable create' қосулы екенін тексеріңіз. Сонымен қатар, Google Cloud Console-да API кілтіне қойылған шектеулерді (Identity Toolkit API) тексеріңіз.";
       } else if (error.code === "auth/operation-not-allowed") {
-        errorMessage = "Бұл тіркелу әдісіне рұқсат берілмеген. Firebase Console-дан 'Email/Password' әдісін қосыңыз.";
+        errorMessage = "Email/Password арқылы кіру әдісі Firebase-те қосылмаған.";
       } else if (error.code === "auth/email-already-in-use") {
+        errorTitle = "Қате";
         errorMessage = "Бұл Email поштасы бұрын тіркелген.";
       } else if (error.code === "auth/weak-password") {
+        errorTitle = "Қате";
         errorMessage = "Құпия сөз тым әлсіз (кемінде 6 таңба).";
       }
 
       toast({
-        title: "Жүйелік шектеу",
+        title: errorTitle,
         description: errorMessage,
         variant: "destructive",
       });
@@ -259,7 +260,7 @@ export default function SignupPage() {
               </div>
             </div>
             
-            <Button className="w-full h-11 shadow-md" type="submit" disabled={loading || !isConfigValid}>
+            <Button className="w-full h-11 shadow-md" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Тіркелу"}
             </Button>
           </form>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, ShieldAlert } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setInputEmail] = useState("");
@@ -35,18 +35,15 @@ export default function LoginPage() {
       });
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Login Error Full:", error);
+      console.error("Login Error:", error.code, error.message);
       
       let friendlyMessage = "Email немесе құпия сөз дұрыс емес.";
       
-      // Check for blocked API requests
       if (error.message?.includes('blocked') || error.code?.includes('api-key-is-blocked')) {
-        friendlyMessage = "API қызметі бұғатталған. Google Cloud-та Identity Toolkit API-ге рұқсат беріңіз.";
+        friendlyMessage = "API қызметі бұғатталған. Google Cloud-та бұл API кілтіне 'Identity Toolkit API' пайдалануға рұқсат беруіңіз керек.";
         setIsBlocked(true);
       } else if (error.code === 'auth/invalid-api-key') {
         friendlyMessage = "API кілті қате. Конфигурацияны тексеріңіз.";
-      } else if (error.code === 'auth/network-request-failed') {
-        friendlyMessage = "Интернет байланысын тексеріңіз.";
       }
 
       setErrorMsg(friendlyMessage);
@@ -82,12 +79,12 @@ export default function LoginPage() {
                 </div>
                 <p className="leading-relaxed">{errorMsg}</p>
                 {isBlocked && (
-                  <div className="mt-2 pt-2 border-t border-orange-200 text-[10px] space-y-1">
-                    <p className="font-bold">Мәселені шешу жолы:</p>
-                    <ol className="list-decimal ml-4 space-y-1">
-                      <li>Google Cloud Console-ға кіріңіз.</li>
-                      <li>APIs & Services -> Credentials бөліміне өтіңіз.</li>
-                      <li>Қолданып жатқан API кілтіне "Identity Toolkit API" пайдалануға рұқсат беріңіз.</li>
+                  <div className="mt-2 pt-2 border-t border-orange-200 space-y-2">
+                    <p className="font-bold">Шешу жолы:</p>
+                    <ol className="list-decimal ml-4 space-y-1 text-[10px]">
+                      <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="underline flex items-center gap-1">Google Cloud Console-ға өтіңіз <ExternalLink className="size-2" /></a></li>
+                      <li>Осы API кілтін таңдаңыз.</li>
+                      <li><b>API restrictions</b> бөлімінде <b>"Identity Toolkit API"</b>-ге рұқсат беріңіз немесе шектеуді (Don't restrict key) алып тастаңыз.</li>
                     </ol>
                   </div>
                 )}

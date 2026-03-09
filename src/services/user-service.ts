@@ -1,3 +1,4 @@
+'use client';
 
 import { db } from '@/lib/firebase/config';
 import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -14,7 +15,7 @@ export const userService = {
     
     const userRef = doc(db, 'studentProfiles', user.uid);
     const profile: any = {
-      id: user.uid, // Ensuring it's 'id' to match security rules
+      id: user.uid,
       fullName: user.fullName || '',
       email: user.email || '',
       grade: user.grade || '',
@@ -31,17 +32,14 @@ export const userService = {
       updatedAt: serverTimestamp(),
     };
 
-    try {
-      await setDoc(userRef, profile);
-      return profile;
-    } catch (error) {
+    setDoc(userRef, profile).catch(error => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userRef.path,
         operation: 'create',
         requestResourceData: profile
       }));
-      throw error;
-    }
+    });
+    return profile;
   },
 
   /**
@@ -58,18 +56,15 @@ export const userService = {
    */
   async updateUserProfile(userId: string, data: Partial<UserProfile>) {
     const userRef = doc(db, 'studentProfiles', userId);
-    try {
-      await updateDoc(userRef, {
-        ...data,
-        updatedAt: serverTimestamp(),
-      });
-    } catch (error) {
+    updateDoc(userRef, {
+      ...data,
+      updatedAt: serverTimestamp(),
+    }).catch(error => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: userRef.path,
         operation: 'update',
         requestResourceData: data
       }));
-      throw error;
-    }
+    });
   }
 };

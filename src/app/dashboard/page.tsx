@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -34,13 +34,14 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { updateUserRating } from "@/lib/rating";
+import { useMemoFirebase, useCollection } from "@/firebase";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
@@ -52,7 +53,6 @@ export default function Dashboard() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
-  const [todayTasks, setTodayTasks] = useState<any[]>([]);
   
   // Timer states
   const [activeTimerTask, setActiveTimerTask] = useState<any>(null);
@@ -61,6 +61,27 @@ export default function Dashboard() {
   const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
 
   const { toast } = useToast();
+
+  const plansQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "studentProfiles", user.uid, "studyPlans"),
+      where("status", "==", "active")
+    );
+  }, [user]);
+
+  const { data: plansData } = useCollection(plansQuery);
+
+  const todayTasks = useMemo(() => {
+    if (!plansData) return [];
+    const tasks: any[] = [];
+    plansData.forEach((planDoc) => {
+      if (planDoc.tasks) {
+        tasks.push(...planDoc.tasks.map((t: any) => ({ ...t, planId: planDoc.id, fullPlan: planDoc })));
+      }
+    });
+    return tasks;
+  }, [plansData]);
 
   useEffect(() => {
     const calculateDiff = () => {
@@ -78,34 +99,6 @@ export default function Dashboard() {
       setNewScore(profile.currentScore);
     }
   }, [profile?.currentScore]);
-
-  useEffect(() => {
-    if (!user) return;
-    
-    const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
-    const q = query(
-      plansRef,
-      where("status", "==", "active")
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasks: any[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.tasks) {
-          tasks.push(...data.tasks.map((t: any) => ({ ...t, planId: doc.id, fullPlan: data })));
-        }
-      });
-      setTodayTasks(tasks);
-    }, (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: plansRef.path,
-        operation: 'list'
-      }));
-    });
-
-    return () => unsubscribe();
-  }, [user]);
 
   // Timer logic
   useEffect(() => {
@@ -150,82 +143,70 @@ export default function Dashboard() {
 
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
     
-    try {
-      const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
-      updateDoc(planRef, {
-        tasks: updatedTasks,
-        completedCount,
-        updatedAt: serverTimestamp()
-      }).catch(err => {
-         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: planRef.path,
-            operation: 'update',
-            requestResourceData: { completedCount }
-         }));
-      });
+    const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
+    updateDoc(planRef, {
+      tasks: updatedTasks,
+      completedCount,
+      updatedAt: serverTimestamp()
+    }).catch(err => {
+       errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: planRef.path,
+          operation: 'update',
+          requestResourceData: { completedCount }
+       }));
+    });
 
-      if (completedCount === fullPlan.totalCount) {
-        await updateUserRating(user.uid, 'PLAN_COMPLETED');
-        updateDoc(planRef, { status: 'completed' });
-        toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
-      }
-
-      setIsTimerDialogOpen(false);
-      setActiveTimerTask(null);
-      toast({ title: "Тапсырма орындалды!", variant: "default" });
-    } catch (error) {
-      toast({ title: "Қате", variant: "destructive" });
+    if (completedCount === fullPlan.totalCount) {
+      updateUserRating(user.uid, 'PLAN_COMPLETED');
+      updateDoc(planRef, { status: 'completed' });
+      toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
     }
+
+    setIsTimerDialogOpen(false);
+    setActiveTimerTask(null);
+    toast({ title: "Тапсырма орындалды!", variant: "default" });
   };
 
   const handleUpdateDate = async () => {
     if (!user || !db) return;
     setIsUpdating(true);
-    try {
-      const userRef = doc(db, "studentProfiles", user.uid);
-      await updateDoc(userRef, {
-        untDate: newDate,
-        updatedAt: serverTimestamp(),
-      });
-      toast({
-        title: "Күн жаңартылды",
-        description: `Жаңа ҰБТ күні: ${newDate}`,
-      });
+    const userRef = doc(db, "studentProfiles", user.uid);
+    updateDoc(userRef, {
+      untDate: newDate,
+      updatedAt: serverTimestamp(),
+    }).then(() => {
+      toast({ title: "Күн жаңартылды", description: `Жаңа ҰБТ күні: ${newDate}` });
       setIsDateDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Қате",
-        description: "Күнді жаңарту мүмкін болмады.",
-        variant: "destructive",
-      });
-    } finally {
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { untDate: newDate }
+      }));
+    }).finally(() => {
       setIsUpdating(false);
-    }
+    });
   };
 
   const handleUpdateScore = async () => {
     if (!user || !db) return;
     setIsUpdating(true);
-    try {
-      const userRef = doc(db, "studentProfiles", user.uid);
-      await updateDoc(userRef, {
-        currentScore: Number(newScore),
-        updatedAt: serverTimestamp(),
-      });
-      toast({
-        title: "Балл жаңартылды",
-        description: `Жаңа ағымдағы балл: ${newScore}`,
-      });
+    const userRef = doc(db, "studentProfiles", user.uid);
+    updateDoc(userRef, {
+      currentScore: Number(newScore),
+      updatedAt: serverTimestamp(),
+    }).then(() => {
+      toast({ title: "Балл жаңартылды", description: `Жаңа ағымдағы балл: ${newScore}` });
       setIsScoreDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Қате",
-        description: "Баллды жаңарту мүмкін болмады.",
-        variant: "destructive",
-      });
-    } finally {
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userRef.path,
+        operation: 'update',
+        requestResourceData: { currentScore: Number(newScore) }
+      }));
+    }).finally(() => {
       setIsUpdating(false);
-    }
+    });
   };
 
   const currentScore = profile?.currentScore || 0;
@@ -233,7 +214,6 @@ export default function Dashboard() {
   const rating = profile?.rating || 0;
   const solvedCount = profile?.solvedQuestions || 0;
   const correctCount = profile?.correctAnswers || 0;
-  const completedPlansCount = profile?.completedPlans || 0;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
@@ -596,7 +576,7 @@ export default function Dashboard() {
         {/* Timer Dialog */}
         <Dialog open={isTimerDialogOpen} onOpenChange={(open) => {
           if (!open) setIsTimerRunning(false);
-          isTimerDialogOpen && setIsTimerDialogOpen(open);
+          setIsTimerDialogOpen(open);
         }}>
           <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl">
             <DialogHeader>

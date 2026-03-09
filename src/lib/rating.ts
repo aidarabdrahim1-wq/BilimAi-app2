@@ -1,3 +1,4 @@
+'use client';
 
 import { db } from "@/lib/firebase/config";
 import { doc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
@@ -22,10 +23,9 @@ export type RatingReason = keyof typeof RATING_RULES;
  * @param userId Пайдаланушының ID-і
  * @param reason Рейтингтің қосылу себебі
  */
-export async function updateUserRating(userId: string, reason: RatingReason) {
+export function updateUserRating(userId: string, reason: RatingReason) {
   if (!db || !userId) return;
 
-  // Қауіпсіздік ережесіне сай: /studentProfiles/{studentId}
   const userRef = doc(db, "studentProfiles", userId);
   const points = RATING_RULES[reason];
 

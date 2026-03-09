@@ -1,51 +1,35 @@
-
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, AlertTriangle, Sparkles, Loader2, Trash2, BrainCircuit, CheckCircle2, XCircle, RefreshCcw } from "lucide-react";
+import { AlertCircle, AlertTriangle, Sparkles, Loader2, Trash2, BrainCircuit, CheckCircle2, XCircle } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
-import { collection, query, orderBy, onSnapshot, deleteDoc, doc, limit } from "firebase/firestore";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { collection, query, orderBy, limit, doc, deleteDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { analyzeStudentMistakes, type AnalyzeMistakesOutput } from "@/ai/flows/analyze-student-mistakes-flow";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useMemoFirebase, useCollection } from "@/firebase";
 
 export default function AnalysisPage() {
   const { user } = useAuth();
-  const [mistakes, setMistakes] = useState<any[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [aiReport, setAiReport] = useState<AnalyzeMistakesOutput | null>(null);
-  const [loadingMistakes, setLoadingMistakes] = useState(true);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const mistakesRef = collection(db, "studentProfiles", user.uid, "mistakes");
-    const q = query(mistakesRef, orderBy("createdAt", "desc"), limit(50));
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: any[] = [];
-      snapshot.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
-      setMistakes(list);
-      setLoadingMistakes(false);
-    }, (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: mistakesRef.path,
-        operation: 'list'
-      }));
-      setLoadingMistakes(false);
-    });
-
-    return () => unsubscribe();
+  const mistakesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(db, "studentProfiles", user.uid, "mistakes"),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
   }, [user]);
 
+  const { data: mistakes, isLoading: loadingMistakes } = useCollection(mistakesQuery);
+
   const handleAiAnalysis = async () => {
-    if (mistakes.length === 0) return;
+    if (!mistakes || mistakes.length === 0) return;
     setIsAiLoading(true);
     setAiReport(null);
     try {
@@ -71,19 +55,19 @@ export default function AnalysisPage() {
   const deleteMistake = async (id: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, "studentProfiles", user.uid, "mistakes", id));
+      deleteDoc(doc(db, "studentProfiles", user.uid, "mistakes", id));
     } catch (error) {
       console.error("Delete error:", error);
     }
   };
 
   const clearAllMistakes = async () => {
-    if (!user || mistakes.length === 0) return;
+    if (!user || !mistakes || mistakes.length === 0) return;
     if (!confirm("Барлық қателерді өшіргіңіз келе ме?")) return;
     
     try {
       for (const m of mistakes) {
-        await deleteDoc(doc(db, "studentProfiles", user.uid, "mistakes", m.id));
+        deleteDoc(doc(db, "studentProfiles", user.uid, "mistakes", m.id));
       }
     } catch (error) {
       console.error("Clear error:", error);
@@ -103,14 +87,14 @@ export default function AnalysisPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            {mistakes.length > 0 && (
+            {mistakes && mistakes.length > 0 && (
               <Button variant="outline" size="sm" onClick={clearAllMistakes} className="text-destructive hover:bg-destructive/10">
                 <Trash2 className="size-4 mr-2" /> Барлығын өшіру
               </Button>
             )}
             <Button 
               onClick={handleAiAnalysis} 
-              disabled={mistakes.length === 0 || isAiLoading}
+              disabled={!mistakes || mistakes.length === 0 || isAiLoading}
               className="gap-2 shadow-lg shadow-primary/20 bg-primary hover:bg-primary/90"
             >
               {isAiLoading ? <Loader2 className="size-4 animate-spin" /> : <BrainCircuit className="size-4" />}
@@ -203,9 +187,9 @@ export default function AnalysisPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-headline flex items-center gap-2">
               <AlertTriangle className="size-5 text-destructive" />
-              Соңғы қателер ({mistakes.length})
+              Соңғы қателер ({mistakes?.length || 0})
             </h2>
-            {mistakes.length > 0 && (
+            {mistakes && mistakes.length > 0 && (
               <Badge variant="outline" className="text-[10px] border-destructive/20 text-destructive bg-destructive/5">
                 Талдау қажет
               </Badge>
@@ -217,7 +201,7 @@ export default function AnalysisPage() {
               <Loader2 className="size-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Қателер тізімі жүктелуде...</p>
             </div>
-          ) : mistakes.length > 0 ? (
+          ) : mistakes && mistakes.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {mistakes.map((item) => (
                 <Card key={item.id} className="border-none shadow-sm bg-white overflow-hidden group hover:ring-2 hover:ring-primary/20 transition-all">

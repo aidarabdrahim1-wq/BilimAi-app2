@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -13,8 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { BrainCircuit, Loader2 } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -40,7 +38,6 @@ export default function SignupPage() {
     targetCareer: "",
   });
   const [loading, setLoading] = useState(false);
-  const [blockingError, setBlockingError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -48,12 +45,11 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBlockingError(null);
     
     if (!isConfigValid || !auth) {
       toast({
-        title: "Конфигурация қатесі",
-        description: "Firebase бапталмаған.",
+        title: "Қателік",
+        description: "Жүйе бапталмаған.",
         variant: "destructive",
       });
       return;
@@ -70,11 +66,9 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Create Profile Data
       if (db) {
         const profileData = {
           id: user.uid,
@@ -99,34 +93,21 @@ export default function SignupPage() {
           updatedAt: serverTimestamp(),
         };
 
-        const docRef = doc(db, "studentProfiles", user.uid);
-        await setDoc(docRef, profileData);
+        await setDoc(doc(db, "studentProfiles", user.uid), profileData);
       }
 
       toast({
         title: "Тіркелу сәтті аяқталды!",
-        description: "BilimAI платформасына қош келдіңіз.",
+        description: "BilimAI-ға қош келдіңіз.",
       });
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Firebase Signup Error Full:", error);
-      
-      let errorMsg = error.message || "";
-      
-      if (errorMsg.includes("signup-are-blocked")) {
-        setBlockingError("SIGNUP_BLOCKED");
-      } else if (errorMsg.includes("identitytoolkit-api-has-not-been-used")) {
-        setBlockingError("API_DISABLED");
-      } else if (error.code === "auth/operation-not-allowed") {
-        setBlockingError("METHOD_DISABLED");
-      } else {
-        toast({
-          title: "Қате орын алды",
-          description: error.code === "auth/email-already-in-use" ? "Бұл Email поштасы бұрын тіркелген." : "Тіркелу кезінде техникалық қате шықты. Қайта көріңіз.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Қате орын алды",
+        description: error.message || "Тіркелу кезінде техникалық қате шықты.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -145,40 +126,6 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
-          {blockingError && (
-            <Alert variant="destructive" className="mb-6 bg-destructive/5 border-destructive/20 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle className="font-bold">Жүйелік шектеу (Action Required)</AlertTitle>
-              <AlertDescription className="space-y-3 mt-2 text-xs leading-relaxed">
-                {blockingError === "SIGNUP_BLOCKED" && (
-                  <>
-                    <p>Firebase-те тіркелу қызметі бұғатталған. Оны ашу үшін:</p>
-                    <ol className="list-decimal ml-4 space-y-1">
-                      <li><b>Firebase Console</b>-ға кіріңіз.</li>
-                      <li><b>Authentication -> Settings -> User actions</b> тармағына өтіңіз.</li>
-                      <li><b>"Enable create (allow users to sign up)"</b> дегенді қосып, Save басыңыз.</li>
-                    </ol>
-                  </>
-                )}
-                {blockingError === "API_DISABLED" && (
-                  <>
-                    <p>Google Cloud-та қажетті API іске қосылмаған:</p>
-                    <a 
-                      href="https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview" 
-                      target="_blank" 
-                      className="inline-flex items-center gap-1 font-bold underline hover:no-underline"
-                    >
-                      Identity Toolkit API-ді қосу <ExternalLink className="size-3" />
-                    </a>
-                  </>
-                )}
-                {blockingError === "METHOD_DISABLED" && (
-                  <p>Firebase Console -> Authentication -> Sign-in method бөлімінде <b>Email/Password</b> әдісін қосыңыз.</p>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
           <form onSubmit={handleSignup} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">

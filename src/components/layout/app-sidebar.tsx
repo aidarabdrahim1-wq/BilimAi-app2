@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -14,7 +15,8 @@ import {
   ShieldCheck,
   BrainCircuit,
   AlertCircle,
-  LogOut
+  LogOut,
+  Trophy
 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
@@ -45,6 +47,7 @@ const mainNavItems = [
 const secondaryNavItems = [
   { title: "Оқу жоспары", icon: CalendarDays, url: "/plan" },
   { title: "Прогресс", icon: BarChart3, url: "/progress" },
+  { title: "Рейтинг", icon: Trophy, url: "/leaderboard" },
   { title: "AI Куратор", icon: MessageSquare, url: "/curator" },
 ];
 

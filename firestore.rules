@@ -26,8 +26,8 @@ service cloud.firestore {
     // --- Collection Rules ---
 
     match /studentProfiles/{studentId} {
-      allow get: if isOwner(studentId);
-      allow list: if false; 
+      allow get: if isOwner(studentId) || isSignedIn(); // Allow reading other profiles for leaderboard
+      allow list: if isSignedIn(); // Allow listing profiles for leaderboard
       allow create: if isOwner(studentId) && request.resource.data.id == studentId;
       allow update: if isExistingOwner(studentId) && request.resource.data.id == resource.data.id;
       allow delete: if isExistingOwner(studentId);

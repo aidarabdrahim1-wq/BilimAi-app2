@@ -10,25 +10,47 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setInputEmail] = useState("");
+  const [password, setInputPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg(null);
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      toast({
+        title: "Сәтті кірдіңіз!",
+        description: "Дашбордқа бағытталуда...",
+      });
       router.push("/dashboard");
     } catch (error: any) {
+      console.error("Login Error:", error.code, error.message);
+      
+      let friendlyMessage = "Email немесе құпия сөз дұрыс емес.";
+      
+      if (error.code === 'auth/invalid-api-key') {
+        friendlyMessage = "API кілті қате. Әкімшіге хабарласыңыз.";
+      } else if (error.code === 'auth/network-request-failed') {
+        friendlyMessage = "Интернет байланысын тексеріңіз.";
+      } else if (error.code === 'auth/user-disabled') {
+        friendlyMessage = "Бұл аккаунт бұғатталған.";
+      } else if (error.code?.includes('api-key-is-blocked') || error.message?.includes('blocked')) {
+        friendlyMessage = "API кілті бұғатталған немесе Identity Platform бапталмаған.";
+      }
+
+      setErrorMsg(friendlyMessage);
       toast({
-        title: "Қате орын алды",
-        description: "Email немесе құпия сөз дұрыс емес.",
+        title: "Кіру қатесі",
+        description: friendlyMessage,
         variant: "destructive",
       });
     } finally {
@@ -50,6 +72,12 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {errorMsg && (
+              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2 mb-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -57,7 +85,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="example@mail.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setInputEmail(e.target.value)}
                 required
               />
             </div>
@@ -66,12 +94,13 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => setInputPassword(e.target.value)}
                 required
               />
             </div>
-            <Button className="w-full h-11" type="submit" disabled={loading}>
+            <Button className="w-full h-11 font-bold" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Кіру"}
             </Button>
           </form>

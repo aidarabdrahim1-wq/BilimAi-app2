@@ -10,20 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, Settings2, ExternalLink } from "lucide-react";
+import { BrainCircuit, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setInputEmail] = useState("");
   const [password, setInputPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorStatus, setErrorStatus] = useState<"not-found" | "blocked" | "invalid" | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorStatus(null);
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -34,19 +32,11 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Login Error:", error.code, error.message);
-      
-      if (error.code === 'auth/configuration-not-found') {
-        setErrorStatus("not-found");
-      } else if (error.message?.includes('blocked')) {
-        setErrorStatus("blocked");
-      } else {
-        setErrorStatus("invalid");
-        toast({
-          title: "Кіру қатесі",
-          description: "Email немесе құпия сөз қате.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Кіру қатесі",
+        description: "Email немесе құпия сөз қате немесе жүйеде уақытша ақау бар.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -66,34 +56,6 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            {errorStatus === "not-found" && (
-              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
-                <div className="flex items-center gap-2">
-                  <Settings2 className="size-4 shrink-0" />
-                  <span className="font-bold">Authentication бапталмаған:</span>
-                </div>
-                <p>Firebase жобаңызда <b>Email/Password</b> әдісін қосу керек.</p>
-                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Консольге өту <ExternalLink className="size-3" /></a>
-              </div>
-            )}
-
-            {errorStatus === "blocked" && (
-              <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive text-xs flex flex-col gap-2 animate-in fade-in">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="size-4 shrink-0" />
-                  <span className="font-bold">API шектеуі:</span>
-                </div>
-                <p>Google Cloud-та осы API кілтіне <b>Identity Toolkit API</b> рұқсатын беріңіз.</p>
-              </div>
-            )}
-
-            {errorStatus === "invalid" && (
-              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs items-center gap-2 flex">
-                <AlertCircle className="size-4 shrink-0" />
-                <p>Email немесе құпия сөз дұрыс емес.</p>
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

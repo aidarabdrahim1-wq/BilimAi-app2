@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -11,13 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink, Settings2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, Settings2, ExternalLink } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setInputEmail] = useState("");
   const [password, setInputPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorStatus, setErrorStatus] = useState<"blocked" | "not-found" | "invalid" | null>(null);
+  const [errorStatus, setErrorStatus] = useState<"not-found" | "blocked" | "invalid" | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -44,7 +43,7 @@ export default function LoginPage() {
         setErrorStatus("invalid");
         toast({
           title: "Кіру қатесі",
-          description: error.message,
+          description: "Email немесе құпия сөз қате.",
           variant: "destructive",
         });
       }
@@ -73,20 +72,18 @@ export default function LoginPage() {
                   <Settings2 className="size-4 shrink-0" />
                   <span className="font-bold">Authentication бапталмаған:</span>
                 </div>
-                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз (Enable) керек.</p>
-                <p className="text-[10px] opacity-70">Егер ол қосулы болса, API кілті мен Project ID сәйкестігін тексеріңіз.</p>
-                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
+                <p>Firebase жобаңызда <b>Email/Password</b> әдісін қосу керек.</p>
+                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Консольге өту <ExternalLink className="size-3" /></a>
               </div>
             )}
 
             {errorStatus === "blocked" && (
-              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
+              <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive text-xs flex flex-col gap-2 animate-in fade-in">
                 <div className="flex items-center gap-2">
-                  <ShieldAlert className="size-4 shrink-0" />
-                  <span className="font-bold">API шектеуі анықталды:</span>
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span className="font-bold">API шектеуі:</span>
                 </div>
-                <p>Google Cloud Console-да осы API кілтіне <b>"Identity Toolkit API"</b> пайдалануға рұқсат беріңіз.</p>
-                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Баптауларға өту <ExternalLink className="size-3" /></a>
+                <p>Google Cloud-та осы API кілтіне <b>Identity Toolkit API</b> рұқсатын беріңіз.</p>
               </div>
             )}
 

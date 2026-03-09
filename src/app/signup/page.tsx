@@ -1,9 +1,8 @@
-
 "use client";
 
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth, db, isConfigValid } from "@/lib/firebase/config";
+import { auth, db } from "@/lib/firebase/config";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink, Settings2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, Settings2, ExternalLink } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -39,7 +38,7 @@ export default function SignupPage() {
     targetCareer: "",
   });
   const [loading, setLoading] = useState(false);
-  const [errorStatus, setErrorStatus] = useState<"blocked" | "not-found" | null>(null);
+  const [errorStatus, setErrorStatus] = useState<"not-found" | "blocked" | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -49,11 +48,6 @@ export default function SignupPage() {
     e.preventDefault();
     setErrorStatus(null);
     
-    if (!isConfigValid || !auth) {
-      toast({ title: "Қате", description: "Жүйе бапталмаған.", variant: "destructive" });
-      return;
-    }
-
     if (!currentCombo) {
       toast({ title: "Пәнді таңдаңыз", description: "Пән комбинациясын таңдау міндетті.", variant: "destructive" });
       return;
@@ -64,31 +58,30 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      if (db) {
-        const profileData = {
-          id: user.uid,
-          fullName: formData.fullName,
-          email: formData.email,
-          grade: formData.grade,
-          targetScore: Number(formData.targetScore),
-          currentScore: 0,
-          rating: 0,
-          solvedQuestions: 0,
-          correctAnswers: 0,
-          completedPlans: 0,
-          streakDays: 0,
-          selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
-          subjectCombination: currentCombo.label,
-          targetCareer: formData.targetCareer,
-          weakTopics: [],
-          untDate: "2025-06-20", 
-          totalStudyTimeMinutes: 0,
-          todayStudyTimeMinutes: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(doc(db, "studentProfiles", user.uid), profileData);
-      }
+      const profileData = {
+        id: user.uid,
+        fullName: formData.fullName,
+        email: formData.email,
+        grade: formData.grade,
+        targetScore: Number(formData.targetScore),
+        currentScore: 0,
+        rating: 0,
+        solvedQuestions: 0,
+        correctAnswers: 0,
+        completedPlans: 0,
+        streakDays: 0,
+        selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Мат. сауаттылық", ...currentCombo.subjects],
+        subjectCombination: currentCombo.label,
+        targetCareer: formData.targetCareer,
+        weakTopics: [],
+        untDate: "2025-06-20", 
+        totalStudyTimeMinutes: 0,
+        todayStudyTimeMinutes: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      
+      await setDoc(doc(db, "studentProfiles", user.uid), profileData);
 
       toast({ title: "Тіркелу сәтті аяқталды!", description: "BilimAI-ға қош келдіңіз." });
       router.push("/dashboard");
@@ -101,7 +94,7 @@ export default function SignupPage() {
         setErrorStatus("blocked");
       } else {
         toast({
-          title: "Қате орын алды",
+          title: "Тіркелу қатесі",
           description: error.message,
           variant: "destructive",
         });
@@ -131,20 +124,18 @@ export default function SignupPage() {
                   <Settings2 className="size-4 shrink-0" />
                   <span className="font-bold">Authentication бапталмаған:</span>
                 </div>
-                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз (Enable) керек.</p>
-                <p className="text-[10px] opacity-70">Егер ол қосулы болса, API кілті мен Project ID сәйкестігін тексеріңіз.</p>
-                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
+                <p>Firebase-те <b>Email/Password</b> әдісін қосып, бағдарламадағы Project ID сәйкестігін тексеріңіз.</p>
+                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Консольге өту <ExternalLink className="size-3" /></a>
               </div>
             )}
 
             {errorStatus === "blocked" && (
-              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
+              <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-destructive text-xs flex flex-col gap-2 animate-in fade-in">
                 <div className="flex items-center gap-2">
-                  <ShieldAlert className="size-4 shrink-0" />
-                  <span className="font-bold">API шектеуі анықталды:</span>
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span className="font-bold">API шектеуі:</span>
                 </div>
-                <p>Google Cloud Console-да осы API кілтіне <b>"Identity Toolkit API"</b> пайдалануға рұқсат беріңіз.</p>
-                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Баптауларға өту <ExternalLink className="size-3" /></a>
+                <p>Google Cloud-та осы API кілтіне <b>Identity Toolkit API</b> рұқсатын беріңіз.</p>
               </div>
             )}
 
@@ -180,8 +171,6 @@ export default function SignupPage() {
                     <SelectValue placeholder="Таңдаңыз" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="8">8-сынып</SelectItem>
-                    <SelectItem value="9">9-сынып</SelectItem>
                     <SelectItem value="10">10-сынып</SelectItem>
                     <SelectItem value="11">11-сынып</SelectItem>
                     <SelectItem value="college">Колледж</SelectItem>

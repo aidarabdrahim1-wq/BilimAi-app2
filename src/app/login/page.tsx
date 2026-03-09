@@ -10,13 +10,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, ShieldAlert } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setInputEmail] = useState("");
   const [password, setInputPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -24,6 +25,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setIsBlocked(false);
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -33,18 +35,18 @@ export default function LoginPage() {
       });
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Login Error:", error.code, error.message);
+      console.error("Login Error Full:", error);
       
       let friendlyMessage = "Email немесе құпия сөз дұрыс емес.";
       
-      if (error.code === 'auth/invalid-api-key') {
-        friendlyMessage = "API кілті қате. Әкімшіге хабарласыңыз.";
+      // Check for blocked API requests
+      if (error.message?.includes('blocked') || error.code?.includes('api-key-is-blocked')) {
+        friendlyMessage = "API қызметі бұғатталған. Google Cloud-та Identity Toolkit API-ге рұқсат беріңіз.";
+        setIsBlocked(true);
+      } else if (error.code === 'auth/invalid-api-key') {
+        friendlyMessage = "API кілті қате. Конфигурацияны тексеріңіз.";
       } else if (error.code === 'auth/network-request-failed') {
         friendlyMessage = "Интернет байланысын тексеріңіз.";
-      } else if (error.code === 'auth/user-disabled') {
-        friendlyMessage = "Бұл аккаунт бұғатталған.";
-      } else if (error.code?.includes('api-key-is-blocked') || error.message?.includes('blocked')) {
-        friendlyMessage = "API кілті бұғатталған немесе Identity Platform бапталмаған.";
       }
 
       setErrorMsg(friendlyMessage);
@@ -63,7 +65,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md border-none shadow-xl">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
-            <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground">
+            <div className="size-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
               <BrainCircuit className="size-8" />
             </div>
           </div>
@@ -73,9 +75,22 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             {errorMsg && (
-              <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2 mb-2">
-                <AlertCircle className="size-4 shrink-0" />
-                <span>{errorMsg}</span>
+              <div className={`p-4 rounded-xl text-xs flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 ${isBlocked ? 'bg-orange-50 border border-orange-200 text-orange-800' : 'bg-destructive/10 text-destructive'}`}>
+                <div className="flex items-center gap-2">
+                  {isBlocked ? <ShieldAlert className="size-4 shrink-0" /> : <AlertCircle className="size-4 shrink-0" />}
+                  <span className="font-bold">{isBlocked ? "Техникалық шектеу:" : "Қате:"}</span>
+                </div>
+                <p className="leading-relaxed">{errorMsg}</p>
+                {isBlocked && (
+                  <div className="mt-2 pt-2 border-t border-orange-200 text-[10px] space-y-1">
+                    <p className="font-bold">Мәселені шешу жолы:</p>
+                    <ol className="list-decimal ml-4 space-y-1">
+                      <li>Google Cloud Console-ға кіріңіз.</li>
+                      <li>APIs & Services -> Credentials бөліміне өтіңіз.</li>
+                      <li>Қолданып жатқан API кілтіне "Identity Toolkit API" пайдалануға рұқсат беріңіз.</li>
+                    </ol>
+                  </div>
+                )}
               </div>
             )}
             <div className="space-y-2">
@@ -87,6 +102,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setInputEmail(e.target.value)}
                 required
+                className="bg-white"
               />
             </div>
             <div className="space-y-2">
@@ -98,9 +114,10 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setInputPassword(e.target.value)}
                 required
+                className="bg-white"
               />
             </div>
-            <Button className="w-full h-11 font-bold" type="submit" disabled={loading}>
+            <Button className="w-full h-11 font-bold shadow-lg" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Кіру"}
             </Button>
           </form>

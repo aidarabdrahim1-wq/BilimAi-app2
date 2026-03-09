@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -98,13 +99,13 @@ export default function SignupPage() {
         setErrorStatus("not-found");
       } else if (error.message?.includes('blocked')) {
         setErrorStatus("blocked");
+      } else {
+        toast({
+          title: "Қате орын алды",
+          description: error.message,
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: "Қате орын алды",
-        description: error.message,
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -131,6 +132,7 @@ export default function SignupPage() {
                   <span className="font-bold">Authentication бапталмаған:</span>
                 </div>
                 <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз (Enable) керек.</p>
+                <p className="text-[10px] opacity-70">Егер ол қосулы болса, API кілті мен Project ID сәйкестігін тексеріңіз.</p>
                 <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
               </div>
             )}

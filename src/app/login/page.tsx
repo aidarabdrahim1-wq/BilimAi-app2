@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -41,13 +42,12 @@ export default function LoginPage() {
         setErrorStatus("blocked");
       } else {
         setErrorStatus("invalid");
+        toast({
+          title: "Кіру қатесі",
+          description: error.message,
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: "Кіру қатесі",
-        description: error.message,
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,8 @@ export default function LoginPage() {
                   <Settings2 className="size-4 shrink-0" />
                   <span className="font-bold">Authentication бапталмаған:</span>
                 </div>
-                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз керек.</p>
+                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз (Enable) керек.</p>
+                <p className="text-[10px] opacity-70">Егер ол қосулы болса, API кілті мен Project ID сәйкестігін тексеріңіз.</p>
                 <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
               </div>
             )}
@@ -90,7 +91,7 @@ export default function LoginPage() {
             )}
 
             {errorStatus === "invalid" && (
-              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs items-center gap-2 flex">
                 <AlertCircle className="size-4 shrink-0" />
                 <p>Email немесе құпия сөз дұрыс емес.</p>
               </div>

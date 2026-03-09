@@ -109,7 +109,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Қазақстан тарихы": {
     description: "Ежелгі дәуірден бүгінгі күнге дейінгі Қазақстан тарихының толық курсы.",
     topics: [
-      "Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Орта ғасыр мемлекеттері",
+      "Ежелгі Қазақстан", "Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Орта ғасыр мемлекеттері",
       "Қарахан, Қыпшақ, Найман, Керейіт, Жалайыр", "Алтын Орда, Ақ Орда, Моғолстан, Ноғай Ордасы, Әбілқайыр хандығы",
       "Қазақ хандығының құрылуы мен дамуы", "Жоңғар шапқыншылығы", "Ресей империясы тұсындағы Қазақстан",
       "Ұлт-азаттық көтерілістер", "ХХ ғасыр басы, Алаш қозғалысы", "Кеңестік кезең, ашаршылық, қуғын-сүргін, ҰОС",
@@ -234,7 +234,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Орыс әдебиеті": {
     description: "Русская классическая и современная литература.",
     topics: [
-      "Авторлар мен шығармалар", "Жанрлар", "Әдеби талдау", "Кейіпкер", "Идея, composition", "Тарихи-әдеби контекст"
+      "Авторлар мен шығармалар", "Жанрлар", "Әдеби талдау", "Кейіпкер", "Идея, композиция", "Тарихи-әдеби контекст"
     ]
   }
 };
@@ -263,7 +263,7 @@ export default function TheoryPage() {
   if (!profile) return null;
 
   const userSubjects = profile.selectedSubjects || [];
-  const normalizedUserSubjects = userSubjects.map(s => s === "Математикалық сауаттылық" ? "Математикалық сауаттылық" : s);
+  const normalizedUserSubjects = userSubjects.map(s => s === "Мат. сауаттылық" ? "Математикалық сауаттылық" : s);
 
   const mySubjects = Object.keys(UBT_TOPICS).filter(s => {
     const isSelected = normalizedUserSubjects.includes(s);
@@ -272,7 +272,7 @@ export default function TheoryPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-8 max-w-6xl mx-auto">
+      <div className="flex flex-col gap-8 max-w-6xl mx-auto h-full">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
@@ -358,8 +358,8 @@ function SubjectCard({ subject }: { subject: string }) {
           </CardContent>
         </Card>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl bg-white border-none shadow-2xl p-0 rounded-3xl overflow-hidden">
-        <div className="bg-primary/5 p-8 border-b border-primary/10">
+      <DialogContent className="max-w-3xl h-[85vh] bg-white border-none shadow-2xl p-0 rounded-3xl overflow-hidden flex flex-col">
+        <div className="bg-primary/5 p-8 pb-4 border-b border-primary/10 shrink-0">
           <DialogHeader>
             <div className="flex items-center gap-4 mb-2">
               <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
@@ -375,14 +375,14 @@ function SubjectCard({ subject }: { subject: string }) {
             </DialogDescription>
           </DialogHeader>
         </div>
-        <ScrollArea className="max-h-[60vh] p-8">
-          <div className="grid gap-4">
+        <ScrollArea className="flex-1 px-8 py-4">
+          <div className="grid gap-4 py-4">
             {ubtInfo.topics.map((topic, idx) => (
               <TopicItem key={idx} index={idx} topic={topic} subject={subject} />
             ))}
           </div>
         </ScrollArea>
-        <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2">
+        <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2 shrink-0">
           <Sparkles className="size-4 text-primary animate-pulse" />
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {hasSpecialTest ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
@@ -405,7 +405,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   const [testResult, setTestResult] = useState({ score: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Auto-scroll to top when question changes
   useEffect(() => {
     if (practiceMode === "testing" && scrollAreaRef.current) {
       const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -507,8 +506,8 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           </Button>
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0 rounded-3xl border-none shadow-2xl bg-white">
-        <div className="p-8 pb-4 border-b">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 rounded-3xl border-none shadow-2xl bg-white overflow-hidden">
+        <div className="p-8 pb-4 border-b shrink-0">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold">{subject}</Badge>
@@ -518,14 +517,14 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           </DialogHeader>
         </div>
         
-        <ScrollArea ref={scrollAreaRef} className="flex-1 p-8">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 px-8 py-6">
           {practiceMode === "reading" && (
-            <div className="py-16 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="py-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
                 <BookOpen className="size-12 opacity-50" />
               </div>
               <div className="space-y-2">
-                <h4 className="text-lg font-bold">Тақырыптық бекіту</h4>
+                <h4 className="text-xl font-bold">Тақырыптық бекіту</h4>
                 <p className="text-sm text-muted-foreground max-w-sm font-medium">
                   {isStatic 
                     ? `Бұл тақырып бойынша арнайы дайындалған ${STATIC_TESTS[subject][topic].length} тест сұрағын тапсырып, біліміңізді шыңдаңыз.`
@@ -533,13 +532,13 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </p>
               </div>
 
-              <div className="pt-8 border-t border-dashed w-full">
+              <div className="pt-8 border-t border-dashed w-full max-w-md mx-auto">
                 <Button 
                   className="w-full gap-3 h-16 text-xl font-black shadow-xl shadow-primary/20 bg-gradient-to-r from-primary to-secondary rounded-2xl hover:scale-[1.02] transition-all"
                   onClick={startPractice}
                 >
                   <Sparkles className="size-6" />
-                  Практиканы бастау {isStatic && `(${STATIC_TESTS[subject][topic].length} тест)`}
+                  Практиканы бастау
                 </Button>
                 <div className="flex flex-col items-center gap-1 mt-4">
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
@@ -557,7 +556,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           )}
 
           {practiceMode === "loading" && (
-            <div className="py-32 flex flex-col items-center justify-center gap-6 text-center">
+            <div className="py-24 flex flex-col items-center justify-center gap-6 text-center">
               <div className="relative">
                 <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -572,7 +571,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           )}
 
           {practiceMode === "testing" && questions.length > 0 && (
-            <div key={currentIndex} className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+            <div key={currentIndex} className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-10">
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
@@ -584,7 +583,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2 rounded-full" />
               </div>
 
-              <Card className="border-none shadow-xl bg-white p-8 rounded-3xl ring-1 ring-border">
+              <Card className="border-none shadow-xl bg-white p-8 rounded-3xl ring-1 ring-border min-h-[200px]">
                 <h3 className="text-xl md:text-2xl font-black leading-tight mb-10 text-foreground">
                   {questions[currentIndex].text}
                 </h3>
@@ -635,7 +634,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           )}
 
           {practiceMode === "results" && (
-            <div className="py-12 space-y-10 animate-in zoom-in-95 duration-500">
+            <div className="py-10 space-y-10 animate-in zoom-in-95 duration-500 pb-20">
               <div className="text-center space-y-6">
                 <div className="inline-flex size-32 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner relative">
                   <Trophy className="size-16 drop-shadow-sm" />
@@ -661,7 +660,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                         <div className="space-y-3">
                           <p className="text-base font-bold leading-tight">{q.text}</p>
                           <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest">
-                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Сенің жауабың: {answers[i]}</span>
+                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Сенің жауабың: {answers[i] || "—"}</span>
                             <span className="text-green-700">Дұрыс жауап: {q.correctAnswer}</span>
                           </div>
                           {(q.explanation || answers[i] !== q.correctAnswer) && (
@@ -685,7 +684,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           )}
         </ScrollArea>
         
-        <div className="p-6 border-t bg-muted/10 flex justify-center">
+        <div className="p-6 border-t bg-muted/10 flex justify-center shrink-0">
           <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
             <Sparkles className="size-3 text-primary" /> BilimAI — Сапалы дайындық кепілі
           </p>

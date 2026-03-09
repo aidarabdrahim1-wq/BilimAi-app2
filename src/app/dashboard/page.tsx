@@ -235,7 +235,6 @@ export default function Dashboard() {
   const rating = profile?.rating || 0;
   const solvedCount = profile?.solvedQuestions || 0;
   const correctCount = profile?.correctAnswers || 0;
-  const streak = profile?.streakDays || 0;
   const completedPlansCount = profile?.completedPlans || 0;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
@@ -320,10 +319,6 @@ export default function Dashboard() {
               <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
                 <Trophy className="size-3.5 fill-current" />
                 {rating} ұпай
-              </Badge>
-              <Badge variant="outline" className="px-3 py-1 gap-1.5 border-orange-200 bg-orange-50 text-orange-700">
-                <Zap className="size-3.5 fill-current" />
-                {streak} күн streak
               </Badge>
             </div>
           </div>
@@ -573,16 +568,6 @@ export default function Dashboard() {
                     </div>
                     <span className="text-[9px] font-bold text-muted-foreground block uppercase">Жалпы сұрақ</span>
                     <span className="text-xl font-black text-foreground">{solvedCount}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5 border border-primary/10 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="size-4 text-orange-500" />
-                      <span className="text-xs font-bold">Streak (Күн):</span>
-                    </div>
-                    <span className="text-sm font-black">{streak} күн</span>
                   </div>
                 </div>
               </CardContent>

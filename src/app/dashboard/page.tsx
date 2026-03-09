@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -27,7 +28,10 @@ import {
   Check,
   BarChart,
   PieChart,
-  Timer
+  Timer,
+  Quote,
+  Zap,
+  Star
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -45,6 +49,14 @@ import { useMemoFirebase, useCollection } from "@/firebase";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 
+const MOTIVATION_QUOTES = [
+  { text: "Жетістіктің құпиясы — бастауда. Ал бүгінгі 1 сағаттық дайындық ертеңгі үлкен жеңістің негізі.", author: "BilimAI Рухы" },
+  { text: "Ең үлкен бәсекелесің — кешегі өзің. Күн сайын 1%-ға болса да жақсару сені шыңға шығарады.", author: "Даму қағидасы" },
+  { text: "Сен бүгін шаршаған шығарсың, бірақ ертең грант иегері атанғанда бұл қиындықтардың бәрі тек жағымды естелікке айналады.", author: "Сенімділік жолы" },
+  { text: "Білім — қару, оны тек еңбекпен ғана шыңдай аласың. ҰБТ — сенің мүмкіндігің!", author: "Білім жолы" },
+  { text: "Талап пен еңбек болса, алынбайтын қамал жоқ. Сенің қолыңнан бәрі келеді!", author: "Жеңімпаз мотивациясы" }
+];
+
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
@@ -53,6 +65,7 @@ export default function Dashboard() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
+  const [randomQuote, setRandomQuote] = useState(MOTIVATION_QUOTES[0]);
   
   // Timer states
   const [activeTimerTask, setActiveTimerTask] = useState<any>(null);
@@ -61,6 +74,10 @@ export default function Dashboard() {
   const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
 
   const { toast } = useToast();
+
+  useEffect(() => {
+    setRandomQuote(MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)]);
+  }, []);
 
   const plansQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -210,7 +227,6 @@ export default function Dashboard() {
   };
 
   const currentScore = profile?.currentScore || 0;
-  const targetScore = profile?.targetScore || 140;
   const rating = profile?.rating || 0;
   const solvedCount = profile?.solvedQuestions || 0;
   const correctCount = profile?.correctAnswers || 0;
@@ -492,59 +508,61 @@ export default function Dashboard() {
           </Card>
 
           <div className="md:col-span-3 space-y-6">
-            <Card className="border-none shadow-sm overflow-hidden flex flex-col h-full">
+            <Card className="border-none shadow-sm overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 text-white relative group">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="size-4 fill-current" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-80">Күн мотивациясы</span>
+                </div>
+                <CardTitle className="text-lg font-headline flex items-center gap-2">
+                  <Quote className="size-5 opacity-50" />
+                  Сенің қолыңнан келеді!
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm font-medium leading-relaxed italic opacity-95">
+                  "{randomQuote.text}"
+                </p>
+                <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                  <span className="text-[10px] font-bold opacity-70">— {randomQuote.author}</span>
+                  <Star className="size-4 fill-yellow-300 text-yellow-300 animate-pulse" />
+                </div>
+              </CardContent>
+              <div className="absolute -bottom-6 -right-6 size-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            </Card>
+
+            <Card className="border-none shadow-sm overflow-hidden flex flex-col">
               <CardHeader className="pb-4 border-b bg-accent/5">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <BarChart className="size-4 text-primary" />
-                  Оқу статистикасы
+                  Статистика
                 </CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">
-                  Сіздің даму көрсеткіштеріңіз
-                </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-8 flex-1">
+              <CardContent className="p-6 space-y-6">
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                        <Timer className="size-3 text-indigo-500" />
-                        Бүгінгі белсенділік:
-                      </span>
-                      <p className="text-xs font-medium text-muted-foreground">Мақсат: 120 мин</p>
-                    </div>
-                    <span className="font-black text-indigo-600 text-lg">{todayStudyMinutes} мин</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase">Бүгінгі белсенділік</span>
+                    <span className="font-black text-indigo-600">{todayStudyMinutes} мин</span>
                   </div>
-                  <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-indigo-50" />
+                  <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-1.5 bg-indigo-50" />
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                        <CheckCircle2 className="size-3 text-green-500" />
-                        Жоспардың орындалуы:
-                      </span>
-                      <p className="text-xs font-medium text-muted-foreground">Бүгінгі тапсырмалар</p>
-                    </div>
-                    <span className="font-black text-green-600 text-lg">{completedTodayCount} / {todayTasks.length || 0}</span>
+                    <span className="text-[11px] font-bold text-muted-foreground uppercase">Орындалуы</span>
+                    <span className="font-black text-green-600">{completedTodayCount} / {todayTasks.length || 0}</span>
                   </div>
-                  <Progress value={dailyProgress} className="h-2 bg-green-50" />
+                  <Progress value={dailyProgress} className="h-1.5 bg-green-50" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center space-y-1 group hover:bg-accent/10 transition-colors">
-                    <div className="flex justify-center mb-1">
-                      <PieChart className="size-4 text-green-500 group-hover:scale-110 transition-transform" />
-                    </div>
-                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Дұрыс жауап</span>
-                    <span className="text-xl font-black text-foreground">{correctCount}</span>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="p-3 rounded-xl bg-accent/5 border border-border/50 text-center">
+                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Дұрыс</span>
+                    <span className="text-lg font-black text-foreground">{correctCount}</span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center space-y-1 group hover:bg-accent/10 transition-colors">
-                    <div className="flex justify-center mb-1">
-                      <ClipboardList className="size-4 text-primary group-hover:scale-110 transition-transform" />
-                    </div>
-                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Жалпы сұрақ</span>
-                    <span className="text-xl font-black text-foreground">{solvedCount}</span>
+                  <div className="p-3 rounded-xl bg-accent/5 border border-border/50 text-center">
+                    <span className="text-[9px] font-bold text-muted-foreground block uppercase">Жалпы</span>
+                    <span className="text-lg font-black text-foreground">{solvedCount}</span>
                   </div>
                 </div>
               </CardContent>

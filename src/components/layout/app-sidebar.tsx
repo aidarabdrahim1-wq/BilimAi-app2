@@ -38,7 +38,7 @@ import { Button } from "@/components/ui/button";
 
 const mainNavItems = [
   { title: "Басты бет", icon: LayoutDashboard, url: "/dashboard" },
-  { title: "Теория", icon: BookOpen, url: "/theory" },
+  { title: "Практика", icon: BookOpen, url: "/theory" },
   { title: "Тест тапсыру", icon: ClipboardCheck, url: "/practice" },
   { title: "Диагностика", icon: BrainCircuit, url: "/diagnostic" },
   { title: "Қатемен жұмыс", icon: AlertCircle, url: "/analysis" },

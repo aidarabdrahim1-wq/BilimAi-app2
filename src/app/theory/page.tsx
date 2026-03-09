@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -107,7 +108,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
     topics: [
       "Сандар мен өрнектер", "Теңдеулер мен теңсіздіктер", "Функциялар және графиктер", 
       "Дәреже, түбір, логарифм", "Логарифмдік теңдеулер", "Тригонометрия", "Арифметикалық және геометриялық прогрессия", 
-      "Туынды және оның қолданылуы", "Алғашқы функция және интегралдың бастапқы түсініктері", 
+      "Туынды және оның қолданылуы", "Алқышқы функция және интегралдың бастапқы түсініктері", 
       "Векторлар", "Координаталар әдісі", "Планиметрия", "Стереометрия", "Комбинаторика және ықтималдық"
     ]
   },
@@ -185,9 +186,9 @@ export default function TheoryPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
             <BookOpen className="size-8 text-primary" />
-            Теориялық база
+            Практикалық база
           </h1>
-          <p className="text-muted-foreground text-sm">ҰБТ-да кездесетін барлық тақырыптар бойынша құрылымдалған конспектілер.</p>
+          <p className="text-muted-foreground text-sm">ҰБТ-да кездесетін барлық тақырыптар бойынша практикалық тапсырмалар мен материалдар.</p>
         </div>
 
         <div className="relative max-w-md">
@@ -360,7 +361,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                 <span className="text-sm font-bold">{topic}</span>
                               </div>
                               <Button size="sm" variant="ghost" className="text-xs font-bold h-8 text-primary group-hover/item:bg-primary/10">
-                                Оқу <ChevronRight className="size-4" />
+                                Бастау <ChevronRight className="size-4" />
                               </Button>
                             </div>
                           </DialogTrigger>
@@ -386,7 +387,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                       </div>
                                       <div className="space-y-3">
                                         <h4 className="flex items-center gap-2 text-sm font-black text-foreground uppercase tracking-wider">
-                                          <BookText className="size-4" /> Теория
+                                          <BookText className="size-4" /> Мәліметтер
                                         </h4>
                                         <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{hasStatic.theory}</p>
                                       </div>
@@ -410,7 +411,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                         <BookOpen className="size-8" />
                                       </div>
                                       <p className="text-sm text-muted-foreground max-w-sm">
-                                        Бұл тақырып бойынша әлі дайын конспект жоқ. Бірақ сіз біліміңізді тест арқылы тексере аласыз.
+                                        Бұл тақырып бойынша материалдарды тест арқылы меңгере аласыз.
                                       </p>
                                     </div>
                                   )}
@@ -533,7 +534,7 @@ function SubjectGroup({ title, subjects }: { title: string, subjects: string[] }
                                   </div>
 
                                   <Button variant="outline" className="w-full h-12 font-bold" onClick={() => setPracticeMode("reading")}>
-                                    Теорияға қайту
+                                    Бөлімге қайту
                                   </Button>
                                 </div>
                               )}

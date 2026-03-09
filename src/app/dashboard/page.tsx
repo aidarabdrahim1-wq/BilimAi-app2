@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,7 +11,6 @@ import {
   AlertCircle,
   BookMarked,
   Trophy,
-  Zap,
   CheckCircle2,
   CalendarDays,
   Edit2,
@@ -238,7 +236,6 @@ export default function Dashboard() {
   const completedPlansCount = profile?.completedPlans || 0;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
-  const progressToTarget = Math.round((currentScore / targetScore) * 100);
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
   
   const completedTodayCount = todayTasks.filter(t => t.status === 'completed').length;
@@ -515,8 +512,8 @@ export default function Dashboard() {
           </Card>
 
           <div className="md:col-span-3 space-y-6">
-            <Card className="border-none shadow-sm overflow-hidden flex flex-col">
-              <CardHeader className="pb-2 border-b bg-accent/5">
+            <Card className="border-none shadow-sm overflow-hidden flex flex-col h-full">
+              <CardHeader className="pb-4 border-b bg-accent/5">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <BarChart className="size-4 text-primary" />
                   Оқу статистикасы
@@ -525,36 +522,36 @@ export default function Dashboard() {
                   Сіздің даму көрсеткіштеріңіз
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-8 flex-1">
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <Clock className="size-3 text-blue-500" />
-                      Орындалған жоспар:
-                    </span>
-                    <span className="font-black text-blue-600 text-base">{completedTodayCount} / {todayTasks.length || 0}</span>
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                        <Timer className="size-3 text-indigo-500" />
+                        Бүгінгі белсенділік:
+                      </span>
+                      <p className="text-xs font-medium text-muted-foreground">Мақсат: 120 мин</p>
+                    </div>
+                    <span className="font-black text-indigo-600 text-lg">{todayStudyMinutes} мин</span>
                   </div>
-                  <div className="space-y-1">
-                    <Progress value={dailyProgress} className="h-2 bg-blue-100" />
-                    <p className="text-[9px] text-right text-muted-foreground font-medium">Бүгінгі мақсаттың {dailyProgress}%-ы</p>
-                  </div>
+                  <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-indigo-50" />
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
-                      <CheckCircle2 className="size-3 text-green-500" />
-                      Орындалған жоспарлар:
-                    </span>
-                    <span className="font-black text-primary text-base">{completedPlansCount} / 30</span>
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3 text-green-500" />
+                        Жоспардың орындалуы:
+                      </span>
+                      <p className="text-xs font-medium text-muted-foreground">Бүгінгі тапсырмалар</p>
+                    </div>
+                    <span className="font-black text-green-600 text-lg">{completedTodayCount} / {todayTasks.length || 0}</span>
                   </div>
-                  <div className="space-y-1">
-                    <Progress value={(completedPlansCount / 30) * 100} className="h-2 bg-primary/10" />
-                    <p className="text-[9px] text-right text-muted-foreground font-medium">Айлық мақсаттың {Math.round((completedPlansCount / 30) * 100)}%-ы</p>
-                  </div>
+                  <Progress value={dailyProgress} className="h-2 bg-green-50" />
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center space-y-1 group hover:bg-accent/10 transition-colors">
                     <div className="flex justify-center mb-1">
                       <PieChart className="size-4 text-green-500 group-hover:scale-110 transition-transform" />

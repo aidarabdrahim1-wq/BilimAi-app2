@@ -13,7 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2 } from "lucide-react";
+import { BrainCircuit, Loader2, AlertTriangle, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -39,6 +40,7 @@ export default function SignupPage() {
     targetCareer: "",
   });
   const [loading, setLoading] = useState(false);
+  const [blockingError, setBlockingError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -46,6 +48,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setBlockingError(null);
     
     if (!isConfigValid || !auth) {
       toast({
@@ -107,29 +110,23 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Firebase Signup Error:", error);
+      console.error("Firebase Signup Error Full:", error);
       
-      let errorMessage = "Тіркелу кезінде қате орын алды.";
-      let errorTitle = "Жүйелік шектеу";
-
-      // Handle the specific "signup-are-blocked" error
-      if (error.message?.includes("signup-are-blocked")) {
-        errorMessage = "Тіркелу блокталып тұр. Firebase Console -> Authentication -> Settings -> User actions бөлімінде 'Enable create' қосулы екенін тексеріңіз. Сонымен қатар, Google Cloud Console-да API кілтіне қойылған шектеулерді (Identity Toolkit API) тексеріңіз.";
+      let errorMsg = error.message || "";
+      
+      if (errorMsg.includes("signup-are-blocked")) {
+        setBlockingError("SIGNUP_BLOCKED");
+      } else if (errorMsg.includes("identitytoolkit-api-has-not-been-used")) {
+        setBlockingError("API_DISABLED");
       } else if (error.code === "auth/operation-not-allowed") {
-        errorMessage = "Email/Password арқылы кіру әдісі Firebase-те қосылмаған.";
-      } else if (error.code === "auth/email-already-in-use") {
-        errorTitle = "Қате";
-        errorMessage = "Бұл Email поштасы бұрын тіркелген.";
-      } else if (error.code === "auth/weak-password") {
-        errorTitle = "Қате";
-        errorMessage = "Құпия сөз тым әлсіз (кемінде 6 таңба).";
+        setBlockingError("METHOD_DISABLED");
+      } else {
+        toast({
+          title: "Қате орын алды",
+          description: error.code === "auth/email-already-in-use" ? "Бұл Email поштасы бұрын тіркелген." : "Тіркелу кезінде техникалық қате шықты. Қайта көріңіз.",
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: errorTitle,
-        description: errorMessage,
-        variant: "destructive",
-      });
     } finally {
       setLoading(false);
     }
@@ -148,6 +145,40 @@ export default function SignupPage() {
           <CardDescription>BilimAI-мен ҰБТ-ға дайындықты бүгін бастаңыз</CardDescription>
         </CardHeader>
         <CardContent>
+          {blockingError && (
+            <Alert variant="destructive" className="mb-6 bg-destructive/5 border-destructive/20 text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle className="font-bold">Жүйелік шектеу (Action Required)</AlertTitle>
+              <AlertDescription className="space-y-3 mt-2 text-xs leading-relaxed">
+                {blockingError === "SIGNUP_BLOCKED" && (
+                  <>
+                    <p>Firebase-те тіркелу қызметі бұғатталған. Оны ашу үшін:</p>
+                    <ol className="list-decimal ml-4 space-y-1">
+                      <li><b>Firebase Console</b>-ға кіріңіз.</li>
+                      <li><b>Authentication -> Settings -> User actions</b> тармағына өтіңіз.</li>
+                      <li><b>"Enable create (allow users to sign up)"</b> дегенді қосып, Save басыңыз.</li>
+                    </ol>
+                  </>
+                )}
+                {blockingError === "API_DISABLED" && (
+                  <>
+                    <p>Google Cloud-та қажетті API іске қосылмаған:</p>
+                    <a 
+                      href="https://console.developers.google.com/apis/api/identitytoolkit.googleapis.com/overview" 
+                      target="_blank" 
+                      className="inline-flex items-center gap-1 font-bold underline hover:no-underline"
+                    >
+                      Identity Toolkit API-ді қосу <ExternalLink className="size-3" />
+                    </a>
+                  </>
+                )}
+                {blockingError === "METHOD_DISABLED" && (
+                  <p>Firebase Console -> Authentication -> Sign-in method бөлімінде <b>Email/Password</b> әдісін қосыңыз.</p>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSignup} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -260,7 +291,7 @@ export default function SignupPage() {
               </div>
             </div>
             
-            <Button className="w-full h-11 shadow-md" type="submit" disabled={loading}>
+            <Button className="w-full h-11 shadow-md font-bold" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Тіркелу"}
             </Button>
           </form>

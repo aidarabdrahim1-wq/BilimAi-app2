@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -24,7 +24,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Info,
   Trophy,
   ArrowRight,
   ArrowLeft,
@@ -63,7 +62,7 @@ const STATIC_TESTS: Record<string, Record<string, any[]>> = {
       { id: "9", text: "Қаратау жотасынан табылған ежелгі тұрақтар:", options: ["Берел, Шілікті", "Бөріқазған, Тәңірқазған", "Бесшатыр, Есік", "Ботай, Шебір"], correctAnswer: "B" },
       { id: "10", text: "Бөріқазған мен Тәңірқазған қай дәуірге жатады?", options: ["Мезолит", "Неолит", "Ерте палеолит", "Қола дәуірі"], correctAnswer: "C" },
       { id: "11", text: "Алғашқы адамдардың негізгі шикізаты:", options: ["Темір", "Қола", "Тас", "Алтын"], correctAnswer: "C" },
-      { id: "12", text: "Алғашқы адамдардың тобыр түріндегі бірлестігі:", options: ["Тайпа", "Рулық қауым", "Адамдар тобыры", "Халық"], correctAnswer: "C" },
+      { id: "12", text: "Алғашқы адамдардың тобыр түріндегі бірлестігі:", options: ["Tайпа", "Рулық қауым", "Адамдар тобыры", "Халық"], correctAnswer: "C" },
       { id: "13", text: "Рулық қауымның қалыптаса бастаған кезеңі:", options: ["Ерте палеолит", "Орта палеолит", "Кейінгі палеолит", "Неолит"], correctAnswer: "C" },
       { id: "14", text: "Саналы адам қалыптасқан кезең:", options: ["Ерте палеолит", "Орта палеолит", "Кейінгі палеолит", "Мезолит"], correctAnswer: "C" },
       { id: "15", text: "Кейінгі палеолитке тән белгі:", options: ["Металл өңдеу", "Рулық қауымның қалыптасуы", "Жазудың пайда болуы", "Қалалардың салынуы"], correctAnswer: "B" },
@@ -86,7 +85,7 @@ const STATIC_TESTS: Record<string, Record<string, any[]>> = {
       { id: "32", text: "Жануарлардың соңынан көшіп-қону, шағын топпен өмір сүру қай дәуірге тән?", options: ["Неолит", "Қола дәуірі", "Мезолит", "Темір дәуірі"], correctAnswer: "C" },
       { id: "33", text: "Қазақстандағы кейінгі палеолит тұрақтарының бірі:", options: ["Батпақ", "Ботай", "Бесшатыр", "Шірік-Рабат"], correctAnswer: "A" },
       { id: "34", text: "Батпақ тұрағы қай дәуірге жатады?", options: ["Ерте палеолит", "Кейінгі палеолит", "Неолит", "Темір дәуірі"], correctAnswer: "B" },
-      { id: "35", text: "Мезолит дәуіріне жататын тұрақтардың бірі:", options: ["Мичурин", "Тәңірқазған", "Батпақ", "Беғазы"], correctAnswer: "A" },
+      { id: "35", text: "Мезолит дәуіріне жататын тұрақтардың бірі:", options: ["Мичурин", "Tәңірқазған", "Батпақ", "Беғазы"], correctAnswer: "A" },
       { id: "36", text: "Тельман, Мичурин, Әкімбек тұрақтары қай дәуірге тән?", options: ["Палеолит", "Мезолит", "Неолит", "Қола дәуірі"], correctAnswer: "B" },
       { id: "37", text: "Неолит дәуіріне жататын тұрақтардың бірі:", options: ["Қараүңгір", "Шілікті", "Есік", "Берел"], correctAnswer: "A" },
       { id: "38", text: "Сексеуіл тұрағы қай дәуірге жатады?", options: ["Мезолит", "Неолит", "Темір дәуірі", "Қола дәуірі"], correctAnswer: "B" },
@@ -94,7 +93,7 @@ const STATIC_TESTS: Record<string, Record<string, any[]>> = {
       { id: "40", text: "Неолит дәуірінде адамдар қандай жаңалықтарды меңгерді?", options: ["Металл құю, жазу жазу", "Тасты бұрғылау, тегістеу, қыш жасау", "Арба жасау, темір өңдеу", "Ақша соғу, қала салу"], correctAnswer: "B" },
       { id: "41", text: "Қай кезеңде балшықтан ыдыс жасау кең тарады?", options: ["Палеолит", "Мезолит", "Неолит", "Қола дәуірі"], correctAnswer: "C" },
       { id: "42", text: "Мезолит дәуірінде адамдардың өміріне көбірек әсер еткен табиғи өзгеріс:", options: ["Мұздықтардың ұлғаюы", "Климаттың күрт суытуы", "Мұз дәуірінің аяқталып, жылынудың басталуы", "Шөлейттің толық жойылуы"], correctAnswer: "C" },
-      { id: "43", text: "Тас дәуіріндегі еңбек бөлінісінің қарапайым түрі:", options: ["Саудагерлер мен шенеуніктерге бөліну", "Ерлер аң аулап, әйелдер терімшілікпен айналысуы", "Қала мен ауылға бөліну", "Әскер мен діни топқа бөліну"], correctAnswer: "B" },
+      { id: "43", text: "Тас дәуіріндегі ең еңбек бөлінісінің қарапайым түрі:", options: ["Саудагерлер мен шенеуніктерге бөліну", "Ерлер аң аулап, әйелдер терімшілікпен айналысуы", "Қала мен ауылға бөліну", "Әскер мен діни топқа бөліну"], correctAnswer: "B" },
       { id: "44", text: "Алғашқы адамдардың баспанасы ретінде жиі пайдаланылған орын:", options: ["Сарайлар", "Үңгірлер", "Кесенелер", "Қалалар"], correctAnswer: "B" },
       { id: "45", text: "Тас дәуірінде адамдардың негізгі кәсібіне жатпайды:", options: ["Аңшылық", "Терімшілік", "Балық аулау", "Машина жасау"], correctAnswer: "D" },
       { id: "46", text: "Кейінгі палеолитте адамдардың қоғамдық өмірінде болған өзгеріс:", options: ["Мемлекет пайда болды", "Рулық қауым қалыптасты", "Заң жүйесі шықты", "Ақша айналымы туды"], correctAnswer: "B" },
@@ -264,8 +263,6 @@ export default function TheoryPage() {
   if (!profile) return null;
 
   const userSubjects = profile.selectedSubjects || [];
-  
-  // Normalize subject names for comparison
   const normalizedUserSubjects = userSubjects.map(s => s === "Математикалық сауаттылық" ? "Математикалық сауаттылық" : s);
 
   const mySubjects = Object.keys(UBT_TOPICS).filter(s => {
@@ -386,8 +383,8 @@ function SubjectCard({ subject }: { subject: string }) {
           </div>
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <Sparkles className="size-4 text-primary animate-pulse" />
+          <Sparkles className="size-4 text-primary animate-pulse" />
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             {hasSpecialTest ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
           </p>
         </div>
@@ -399,6 +396,7 @@ function SubjectCard({ subject }: { subject: string }) {
 function TopicItem({ index, topic, subject }: { index: number, topic: string, subject: string }) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { user } = useAuth();
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const [practiceMode, setPracticeMode] = useState<"reading" | "loading" | "testing" | "results">("reading");
   const [questions, setQuestions] = useState<any[]>([]);
@@ -407,16 +405,26 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   const [testResult, setTestResult] = useState({ score: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Auto-scroll to top when question changes
+  useEffect(() => {
+    if (practiceMode === "testing" && scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = 0;
+      }
+    }
+  }, [currentIndex, practiceMode]);
+
   const startPractice = async () => {
     setPracticeMode("loading");
     setErrorMessage(null);
+    setCurrentIndex(0);
+    setAnswers({});
+    
     try {
-      // Check for static tests
       if (STATIC_TESTS[subject] && STATIC_TESTS[subject][topic]) {
         const staticQuestions = STATIC_TESTS[subject][topic];
         setQuestions(staticQuestions);
-        setCurrentIndex(0);
-        setAnswers({});
         setPracticeMode("testing");
         return;
       }
@@ -427,8 +435,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         count: 5 
       });
       setQuestions(newQuestions || []);
-      setCurrentIndex(0);
-      setAnswers({});
       setPracticeMode("testing");
     } catch (error: any) {
       let msg = "Сұрақтарды жүктеу мүмкін болмады.";
@@ -441,12 +447,12 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   };
 
   const handleAnswer = (option: string) => {
-    setAnswers({ ...answers, [currentIndex]: option });
+    setAnswers(prev => ({ ...prev, [currentIndex]: option }));
   };
 
   const nextQuestion = () => {
     if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+      setCurrentIndex(prev => prev + 1);
     } else {
       finishPractice();
     }
@@ -454,7 +460,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
 
   const prevQuestion = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+      setCurrentIndex(prev => prev - 1);
     }
   };
 
@@ -480,6 +486,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       if(!open) {
         setPracticeMode("reading");
         setQuestions([]);
+        setCurrentIndex(0);
       }
     }}>
       <DialogTrigger asChild>
@@ -511,7 +518,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           </DialogHeader>
         </div>
         
-        <ScrollArea className="flex-1 p-8">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 p-8">
           {practiceMode === "reading" && (
             <div className="py-16 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
@@ -632,7 +639,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
               <div className="text-center space-y-6">
                 <div className="inline-flex size-32 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner relative">
                   <Trophy className="size-16 drop-shadow-sm" />
-                  <Sparkles className="absolute -top-2 -right-2 size-8 text-yellow-400 animate-bounce" />
+                  <Sparkles className="absolute -top-2 -right-2 size-8 text-yellow-400 animate-pulse" />
                 </div>
                 <div>
                   <h3 className="text-4xl font-black font-headline tracking-tighter">Нәтиже: {testResult.score} / {testResult.total}</h3>

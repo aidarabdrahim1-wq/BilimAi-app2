@@ -50,9 +50,6 @@ export default function LandingPage() {
                 <Button size="lg" className="h-12 px-8 text-base font-semibold" asChild>
                   <Link href="/signup">Тегін тіркелу</Link>
                 </Button>
-                <Button variant="outline" size="lg" className="h-12 px-8 text-base font-semibold" asChild>
-                  <Link href="/diagnostic">Диагностикадан өту</Link>
-                </Button>
               </div>
             </div>
           </div>

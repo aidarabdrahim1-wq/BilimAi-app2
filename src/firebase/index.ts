@@ -1,24 +1,28 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 /**
- * Firebase-ті іске қосу функциясы.
- * Қателіктерді болдырмау үшін біз берілген firebaseConfig нысанын тікелей қолданамыз.
+ * Firebase-ті іске қосу және SDK қызметтерін алу.
  */
-export function initializeFirebase() {
+export function initializeFirebase(): { firebaseApp: FirebaseApp; auth: Auth; firestore: Firestore } {
+  let app: FirebaseApp;
+  
   if (!getApps().length) {
-    // Біз берген firebaseConfig-ті тікелей қолданамыз, себебі автоматты 
-    // инициализация кейде бос немесе бапталмаған жобаға сілтеуі мүмкін.
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
   }
 
-  // Егер іске қосылып қойса, бар бағдарламаны қайтарамыз
-  return getSdks(getApp());
+  return {
+    firebaseApp: app,
+    auth: getAuth(app),
+    firestore: getFirestore(app)
+  };
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

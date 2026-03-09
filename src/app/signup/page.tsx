@@ -50,7 +50,7 @@ export default function SignupPage() {
     if (!isConfigValid || !auth) {
       toast({
         title: "Конфигурация қатесі",
-        description: "Firebase API кілті дұрыс орнатылмаған.",
+        description: "Firebase API кілті дұрыс орнатылмаған немесе жоба бапталмаған.",
         variant: "destructive",
       });
       return;
@@ -71,7 +71,7 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Create Profile Data (matching firestore.rules requirements)
+      // 2. Create Profile Data
       if (db) {
         const profileData = {
           id: user.uid,
@@ -90,6 +90,8 @@ export default function SignupPage() {
           targetCareer: formData.targetCareer,
           weakTopics: [],
           untDate: "2025-06-20", 
+          totalStudyTimeMinutes: 0,
+          todayStudyTimeMinutes: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -109,14 +111,17 @@ export default function SignupPage() {
       
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
-      if (error.message.includes("identitytoolkit.googleapis.com")) {
-        errorMessage = "Identity Toolkit API бұл жобада іске қосылмаған. Firebase Console-дан оны қосу керек.";
+      // Handle Identity Toolkit API not enabled
+      if (error.message?.includes("identitytoolkit.googleapis.com") || error.code === "auth/api-not-available") {
+        errorMessage = "Identity Toolkit API бұл Google Cloud жобасында өшірулі. Тіркелу қызметі жұмыс істеуі үшін оны Google Console-дан іске қосу керек. (Project: 564515006831)";
       } else if (error.code === "auth/operation-not-allowed") {
-        errorMessage = "Email/Password арқылы кіру әдісі бұл жобада өшірулі.";
+        errorMessage = "Email/Password арқылы кіру әдісі Firebase Console-да өшірулі. Authentication -> Sign-in method бөлімінен оны қосыңыз.";
       } else if (error.code === "auth/email-already-in-use") {
         errorMessage = "Бұл Email поштасы бұрын тіркелген.";
       } else if (error.code === "auth/weak-password") {
         errorMessage = "Құпия сөз тым әлсіз (кемінде 6 таңба).";
+      } else if (error.code === "auth/invalid-api-key") {
+        errorMessage = "API кілті жарамсыз. Firebase конфигурациясын тексеріңіз.";
       }
 
       toast({

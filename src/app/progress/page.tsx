@@ -3,12 +3,16 @@
 
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Target, Award } from "lucide-react";
+import { BarChart3, TrendingUp, Target, Award, Clock, Calendar } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Progress } from "@/components/ui/progress";
 
 export default function ProgressPage() {
   const { profile } = useAuth();
+
+  const totalMinutes = profile?.totalStudyTimeMinutes || 0;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
 
   return (
     <AppShell>
@@ -34,6 +38,20 @@ export default function ProgressPage() {
             </CardContent>
           </Card>
           
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Оқу уақыты</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2">
+                <Clock className="size-6 text-indigo-600" />
+                <span className="text-2xl font-bold">
+                  {hours > 0 ? `${hours} сағ ${minutes} мин` : `${minutes} мин`}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-none shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Дәлдік</CardTitle>

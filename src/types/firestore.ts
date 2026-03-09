@@ -6,7 +6,7 @@ import { Timestamp } from 'firebase/firestore';
  */
 
 export interface UserProfile {
-  id: string; // Corrected from uid to id to match firestore.rules
+  id: string;
   fullName: string;
   email: string;
   grade: string;
@@ -22,7 +22,10 @@ export interface UserProfile {
   targetCareer?: string;
   untDate?: string; // YYYY-MM-DD format
   weakTopics: string[];
-  lastStudyDate?: Timestamp;
+  totalStudyTimeMinutes: number;
+  todayStudyTimeMinutes: number;
+  lastStudyDate?: string;
+  lastStudyTimestamp?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }

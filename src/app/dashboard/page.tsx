@@ -28,7 +28,8 @@ import {
   RotateCcw,
   Check,
   BarChart,
-  PieChart
+  PieChart,
+  Timer
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -83,7 +84,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     
-    // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans
     const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
     const q = query(
       plansRef,
@@ -153,7 +153,6 @@ export default function Dashboard() {
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
     
     try {
-      // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans/{planId}
       const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
       updateDoc(planRef, {
         tasks: updatedTasks,
@@ -238,6 +237,7 @@ export default function Dashboard() {
   const correctCount = profile?.correctAnswers || 0;
   const streak = profile?.streakDays || 0;
   const completedPlansCount = profile?.completedPlans || 0;
+  const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
   const progressToTarget = Math.round((currentScore / targetScore) * 100);
   const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
@@ -249,7 +249,6 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
-        {/* Reminder Alert */}
         {todayTasks.length === 0 && (
           <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
@@ -373,18 +372,18 @@ export default function Dashboard() {
             </DialogContent>
           </Dialog>
 
-          <Card className="shadow-sm border-none bg-secondary text-secondary-foreground overflow-hidden relative group">
+          <Card className="shadow-sm border-none bg-indigo-600 text-white overflow-hidden relative group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Мақсатты балл</CardTitle>
-              <Target className="h-4 w-4 opacity-70 group-hover:scale-110 transition-transform" />
+              <CardTitle className="text-sm font-medium">Бүгінгі оқу уақыты</CardTitle>
+              <Timer className="h-4 w-4 opacity-70" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{targetScore}</div>
+              <div className="text-3xl font-bold">{todayStudyMinutes} мин</div>
               <p className="text-xs opacity-70 mt-1">
-                {progressToTarget}% жетістік
+                Қолданбадағы белсенділік
               </p>
               <div className="mt-4">
-                <Progress value={progressToTarget} className="h-2 bg-white/20" />
+                <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-white/20" />
               </div>
             </CardContent>
           </Card>

@@ -4,10 +4,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { format } from "date-fns";
 
 export interface UserProfile {
   fullName: string;
@@ -25,6 +26,9 @@ export interface UserProfile {
   targetCareer?: string;
   untDate?: string;
   weakTopics: string[];
+  totalStudyTimeMinutes: number;
+  todayStudyTimeMinutes: number;
+  lastStudyDate?: string;
   createdAt: any;
 }
 
@@ -62,7 +66,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(firebaseUser);
       
       if (firebaseUser && db) {
-        // Профильді тек studentProfiles коллекциясынан аламыз (firestore.rules бойынша)
         const userDocRef = doc(db, "studentProfiles", firebaseUser.uid);
         
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
@@ -73,7 +76,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setLoading(false);
         }, (error: any) => {
-          // Авторизация ауысуы кезіндегі уақытша рұқсат қатесін (permission-denied) өткізіп жібереміз
           if (error.code === 'permission-denied') {
             return;
           }
@@ -90,7 +92,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(null);
         setLoading(false);
         
-        // Қорғалған беттерді тексеру
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/admin"];
         if (protectedRoutes.some(route => pathname.startsWith(route))) {
           router.push("/login");
@@ -100,6 +101,32 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => unsubscribeAuth();
   }, [pathname, router]);
+
+  // STUDY TIME TRACKER LOGIC
+  useEffect(() => {
+    if (!user || !profile || !db) return;
+
+    const interval = setInterval(async () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const isNewDay = profile.lastStudyDate !== today;
+
+      const userDocRef = doc(db, "studentProfiles", user.uid);
+      const updateData: any = {
+        totalStudyTimeMinutes: increment(1),
+        todayStudyTimeMinutes: isNewDay ? 1 : increment(1),
+        lastStudyDate: today,
+        updatedAt: serverTimestamp(),
+      };
+
+      try {
+        await updateDoc(userDocRef, updateData);
+      } catch (e) {
+        console.error("Study time tracking failed", e);
+      }
+    }, 60000); // Every 1 minute
+
+    return () => clearInterval(interval);
+  }, [user, profile?.lastStudyDate]);
 
   if (!mounted) return <div className="min-h-screen bg-background" />;
 

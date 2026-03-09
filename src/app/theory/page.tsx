@@ -50,22 +50,6 @@ import { Progress } from "@/components/ui/progress";
 import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 
-// Статикалық түсіндірмелер базасы
-const STATIC_THEORY: Record<string, any> = {
-  "Қазақ хандығының құрылуы мен дамуы": {
-    given: "XV ғасырдың ортасындағы Қазақстан аумағындағы саяси жағдай және қазақ халқының этникалық бірігу процесі.",
-    theory: "Қазақ хандығының негізі 1465 жылы Шу мен Қозыбасы өңірлерінде қаланды. Негізін салғандар - Керей мен Жәнібек хандар. Олар Әбілқайыр хандығынан бөлініп, Моғолстанның батыс бөлігіне қоныс аударды.\n\nДаму кезеңдері:\n1. Қасым хан тұсында - 'Қасым ханның қасқа жолы' заңдар жинағы.\n2. Хақназар хан тұсында - Хандықтың жерін кеңейту.\n3. Тәуке хан тұсында - 'Жеті жарғы' заңдар жинағы.",
-    years: ["1465 ж. - Қазақ хандығының құрылуы", "1511-1518 жж. - Қасым ханның билігі", "1680-1718 жж. - Тәуке ханның билігі"],
-    unt_focus: "Керей мен Жәнібектің Моғолстанға көшу себептері және хандардың билік кезеңдері жиі келеді."
-  },
-  "Логарифмдік теңдеулер": {
-    given: "Айнымалысы логарифм белгісінің астында немесе негізінде болатын теңдеулер.",
-    theory: "Логарифмнің негізгі қасиеттері:\n1. log_a(b) = c => a^c = b\n2. log_a(xy) = log_a(x) + log_a(y)\n3. log_a(x^n) = n * log_a(x)\n\nМАҢЫЗДЫ: Мүмкін мәндер жиынын (ММЖ) анықтау керек! Негізі a > 0, a != 1 және x > 0.",
-    years: ["log_a(1) = 0", "log_a(a) = 1", "a^{log_a(b)} = b"],
-    unt_focus: "ММЖ-ны ұмытып кету - ең жиі қателік. Тестте жауабын теңдеуге қойып тексерген тиімді."
-  }
-};
-
 const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   "Қазақстан тарихы": {
     description: "Ежелгі дәуірден бүгінгі күнге дейінгі Қазақстан тарихының толық курсы.",
@@ -97,7 +81,7 @@ const UBT_TOPICS: Record<string, { topics: string[], description: string }> = {
   },
   "География": {
     description: "Дүниежүзілік және Қазақстанның географиялық ерекшеліктері.",
-    topics: ["географиялық зерттеу әдістері", "карта, масштаб, координаталар", "литосфера, атмосфера, гидросфера, биосфера", "климат және климат түзуші факторлар", "табиғат зоналары", "демография", "урбандалу", "дүниежүзінің саяси картасы", "елтану", "табиғи ресурстар географиясы", "өнеркәсіп, ауыл шаруашылығы, көлік, қызмет көрсету саласы", "Қазақстанның экономикалық және әлеуметтік географиясы", "экологиялық проблемалар", "ғаламдық мәселелер"]
+    topics: ["географиялық зерттеу әдістері", "карта, масштаб, координаталар", "литосфера, атмосфера, гидросфера, биосфера", "климат және климат түзуші факторлар", "tabиғат зоналары", "демография", "урбандалу", "дүниежүзінің саяси картасы", "елтану", "табиғи ресурстар географиясы", "өнеркәсіп, ауыл шаруашылығы, көлік, қызмет көрсету саласы", "Қазақстанның экономикалық және әлеуметтік географиясы", "экологиялық проблемалар", "ғаламдық мәселелер"]
   },
   "Дүниежүзі тарихы": {
     description: "Ежелгі заманнан бүгінгі күнге дейінгі жаһандық тарих.",
@@ -156,9 +140,14 @@ export default function TheoryPage() {
 
   if (!profile) return null;
 
-  const allSubjects = Object.keys(UBT_TOPICS).filter(s => 
-    s.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const userSubjects = profile.selectedSubjects || [];
+  const allSubjects = Object.keys(UBT_TOPICS).filter(s => {
+    // Профильдегі таңдалған пәндер арасында бар екенін тексеру
+    const isSelected = userSubjects.includes(s) || 
+                      (s === "Математикалық сауаттылық" && userSubjects.includes("Мат. сауаттылық"));
+    
+    return isSelected && s.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   return (
     <AppShell>
@@ -170,7 +159,7 @@ export default function TheoryPage() {
                 <BookOpen className="size-10 text-primary" />
                 Практикалық база
               </h1>
-              <p className="text-muted-foreground font-medium">ҰБТ-да кездесетін барлық пәндер мен тақырыптар бойынша жаттығу.</p>
+              <p className="text-muted-foreground font-medium">Сіздің таңдаған пәндеріңіз бойынша дайындық.</p>
             </div>
             <div className="hidden md:flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10">
               <Trophy className="size-5 text-yellow-600" />
@@ -184,7 +173,7 @@ export default function TheoryPage() {
           <div className="relative max-w-xl">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
             <Input 
-              placeholder="Пәнді немесе тақырыпты іздеу..." 
+              placeholder="Тақырыптарды іздеу..." 
               className="pl-12 h-14 bg-white border-none shadow-md rounded-2xl text-base focus-visible:ring-primary" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -195,13 +184,19 @@ export default function TheoryPage() {
         <section className="space-y-6">
           <div className="flex items-center gap-3">
             <div className="h-8 w-1.5 rounded-full bg-primary" />
-            <h2 className="text-2xl font-black font-headline tracking-tight">Барлық пәндер</h2>
+            <h2 className="text-2xl font-black font-headline tracking-tight">Менің пәндерім</h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {allSubjects.map((subject, i) => (
-              <SubjectCard key={i} subject={subject} />
-            ))}
-          </div>
+          {allSubjects.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {allSubjects.map((subject, i) => (
+                <SubjectCard key={i} subject={subject} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
+              <p className="text-muted-foreground">Пәндер табылмады. Іздеу сұранысын тексеріңіз.</p>
+            </div>
+          )}
         </section>
       </div>
     </AppShell>
@@ -253,7 +248,7 @@ function SubjectCard({ subject }: { subject: string }) {
               </div>
             </div>
             <DialogDescription className="text-sm font-medium text-muted-foreground max-w-xl">
-              {ubtInfo.description} Тақырыпты таңдап, AI арқылы теорияны қайталаңыз немесе тест тапсырып бекітіңіз.
+              {ubtInfo.description} Тақырыпты таңдап, AI арқылы практика жасаңыз.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -278,7 +273,6 @@ function SubjectCard({ subject }: { subject: string }) {
 function TopicItem({ index, topic, subject }: { index: number, topic: string, subject: string }) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { user } = useAuth();
-  const hasStatic = STATIC_THEORY[topic];
 
   const [practiceMode, setPracticeMode] = useState<"reading" | "loading" | "testing" | "results">("reading");
   const [questions, setQuestions] = useState<any[]>([]);
@@ -375,54 +369,18 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         
         <ScrollArea className="flex-1 p-8">
           {practiceMode === "reading" && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              {hasStatic ? (
-                <>
-                  <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 relative overflow-hidden">
-                    <h4 className="flex items-center gap-2 text-xs font-black text-blue-700 mb-3 uppercase tracking-widest">
-                      <ClipboardList className="size-4" /> Тақырыптың мәні
-                    </h4>
-                    <p className="text-sm leading-relaxed text-blue-900 font-medium">{hasStatic.given}</p>
-                    <BookOpen className="absolute -bottom-4 -right-4 size-24 text-blue-200/30 -rotate-12" />
-                  </div>
-                  <div className="space-y-4">
-                    <h4 className="flex items-center gap-2 text-xs font-black text-foreground uppercase tracking-widest">
-                      <BookText className="size-4 text-primary" /> Толық мәліметтер
-                    </h4>
-                    <div className="p-6 rounded-3xl bg-accent/5 border border-border/50">
-                      <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap font-medium">{hasStatic.theory}</p>
-                    </div>
-                  </div>
-                  <div className="p-6 rounded-3xl bg-yellow-50 border border-yellow-100 relative overflow-hidden">
-                    <h4 className="flex items-center gap-2 text-xs font-black text-yellow-800 mb-3 uppercase tracking-widest">
-                      <Calendar className="size-4" /> Жаттау керек деректер
-                    </h4>
-                    <ul className="space-y-3 relative z-10">
-                      {hasStatic.years.map((item: string, yi: number) => (
-                        <li key={yi} className="flex gap-3 text-sm text-yellow-900 font-bold items-start">
-                          <CheckCircle2 className="size-4 text-yellow-600 shrink-0 mt-0.5" />
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                    <Star className="absolute -bottom-4 -right-4 size-24 text-yellow-200/30 rotate-12" />
-                  </div>
-                </>
-              ) : (
-                <div className="py-16 flex flex-col items-center text-center gap-6">
-                  <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
-                    <BookOpen className="size-12 opacity-50" />
-                  </div>
-                  <div className="space-y-2">
-                    <h4 className="text-lg font-bold">Тест арқылы меңгеру</h4>
-                    <p className="text-sm text-muted-foreground max-w-sm font-medium">
-                      Бұл тақырып бойынша мәліметтерді тікелей практикалық тапсырмалар арқылы меңгеру тиімдірек.
-                    </p>
-                  </div>
-                </div>
-              )}
+            <div className="py-16 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
+                <BookOpen className="size-12 opacity-50" />
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-lg font-bold">Тест арқылы меңгеру</h4>
+                <p className="text-sm text-muted-foreground max-w-sm font-medium">
+                  Бұл тақырып бойынша практикалық тапсырмаларды AI арқылы орындап, біліміңізді бекітіңіз.
+                </p>
+              </div>
 
-              <div className="pt-8 border-t border-dashed">
+              <div className="pt-8 border-t border-dashed w-full">
                 <Button 
                   className="w-full gap-3 h-16 text-xl font-black shadow-xl shadow-primary/20 bg-gradient-to-r from-primary to-secondary rounded-2xl hover:scale-[1.02] transition-all"
                   onClick={startPractice}

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -34,7 +35,7 @@ export default function LoginPage() {
       console.error("Login Error:", error.code, error.message);
       toast({
         title: "Кіру қатесі",
-        description: "Email немесе құпия сөз қате немесе жүйеде уақытша ақау бар.",
+        description: "Email немесе құпия сөз қате немесе жүйелік ақау бар.",
         variant: "destructive",
       });
     } finally {

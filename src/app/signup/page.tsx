@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -87,7 +88,7 @@ export default function SignupPage() {
       console.error("Signup Error:", error.code, error.message);
       toast({
         title: "Тіркелу қатесі",
-        description: "Жүйеге тіркелу мүмкін болмады. Тіркелу әдістері өшірулі немесе техникалық ақау бар.",
+        description: "Жүйеге тіркелу мүмкін болмады. Баптауларды тексеріңіз.",
         variant: "destructive",
       });
     } finally {

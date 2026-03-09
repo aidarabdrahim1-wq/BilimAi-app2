@@ -383,9 +383,9 @@ function SubjectCard({ subject }: { subject: string }) {
           </div>
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2">
-          <Sparkles className="size-4 text-primary animate-pulse" />
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            {subject === "Қазақстан тарихы" && ubtInfo.topics[idx] === "Тас дәуірі" ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <Sparkles className="size-4 text-primary animate-pulse" />
+            {subject === "Қазақстан тарихы" && ubtInfo.topics.includes("Тас дәуірі") ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
           </p>
         </div>
       </DialogContent>
@@ -423,7 +423,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         topic, 
         count: 5 
       });
-      setQuestions(newQuestions);
+      setQuestions(newQuestions || []);
       setCurrentIndex(0);
       setAnswers({});
       setPracticeMode("testing");
@@ -482,7 +482,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
             <div className="flex flex-col">
               <span className="text-sm font-bold group-hover/item:text-primary transition-colors">{topic}</span>
               <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 uppercase tracking-wider">
-                <Clock className="size-2.5" /> {isStatic ? `${questions.length || 50} сұрақ` : "15-20 мин практика"}
+                <Clock className="size-2.5" /> {isStatic ? `${STATIC_TESTS[subject][topic].length} сұрақ` : "15-20 мин практика"}
               </span>
             </div>
           </div>

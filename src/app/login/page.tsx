@@ -22,8 +22,9 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!email || !password) return;
     
+    setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({

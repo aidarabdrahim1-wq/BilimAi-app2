@@ -54,11 +54,9 @@ export default function SignupPage() {
 
     setLoading(true);
     try {
-      // 1. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // 2. Create Profile Data
       const profileData = {
         id: user.uid,
         fullName: formData.fullName,
@@ -90,7 +88,7 @@ export default function SignupPage() {
       console.error("Signup Error:", error.code, error.message);
       toast({
         title: "Тіркелу қатесі",
-        description: "Жүйеге тіркелу мүмкін болмады. Тіркелу әдістері өшірулі немесе конфигурациялық ақау бар.",
+        description: "Жүйеге тіркелу мүмкін болмады. Тіркелу әдістері өшірулі немесе техникалық ақау бар.",
         variant: "destructive",
       });
     } finally {

@@ -111,21 +111,21 @@ export default function SignupPage() {
       
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
-      // Handle Identity Toolkit API not enabled
-      if (error.message?.includes("identitytoolkit.googleapis.com") || error.code === "auth/api-not-available") {
-        errorMessage = "Identity Toolkit API бұл Google Cloud жобасында өшірулі. Тіркелу қызметі жұмыс істеуі үшін оны Google Console-дан іске қосу керек. (Project: 564515006831)";
+      // Handle the "blocked" API error specifically
+      if (error.message?.includes("blocked") || error.message?.includes("authenticationservice.signup")) {
+        errorMessage = "Email арқылы тіркелу әдісі Firebase-те өшірулі немесе бұғатталған. Firebase Console-ға кіріп, Authentication -> Sign-in method бөлімінен 'Email/Password' қосқышын (Enable) қосыңыз.";
+      } else if (error.message?.includes("identitytoolkit.googleapis.com") || error.code === "auth/api-not-available") {
+        errorMessage = "Identity Toolkit API өшірулі. Оны Google Cloud Console-дан іске қосу керек (Сілтеме қателік журналында көрсетілген).";
       } else if (error.code === "auth/operation-not-allowed") {
-        errorMessage = "Email/Password арқылы кіру әдісі Firebase Console-да өшірулі. Authentication -> Sign-in method бөлімінен оны қосыңыз.";
+        errorMessage = "Бұл тіркелу әдісіне рұқсат берілмеген. Firebase Console-дан оны іске қосыңыз.";
       } else if (error.code === "auth/email-already-in-use") {
         errorMessage = "Бұл Email поштасы бұрын тіркелген.";
       } else if (error.code === "auth/weak-password") {
         errorMessage = "Құпия сөз тым әлсіз (кемінде 6 таңба).";
-      } else if (error.code === "auth/invalid-api-key") {
-        errorMessage = "API кілті жарамсыз. Firebase конфигурациясын тексеріңіз.";
       }
 
       toast({
-        title: "Жүйелік қателік",
+        title: "Жүйелік шектеу",
         description: errorMessage,
         variant: "destructive",
       });

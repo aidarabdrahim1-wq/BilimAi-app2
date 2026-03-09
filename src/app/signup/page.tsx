@@ -13,9 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2 } from "lucide-react";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
+import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -76,7 +74,7 @@ export default function SignupPage() {
       // 2. Create Profile Data (matching firestore.rules requirements)
       if (db) {
         const profileData = {
-          id: user.uid, // Required by security rule: request.resource.data.id == studentId
+          id: user.uid,
           fullName: formData.fullName,
           email: formData.email,
           grade: formData.grade,
@@ -97,7 +95,6 @@ export default function SignupPage() {
         };
 
         const docRef = doc(db, "studentProfiles", user.uid);
-        // CRITICAL: Must await the setDoc before redirecting
         await setDoc(docRef, profileData);
       }
 
@@ -108,10 +105,23 @@ export default function SignupPage() {
 
       router.push("/dashboard");
     } catch (error: any) {
-      console.error("Signup error:", error);
+      console.error("Signup error details:", error);
+      
+      let errorMessage = "Тіркелу кезінде қате орын алды.";
+      
+      if (error.message.includes("identitytoolkit.googleapis.com")) {
+        errorMessage = "Identity Toolkit API бұл жобада іске қосылмаған. Firebase Console-дан оны қосу керек.";
+      } else if (error.code === "auth/operation-not-allowed") {
+        errorMessage = "Email/Password арқылы кіру әдісі бұл жобада өшірулі.";
+      } else if (error.code === "auth/email-already-in-use") {
+        errorMessage = "Бұл Email поштасы бұрын тіркелген.";
+      } else if (error.code === "auth/weak-password") {
+        errorMessage = "Құпия сөз тым әлсіз (кемінде 6 таңба).";
+      }
+
       toast({
-        title: "Қате орын алды",
-        description: error.message || "Тіркелу кезінде қате орын алды.",
+        title: "Жүйелік қателік",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

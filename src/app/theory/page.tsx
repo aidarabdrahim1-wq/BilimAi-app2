@@ -27,6 +27,7 @@ import {
   Info,
   Trophy,
   ArrowRight,
+  ArrowLeft,
   XCircle,
   Clock
 } from "lucide-react";
@@ -331,6 +332,8 @@ function SubjectCard({ subject }: { subject: string }) {
   const ubtInfo = UBT_TOPICS[subject];
   const [isOpen, setIsOpen] = useState(false);
 
+  const hasSpecialTest = subject === "Қазақстан тарихы" && ubtInfo.topics.includes("Тас дәуірі");
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -385,7 +388,7 @@ function SubjectCard({ subject }: { subject: string }) {
         <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2">
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <Sparkles className="size-4 text-primary animate-pulse" />
-            {subject === "Қазақстан тарихы" && ubtInfo.topics.includes("Тас дәуірі") ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
+            {hasSpecialTest ? "Арнайы 50 тест сұрағы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
           </p>
         </div>
       </DialogContent>
@@ -446,6 +449,12 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       setCurrentIndex(currentIndex + 1);
     } else {
       finishPractice();
+    }
+  };
+
+  const prevQuestion = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
     }
   };
 
@@ -596,14 +605,25 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </div>
               </Card>
 
-              <Button 
-                className="w-full h-16 gap-3 font-black text-lg rounded-2xl shadow-xl shadow-primary/20" 
-                disabled={!answers[currentIndex]}
-                onClick={nextQuestion}
-              >
-                {currentIndex === questions.length - 1 ? "Нәтижені көру" : "Келесі сұрақ"}
-                <ArrowRight className="size-5" />
-              </Button>
+              <div className="flex gap-4">
+                <Button 
+                  variant="outline"
+                  className="flex-1 h-16 gap-3 font-black text-lg rounded-2xl border-2" 
+                  onClick={prevQuestion}
+                  disabled={currentIndex === 0}
+                >
+                  <ArrowLeft className="size-5" />
+                  Артқа
+                </Button>
+                <Button 
+                  className="flex-[2] h-16 gap-3 font-black text-lg rounded-2xl shadow-xl shadow-primary/20" 
+                  disabled={!answers[currentIndex]}
+                  onClick={nextQuestion}
+                >
+                  {currentIndex === questions.length - 1 ? "Нәтижені көру" : "Келесі сұрақ"}
+                  <ArrowRight className="size-5" />
+                </Button>
+              </div>
             </div>
           )}
 

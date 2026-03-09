@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle } from "lucide-react";
+import { BrainCircuit, Loader2 } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -111,13 +111,13 @@ export default function SignupPage() {
       
       let errorMessage = "Тіркелу кезінде қате орын алды.";
       
-      // Handle the "blocked" API error specifically
-      if (error.message?.includes("blocked") || error.message?.includes("authenticationservice.signup")) {
-        errorMessage = "Email арқылы тіркелу әдісі Firebase-те өшірулі немесе бұғатталған. Firebase Console-ға кіріп, Authentication -> Sign-in method бөлімінен 'Email/Password' қосқышын (Enable) қосыңыз.";
+      // Detailed error handling for blocked methods
+      if (error.message?.includes("signup-are-blocked") || error.message?.includes("method-google.cloud.identitytoolkit.v1.authenticationservice.signup-are-blocked")) {
+        errorMessage = "Тіркелу қызметі бұғатталған. Firebase Console -> Authentication -> Settings -> User actions бөлімінде 'Enable create' белгісінің тұрғанын тексеріңіз. Сонымен қатар, API Key шектеулерін тексеріңіз.";
       } else if (error.message?.includes("identitytoolkit.googleapis.com") || error.code === "auth/api-not-available") {
-        errorMessage = "Identity Toolkit API өшірулі. Оны Google Cloud Console-дан іске қосу керек (Сілтеме қателік журналында көрсетілген).";
+        errorMessage = "Identity Toolkit API іске қосылмаған. Google Cloud Console-дан оны іске қосу керек.";
       } else if (error.code === "auth/operation-not-allowed") {
-        errorMessage = "Бұл тіркелу әдісіне рұқсат берілмеген. Firebase Console-дан оны іске қосыңыз.";
+        errorMessage = "Бұл тіркелу әдісіне рұқсат берілмеген. Firebase Console-дан 'Email/Password' әдісін қосыңыз.";
       } else if (error.code === "auth/email-already-in-use") {
         errorMessage = "Бұл Email поштасы бұрын тіркелген.";
       } else if (error.code === "auth/weak-password") {

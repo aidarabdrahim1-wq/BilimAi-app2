@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink, Settings2 } from "lucide-react";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
@@ -38,7 +38,7 @@ export default function SignupPage() {
     targetCareer: "",
   });
   const [loading, setLoading] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<"blocked" | "not-found" | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -46,7 +46,7 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsBlocked(false);
+    setErrorStatus(null);
     
     if (!isConfigValid || !auth) {
       toast({ title: "Қате", description: "Жүйе бапталмаған.", variant: "destructive" });
@@ -93,12 +93,16 @@ export default function SignupPage() {
       router.push("/dashboard");
     } catch (error: any) {
       console.error("Signup Error:", error.code, error.message);
-      if (error.message?.includes('blocked')) {
-        setIsBlocked(true);
+      
+      if (error.code === 'auth/configuration-not-found') {
+        setErrorStatus("not-found");
+      } else if (error.message?.includes('blocked')) {
+        setErrorStatus("blocked");
       }
+
       toast({
         title: "Қате орын алды",
-        description: error.message?.includes('blocked') ? "API қызметі бұғатталған. Google Cloud-та рұқсат беріңіз." : error.message,
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -120,16 +124,28 @@ export default function SignupPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignup} className="space-y-6">
-            {isBlocked && (
-              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2">
+            {errorStatus === "not-found" && (
+              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <Settings2 className="size-4 shrink-0" />
+                  <span className="font-bold">Authentication бапталмаған:</span>
+                </div>
+                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз (Enable) керек.</p>
+                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
+              </div>
+            )}
+
+            {errorStatus === "blocked" && (
+              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="size-4 shrink-0" />
                   <span className="font-bold">API шектеуі анықталды:</span>
                 </div>
-                <p>Google Cloud Console-да осы API кілтіне <b>"Identity Toolkit API"</b> пайдалануға рұқсат беріңіз. Шектеу қойылғандықтан тіркелу мүмкін емес.</p>
+                <p>Google Cloud Console-да осы API кілтіне <b>"Identity Toolkit API"</b> пайдалануға рұқсат беріңіз.</p>
                 <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Баптауларға өту <ExternalLink className="size-3" /></a>
               </div>
             )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Толық аты-жөніңіз</Label>

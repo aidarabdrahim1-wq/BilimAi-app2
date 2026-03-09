@@ -10,22 +10,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink } from "lucide-react";
+import { BrainCircuit, Loader2, AlertCircle, ShieldAlert, ExternalLink, Settings2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setInputEmail] = useState("");
   const [password, setInputPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isBlocked, setIsBlocked] = useState(false);
+  const [errorStatus, setErrorStatus] = useState<"blocked" | "not-found" | "invalid" | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setErrorMsg(null);
-    setIsBlocked(false);
+    setErrorStatus(null);
     
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -37,19 +35,17 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error("Login Error:", error.code, error.message);
       
-      let friendlyMessage = "Email немесе құпия сөз дұрыс емес.";
-      
-      if (error.message?.includes('blocked') || error.code?.includes('api-key-is-blocked')) {
-        friendlyMessage = "API қызметі бұғатталған. Google Cloud-та бұл API кілтіне 'Identity Toolkit API' пайдалануға рұқсат беруіңіз керек.";
-        setIsBlocked(true);
-      } else if (error.code === 'auth/invalid-api-key') {
-        friendlyMessage = "API кілті қате. Конфигурацияны тексеріңіз.";
+      if (error.code === 'auth/configuration-not-found') {
+        setErrorStatus("not-found");
+      } else if (error.message?.includes('blocked')) {
+        setErrorStatus("blocked");
+      } else {
+        setErrorStatus("invalid");
       }
 
-      setErrorMsg(friendlyMessage);
       toast({
         title: "Кіру қатесі",
-        description: friendlyMessage,
+        description: error.message,
         variant: "destructive",
       });
     } finally {
@@ -71,25 +67,35 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
-            {errorMsg && (
-              <div className={`p-4 rounded-xl text-xs flex flex-col gap-2 animate-in fade-in slide-in-from-top-2 ${isBlocked ? 'bg-orange-50 border border-orange-200 text-orange-800' : 'bg-destructive/10 text-destructive'}`}>
+            {errorStatus === "not-found" && (
+              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
                 <div className="flex items-center gap-2">
-                  {isBlocked ? <ShieldAlert className="size-4 shrink-0" /> : <AlertCircle className="size-4 shrink-0" />}
-                  <span className="font-bold">{isBlocked ? "Техникалық шектеу:" : "Қате:"}</span>
+                  <Settings2 className="size-4 shrink-0" />
+                  <span className="font-bold">Authentication бапталмаған:</span>
                 </div>
-                <p className="leading-relaxed">{errorMsg}</p>
-                {isBlocked && (
-                  <div className="mt-2 pt-2 border-t border-orange-200 space-y-2">
-                    <p className="font-bold">Шешу жолы:</p>
-                    <ol className="list-decimal ml-4 space-y-1 text-[10px]">
-                      <li><a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="underline flex items-center gap-1">Google Cloud Console-ға өтіңіз <ExternalLink className="size-2" /></a></li>
-                      <li>Осы API кілтін таңдаңыз.</li>
-                      <li><b>API restrictions</b> бөлімінде <b>"Identity Toolkit API"</b>-ге рұқсат беріңіз немесе шектеуді (Don't restrict key) алып тастаңыз.</li>
-                    </ol>
-                  </div>
-                )}
+                <p>Firebase Console-да <b>Authentication</b> бөліміне өтіп, <b>Email/Password</b> әдісін қосуыңыз керек.</p>
+                <a href="https://console.firebase.google.com/" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Firebase Console-ға өту <ExternalLink className="size-3" /></a>
               </div>
             )}
+
+            {errorStatus === "blocked" && (
+              <div className="p-4 rounded-xl bg-orange-50 border border-orange-200 text-orange-800 text-xs flex flex-col gap-2 animate-in fade-in">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="size-4 shrink-0" />
+                  <span className="font-bold">API шектеуі анықталды:</span>
+                </div>
+                <p>Google Cloud Console-да осы API кілтіне <b>"Identity Toolkit API"</b> пайдалануға рұқсат беріңіз.</p>
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" className="text-primary underline flex items-center gap-1 font-bold">Баптауларға өту <ExternalLink className="size-3" /></a>
+              </div>
+            )}
+
+            {errorStatus === "invalid" && (
+              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <p>Email немесе құпия сөз дұрыс емес.</p>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

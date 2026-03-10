@@ -28,7 +28,10 @@ import {
   Timer,
   Quote,
   Zap,
-  Star
+  Star,
+  Medal,
+  GraduationCap,
+  Flame
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -224,12 +227,23 @@ export default function Dashboard() {
 
   const currentScore = profile?.currentScore || 0;
   const rating = profile?.rating || 0;
-  const solvedCount = profile?.solvedQuestions || 0;
-  const correctCount = profile?.correctAnswers || 0;
+  const targetScore = profile?.targetScore || 140;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
-  const accuracy = solvedCount > 0 ? Math.round((correctCount / solvedCount) * 100) : 0;
-  
+  // Rank Calculation
+  const getRankInfo = (pts: number) => {
+    if (pts < 100) return { name: "Бастаушы", next: 100, icon: Medal, color: "text-slate-400" };
+    if (pts < 500) return { name: "Ізденуші", next: 500, icon: Star, color: "text-blue-500" };
+    if (pts < 1500) return { name: "Озат", next: 1500, icon: Trophy, color: "text-yellow-500" };
+    return { name: "Маман", next: 5000, icon: Zap, color: "text-orange-500" };
+  };
+  const rank = getRankInfo(rating);
+  const rankProgress = (rating / rank.next) * 100;
+
+  // Grant Probability
+  const grantProb = Math.min(Math.round((currentScore / 140) * 100), 100);
+  const grantStatus = grantProb > 85 ? "Жоғары сенімділік" : grantProb > 60 ? "Жақсы мүмкіндік" : "Көбірек еңбек керек";
+
   const completedTodayCount = todayTasks.filter(t => t.status === 'completed').length;
   const pendingTasks = todayTasks.filter(t => t.status !== 'completed');
   const dailyProgress = todayTasks.length > 0 ? Math.round((completedTodayCount / todayTasks.length) * 100) : 0;
@@ -372,29 +386,51 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-shadow">
+          {/* New Creative: Rank Milestone */}
+          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-all group overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Дәлдік (Accuracy)</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Лидерлік мәртебе</CardTitle>
+              <rank.icon className={`h-5 w-5 ${rank.color} animate-bounce`} />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{accuracy}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {correctCount} / {solvedCount} дұрыс жауап
-              </p>
+            <CardContent className="space-y-2">
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-black ${rank.color}`}>{rank.name}</span>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-end text-[10px] font-bold uppercase text-muted-foreground">
+                  <span>Прогресс</span>
+                  <span>{Math.round(rankProgress)}%</span>
+                </div>
+                <Progress value={rankProgress} className="h-1.5 bg-accent/20" />
+                <p className="text-[9px] font-bold text-muted-foreground/70 uppercase">
+                  Келесі деңгейге: {rank.next - rating} ұпай
+                </p>
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-shadow">
+          {/* New Creative: Grant Forecast */}
+          <Card className="shadow-sm border-none bg-white hover:shadow-md transition-all group overflow-hidden border-r-4 border-green-500">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Қателік коэффициенті</CardTitle>
-              <AlertCircle className="h-4 w-4 text-destructive" />
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Грант мүмкіндігі</CardTitle>
+              <GraduationCap className="h-5 w-5 text-green-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{solvedCount > 0 ? 100 - accuracy : 0}%</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Талдау қажет: {solvedCount - correctCount} сұрақ
-              </p>
+            <CardContent className="relative">
+              <div className="flex items-center gap-3">
+                <div className="text-4xl font-black text-green-600 tracking-tighter">{grantProb}%</div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-green-700/60 uppercase">{grantStatus}</span>
+                  <div className="flex gap-0.5 mt-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className={`h-1 w-3 rounded-full ${i <= Math.ceil(grantProb/20) ? 'bg-green-500' : 'bg-slate-100'}`} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3 p-2 rounded-lg bg-green-50 text-[10px] font-bold text-green-800 border border-green-100 flex items-center gap-2">
+                <Sparkles className="size-3 shrink-0" />
+                Мақсатты баллға дейін: {targetScore - currentScore} балл
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -551,12 +587,18 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center shadow-inner">
-                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Дұрыс</span>
-                    <span className="text-2xl font-black text-foreground">{correctCount}</span>
+                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Стрим (Streak)</span>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Flame className="size-5 text-orange-500 fill-current" />
+                      <span className="text-2xl font-black text-foreground">{profile?.streakDays || 0} күн</span>
+                    </div>
                   </div>
                   <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center shadow-inner">
-                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Жалпы</span>
-                    <span className="text-2xl font-black text-foreground">{solvedCount}</span>
+                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Рейтинг</span>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Medal className="size-5 text-primary" />
+                      <span className="text-2xl font-black text-foreground">{rating}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

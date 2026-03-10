@@ -16,7 +16,8 @@ import {
   AlertCircle,
   LogOut,
   Trophy,
-  Compass
+  Compass,
+  Library
 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
@@ -41,6 +42,7 @@ const mainNavItems = [
   { title: "Практика", icon: BookOpen, url: "/theory" },
   { title: "Тест тапсыру", icon: ClipboardCheck, url: "/practice" },
   { title: "Диагностика", icon: BrainCircuit, url: "/diagnostic" },
+  { title: "Кітаптар", icon: Library, url: "/books" },
   { title: "Қатемен жұмыс", icon: AlertCircle, url: "/analysis" },
 ];
 
@@ -125,7 +127,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Әкімшілік</SidebarGroupLabel>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">ӘӘкімшілік</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (

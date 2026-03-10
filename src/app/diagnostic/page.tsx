@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -31,7 +32,26 @@ import { useToast } from "@/hooks/use-toast";
 export default function DiagnosticPage() {
   const [step, setStep] = useState<"start" | "payment" | "testing" | "result">("start");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [testSeconds, setTestSeconds] = useState(0);
   const { toast } = useToast();
+
+  useEffect(() => {
+    let interval: any;
+    if (step === "testing") {
+      interval = setInterval(() => {
+        setTestSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setTestSeconds(0);
+    }
+    return () => clearInterval(interval);
+  }, [step]);
+
+  const formatTestTime = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const handlePayment = () => {
     setIsProcessingPayment(true);
@@ -272,7 +292,7 @@ export default function DiagnosticPage() {
                 <div className="bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-white/40 flex items-center gap-4">
                   <div className="flex flex-col items-end">
                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Уақыт</span>
-                    <span className="text-xl font-black text-primary tabular-nums">12:45</span>
+                    <span className="text-xl font-black text-primary tabular-nums">{formatTestTime(testSeconds)}</span>
                   </div>
                   <div className="size-10 rounded-xl bg-primary/5 text-primary flex items-center justify-center shadow-inner">
                     <Clock className="size-6" />

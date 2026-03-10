@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -31,7 +32,10 @@ import {
   Star,
   Medal,
   GraduationCap,
-  Flame
+  Flame,
+  Megaphone,
+  Info,
+  ChevronRight
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -55,6 +59,30 @@ const MOTIVATION_QUOTES = [
   { text: "Сен бүгін шаршаған шығарсың, бірақ ертең грант иегері атанғанда бұл қиындықтардың бәрі тек жағымды естелікке айналады.", author: "Сенімділік жолы" },
   { text: "Білім — қару, оны тек еңбекпен ғана шыңдай аласың. ҰБТ — сенің мүмкіндігің!", author: "Білім жолы" },
   { text: "Талап пен еңбек болса, алынбайтын қамал жоқ. Сенің қолыңнан бәрі келеді!", author: "Жеңімпаз мотивациясы" }
+];
+
+const ANNOUNCEMENTS = [
+  {
+    id: 1,
+    title: "Наурыз ҰБТ-ға тіркелу басталды!",
+    content: "Ресми сайтта тіркелу 10-наурызға дейін жалғасады. Уақытты өткізіп алмаңыз!",
+    date: "2024-03-01",
+    type: "urgent"
+  },
+  {
+    id: 2,
+    title: "Жаңа пән: Информатика қосылды",
+    content: "Енді IT бағытын таңдаған оқушылар үшін Информатикадан тест тапсыру мүмкіндігі бар.",
+    date: "2024-02-28",
+    type: "info"
+  },
+  {
+    id: 3,
+    title: "Апталық рейтинг қорытындысы",
+    content: "Өткен аптаның үздіктері анықталды. Топ-10 оқушыға қосымша бонус берілді.",
+    date: "2024-02-25",
+    type: "success"
+  }
 ];
 
 export default function Dashboard() {
@@ -251,6 +279,49 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
+        {/* Announcements Section */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold font-headline flex items-center gap-2">
+              <Megaphone className="size-5 text-primary" />
+              Хабарландырулар
+            </h2>
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1">
+              Барлығы <ChevronRight className="size-3" />
+            </Button>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {ANNOUNCEMENTS.map((ann) => (
+              <Card key={ann.id} className={`border-none shadow-sm overflow-hidden relative group transition-all hover:shadow-md ${
+                ann.type === 'urgent' ? 'bg-red-50 border-l-4 border-l-red-500' : 
+                ann.type === 'success' ? 'bg-green-50 border-l-4 border-l-green-500' : 
+                'bg-blue-50 border-l-4 border-l-blue-500'
+              }`}>
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-widest ${
+                      ann.type === 'urgent' ? 'text-red-600 bg-red-100/50 border-red-200' : 
+                      ann.type === 'success' ? 'text-green-600 bg-green-100/50 border-green-200' : 
+                      'text-blue-600 bg-blue-100/50 border-blue-200'
+                    }`}>
+                      {ann.type === 'urgent' ? 'Шұғыл' : ann.type === 'success' ? 'Жаңалық' : 'Ақпарат'}
+                    </Badge>
+                    <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
+                  </div>
+                  <CardTitle className="text-sm font-black mt-2 leading-tight group-hover:text-primary transition-colors">
+                    {ann.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                    {ann.content}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {todayTasks.length === 0 && (
           <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
@@ -386,7 +457,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* New Creative: Rank Milestone */}
           <Card className="shadow-sm border-none bg-white hover:shadow-md transition-all group overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Лидерлік мәртебе</CardTitle>
@@ -409,7 +479,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* New Creative: Grant Forecast */}
           <Card className="shadow-sm border-none bg-white hover:shadow-md transition-all group overflow-hidden border-r-4 border-green-500">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Грант мүмкіндігі</CardTitle>

@@ -25,11 +25,12 @@ import {
   Calendar as CalendarIcon,
   LayoutGrid,
   ListTodo,
-  Columns
+  Columns,
+  Circle
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, arrayUnion, onSnapshot } from "firebase/firestore";
+import { collection, addDoc, query, where, updateDoc, doc, serverTimestamp, arrayUnion, onSnapshot } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { updateUserRating } from "@/lib/rating";
@@ -39,7 +40,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from "date-fns";
 import { kk } from "date-fns/locale";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -64,12 +65,13 @@ export default function PlanPage() {
 
   const subjects = profile?.selectedSubjects || ["Математика", "Физика", "Тарих"];
 
-  // Fetch all plans for the current student to show in calendar/week views
+  // Fetch all plans for the current student
   useEffect(() => {
     if (!user) return;
 
     const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
-    const q = query(plansRef, where("status", "==", "active"));
+    // We fetch all plans to show indicators on the calendar
+    const q = query(plansRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -120,8 +122,9 @@ export default function PlanPage() {
     try {
       if (activePlan) {
         const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", activePlan.id);
+        const currentTasks = activePlan.tasks || [];
         await updateDoc(planRef, {
-          tasks: arrayUnion(taskToSave),
+          tasks: [...currentTasks, taskToSave],
           totalCount: (activePlan.totalCount || 0) + 1,
           updatedAt: serverTimestamp()
         });
@@ -145,8 +148,12 @@ export default function PlanPage() {
         setNewTask({ title: "", time: "30 мин", type: "theory", subject: "" });
       }
       toast({ title: "Тапсырма қосылды" });
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `studentProfiles/${user.uid}/studyPlans`,
+        operation: 'write',
+        requestResourceData: taskToSave
+      }));
     } finally {
       setIsLoading(false);
     }
@@ -173,7 +180,7 @@ export default function PlanPage() {
         title: p.description,
         time: p.activity.includes('min') ? p.activity.split(' ')[0] + " мин" : "30 мин",
         type: p.activity.toLowerCase().includes('test') ? 'test' : 'theory',
-        subject: p.description.split(':')[0] || profile.selectedSubjects[0],
+        subject: p.description.split(':')[0]?.trim() || profile.selectedSubjects[0],
         status: "pending"
       }));
 
@@ -186,12 +193,36 @@ export default function PlanPage() {
   };
 
   const applyAiPlan = async () => {
-    if (!aiPreview || !user) return;
+    if (!aiPreview || !user || !selectedDate) return;
     setIsLoading(true);
     try {
-      for (const task of aiPreview) {
-        await handleAddTask(task);
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const existingPlan = allPlans.find(p => p.planDate === dateStr);
+
+      if (existingPlan) {
+        const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", existingPlan.id);
+        const currentTasks = existingPlan.tasks || [];
+        await updateDoc(planRef, {
+          tasks: [...currentTasks, ...aiPreview],
+          totalCount: (existingPlan.totalCount || 0) + aiPreview.length,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        const newPlan = {
+          studentId: user.uid,
+          planDate: dateStr,
+          title: `Жоспар - ${format(selectedDate, 'dd.MM.yyyy')}`,
+          tasks: aiPreview,
+          status: "active",
+          completedCount: 0,
+          totalCount: aiPreview.length,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
+        await addDoc(plansRef, newPlan);
       }
+
       setAiPreview(null);
       setIsAiDialogOpen(false);
       toast({ title: "AI жоспары қосылды!", description: "Сәттілік! 🚀" });
@@ -223,6 +254,27 @@ export default function PlanPage() {
         updateUserRating(user.uid, 'PLAN_COMPLETED');
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!activePlan || !user) return;
+    if (!confirm("Бұл тапсырманы өшіргіңіз келе ме?")) return;
+
+    const updatedTasks = activePlan.tasks.filter((t: any) => t.id !== taskId);
+    const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
+
+    try {
+      const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", activePlan.id);
+      await updateDoc(planRef, {
+        tasks: updatedTasks,
+        totalCount: updatedTasks.length,
+        completedCount,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Тапсырма өшірілді" });
     } catch (error) {
       console.error(error);
     }
@@ -336,11 +388,11 @@ export default function PlanPage() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className="rounded-none border-none scale-110"
+                  onSelect={(d) => d && setSelectedDate(d)}
+                  className="rounded-none border-none"
                   locale={kk}
                   modifiers={{
-                    hasTasks: (date) => allPlans.some(p => p.planDate === format(date, 'yyyy-MM-dd') && p.totalCount > 0)
+                    hasTasks: (date) => allPlans.some(p => p.planDate === format(date, 'yyyy-MM-dd') && p.tasks?.length > 0)
                   }}
                   modifiersClassNames={{
                     hasTasks: "font-black text-primary underline decoration-2 underline-offset-4"
@@ -407,7 +459,7 @@ export default function PlanPage() {
                 </div>
               </CardContent>
               <CardFooter className="pt-2">
-                <Button className="w-full gap-2 h-12 rounded-xl font-bold shadow-lg" onClick={() => handleAddTask()} disabled={isLoading}>
+                <Button className="w-full gap-2 h-12 rounded-xl font-bold shadow-lg" onClick={() => handleAddTask()} disabled={isLoading || !newTask.title || !newTask.subject}>
                   {isLoading ? <Loader2 className="size-5 animate-spin" /> : <Plus className="size-5" />}
                   Тізімге қосу
                 </Button>
@@ -448,7 +500,7 @@ export default function PlanPage() {
                               onClick={() => toggleTaskStatus(task.id, task.status)}
                               className="size-10 rounded-xl border-2 border-primary/20 flex items-center justify-center transition-all hover:bg-primary hover:text-white"
                             >
-                              <CheckCircle2 className="size-6 text-transparent group-hover/item:text-primary/20" />
+                              <Circle className="size-6 text-primary/20 group-hover/item:text-primary/40" />
                             </button>
                             <div className="space-y-1">
                               <h4 className="text-lg font-black text-foreground leading-tight">
@@ -468,10 +520,18 @@ export default function PlanPage() {
                               </div>
                             </div>
                           </div>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                            onClick={() => deleteTask(task.id)}
+                          >
+                            <Trash2 className="size-4" />
+                          </Button>
                         </div>
                       ))}
                     </div>
-                  ) : activePlan && completedTasks.length === activePlan.totalCount ? (
+                  ) : activePlan && completedTasks.length === activePlan.totalCount && activePlan.totalCount > 0 ? (
                     <div className="text-center py-24 flex flex-col items-center gap-6 bg-green-50/30 rounded-[40px] border-2 border-dashed border-green-200 m-4">
                       <div className="size-24 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
                         <Sparkles className="size-12 text-green-600 animate-bounce" />
@@ -532,6 +592,14 @@ export default function PlanPage() {
                                 <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{task.subject}</span>
                               </div>
                             </div>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="rounded-full text-destructive hover:bg-destructive/10"
+                              onClick={() => deleteTask(task.id)}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
                           </div>
                         ))}
                       </CollapsibleContent>
@@ -578,21 +646,21 @@ export default function PlanPage() {
                                 {isToday ? "Бүгін" : format(day, 'd MMMM', { locale: kk })}
                               </h4>
                               <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                                {dayPlan ? `${dayPlan.completedCount} / ${dayPlan.totalCount} тапсырма` : "Жоспар жоқ"}
+                                {dayPlan && dayPlan.totalCount > 0 ? `${dayPlan.completedCount} / ${dayPlan.totalCount} тапсырма` : "Жоспар жоқ"}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
-                            {dayPlan && dayPlan.totalCount > 0 && (
+                            {dayPlan && dayPlan.tasks?.length > 0 && (
                               <div className="flex -space-x-2">
                                 {dayPlan.tasks.slice(0, 3).map((t: any, i: number) => (
                                   <div key={i} className="size-8 rounded-lg bg-white border-2 border-primary/10 flex items-center justify-center shadow-sm">
                                     {t.type === 'test' ? <ClipboardList className="size-4 text-primary" /> : <BookOpen className="size-4 text-primary" />}
                                   </div>
                                 ))}
-                                {dayPlan.totalCount > 3 && (
+                                {dayPlan.tasks.length > 3 && (
                                   <div className="size-8 rounded-lg bg-accent flex items-center justify-center text-[10px] font-black border-2 border-white">
-                                    +{dayPlan.totalCount - 3}
+                                    +{dayPlan.tasks.length - 3}
                                   </div>
                                 )}
                               </div>
@@ -622,12 +690,12 @@ export default function PlanPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
                   <div className="p-6 rounded-[32px] bg-accent/10 border-2 border-white text-center space-y-1 shadow-inner">
-                    <span className="text-3xl font-black text-primary">{allPlans.length}</span>
+                    <span className="text-3xl font-black text-primary">{allPlans.filter(p => p.tasks?.length > 0).length}</span>
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Белсенді күн</p>
                   </div>
                   <div className="p-6 rounded-[32px] bg-accent/10 border-2 border-white text-center space-y-1 shadow-inner">
                     <span className="text-3xl font-black text-primary">
-                      {allPlans.reduce((acc, p) => acc + (p.totalCount || 0), 0)}
+                      {allPlans.reduce((acc, p) => acc + (p.tasks?.length || 0), 0)}
                     </span>
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Жалпы тапсырма</p>
                   </div>

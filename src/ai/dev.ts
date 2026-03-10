@@ -7,3 +7,4 @@ import '@/ai/flows/generate-study-plan-flow.ts';
 import '@/ai/flows/run-adaptive-diagnostic.ts';
 import '@/ai/flows/explain-topic-flow.ts';
 import '@/ai/flows/run-unt-test-flow.ts';
+import '@/ai/flows/career-guidance-flow.ts';

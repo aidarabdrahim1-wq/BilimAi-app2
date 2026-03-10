@@ -94,7 +94,7 @@ export default function TheoryPage() {
             <div className="hidden md:flex items-center gap-2 bg-primary/5 px-4 py-2 rounded-2xl border border-primary/10">
               <Trophy className="size-5 text-yellow-600" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Сенің ұпайың</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase leading-none">Sенің ұпайың</span>
                 <span className="text-sm font-black text-primary leading-tight">{profile.rating} ұпай</span>
               </div>
             </div>
@@ -138,7 +138,7 @@ function SubjectCard({ subject }: { subject: string }) {
   const ubtInfo = UBT_TOPICS[subject];
   const [isOpen, setIsOpen] = useState(false);
 
-  const specialTopics = ["Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Батыс Түрік қағанаты", "Шығыс Түрік қағанаты", "Түргеш қағанаты"];
+  const specialTopics = ["Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Батыс Түрік қағанаты", "Шығыс Түрік қағанаты", "Түргеш қағанаты", "Қарлұқ қағанаты"];
   const hasSpecialInThisSubject = subject === "Қазақстан тарихы" && 
     ubtInfo.topics.some(t => specialTopics.includes(t));
 
@@ -247,7 +247,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       setQuestions(newQuestions || []);
       setPracticeMode("testing");
     } catch (error: any) {
-      let msg = "Сұрақтарды жүктеу мүмкін болмады.";
+      let msg = "Sұрақтарды жүктеу мүмкін болмады.";
       if (error.message?.includes("AI_QUOTA_EXCEEDED")) {
         msg = "AI лимиті аяқталды. 1-2 минуттан соң қайталаңыз.";
       }
@@ -353,7 +353,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </Button>
                 <div className="flex flex-col items-center gap-1 mt-4">
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                    {isStatic ? "Дайын тест базасы" : "AI Сұрақтарды құрастыруда"}
+                    {isStatic ? "Дайын тест базасы" : "AI Sұрақтарды құрастыруда"}
                   </p>
                   <p className="text-[10px] text-primary font-bold">+2 рейтинг ұпайы (әр дұрыс жауапқа)</p>
                 </div>
@@ -387,7 +387,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Прогресс</span>
-                    <span className="text-2xl font-black font-headline">Сұрақ {currentIndex + 1} / {questions.length}</span>
+                    <span className="text-2xl font-black font-headline">Sұрақ {currentIndex + 1} / {questions.length}</span>
                   </div>
                   <Badge variant="secondary" className="h-7 px-4 rounded-full bg-primary/10 text-primary border-none text-[10px] font-bold">Тест режимі</Badge>
                 </div>
@@ -471,7 +471,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                         <div className="space-y-3">
                           <p className="text-base font-bold leading-tight">{q.text}</p>
                           <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest">
-                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Сенің жауабың: {answers[i] || "—"}</span>
+                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Sенің жауабың: {answers[i] || "—"}</span>
                             <span className="text-green-700">Дұрыс жауап: {q.correctAnswer}</span>
                           </div>
                           {(q.explanation || answers[i] !== q.correctAnswer) && (
@@ -497,7 +497,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         
         <div className="p-6 border-t bg-muted/10 flex justify-center shrink-0">
           <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-2 uppercase tracking-widest">
-            <Sparkles className="size-3 text-primary" /> BilimAI — Сапалы дайындық кепілі
+            <Sparkles className="size-3 text-primary" /> BilimAI — Sапалы дайындық кепілі
           </p>
         </div>
       </DialogContent>

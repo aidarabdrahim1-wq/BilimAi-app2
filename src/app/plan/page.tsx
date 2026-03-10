@@ -21,11 +21,12 @@ import {
   Wand2,
   Trash2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Calendar as CalendarIcon
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, arrayUnion } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, updateDoc, doc, serverTimestamp, arrayUnion, orderBy, limit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { updateUserRating } from "@/lib/rating";
@@ -34,6 +35,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { kk } from "date-fns/locale";
 
 export default function PlanPage() {
   const { user, profile } = useAuth();
@@ -44,11 +48,12 @@ export default function PlanPage() {
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiPreview, setAiPreview] = useState<any[] | null>(null);
   const [showArchive, setShowArchive] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
   const [newTask, setNewTask] = useState({
     title: "",
     time: "30 мин",
-    type: "theory",
+    type: "theory" as "theory" | "test" | "analysis",
     subject: ""
   });
 
@@ -56,16 +61,23 @@ export default function PlanPage() {
 
   useEffect(() => {
     if (!user) return;
-    fetchActivePlan();
-  }, [user]);
+    fetchPlanByDate();
+  }, [user, selectedDate]);
 
-  const fetchActivePlan = async () => {
-    // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans
-    const plansRef = collection(db, "studentProfiles", user?.uid!, "studyPlans");
+  const fetchPlanByDate = async () => {
+    if (!user || !selectedDate) return;
+    
+    // Форматтау арқылы күн бойынша іздеу
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    
+    const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
+    // status == active немесе нақты күн бойынша іздеу (MVP үшін status active жеткілікті)
     const q = query(
       plansRef,
-      where("status", "==", "active")
+      where("status", "==", "active"),
+      limit(1)
     );
+
     try {
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
@@ -101,7 +113,6 @@ export default function PlanPage() {
     setIsLoading(true);
     try {
       if (activePlan) {
-        // Updated to match firestore.rules: /studentProfiles/{studentId}/studyPlans/{planId}
         const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", activePlan.id);
         updateDoc(planRef, {
           tasks: arrayUnion(taskToSave),
@@ -117,7 +128,7 @@ export default function PlanPage() {
       } else {
         const newPlan = {
           studentId: user.uid,
-          title: `Бүгінгі жоспар - ${new Date().toLocaleDateString()}`,
+          title: `Жоспар - ${format(selectedDate || new Date(), 'dd.MM.yyyy')}`,
           tasks: [taskToSave],
           status: "active",
           completedCount: 0,
@@ -138,7 +149,7 @@ export default function PlanPage() {
       if (!taskData) {
         setNewTask({ title: "", time: "30 мин", type: "theory", subject: "" });
       }
-      setTimeout(fetchActivePlan, 1000);
+      setTimeout(fetchPlanByDate, 1000);
     } catch (error) {
       toast({ title: "Қате", variant: "destructive" });
     } finally {
@@ -224,7 +235,7 @@ export default function PlanPage() {
         toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
       }
 
-      setTimeout(fetchActivePlan, 500);
+      setTimeout(fetchPlanByDate, 500);
     } catch (error) {
       toast({ title: "Қате", variant: "destructive" });
     }
@@ -235,38 +246,40 @@ export default function PlanPage() {
 
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-3">
               <CalendarCheck className="size-8 text-primary" />
-              Жеке оқу жоспары
+              Оқу жоспары
             </h1>
-            <p className="text-muted-foreground text-sm">Бүгінгі күніңізге мақсаттар қойып, орындалуын қадағалаңыз.</p>
+            <p className="text-muted-foreground text-sm">
+              {selectedDate ? format(selectedDate, 'd MMMM, yyyy', { locale: kk }) : "Күнді таңдаңыз"} арналған мақсаттар.
+            </p>
           </div>
 
           <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 animate-pulse hover:animate-none">
                 <Sparkles className="size-4" />
-                AI-мен жоспар құру
+                AI Куратормен жоспарлау
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Wand2 className="size-5 text-primary" />
-                  AI Куратор ұсынысы
+                  Жеке оқу стратегиясы
                 </DialogTitle>
                 <DialogDescription>
-                  Сіздің әлсіз тақырыптарыңыз бен мақсатты балыңызға негізделген жеке жоспар.
+                  Профиліңізді талдау арқылы құрастырылған оңтайлы кесте.
                 </DialogDescription>
               </DialogHeader>
               <div className="py-6 min-h-[200px] flex flex-col items-center justify-center">
                 {isAiGenerating ? (
                   <div className="flex flex-col items-center gap-4">
                     <Loader2 className="size-10 animate-spin text-primary" />
-                    <p className="text-sm font-medium animate-pulse">AI профиліңізді талдауда...</p>
+                    <p className="text-sm font-medium animate-pulse">AI жоспар құруда...</p>
                   </div>
                 ) : aiPreview ? (
                   <div className="w-full space-y-3">
@@ -286,7 +299,7 @@ export default function PlanPage() {
                       <Sparkles className="size-8" />
                     </div>
                     <p className="text-sm text-muted-foreground max-w-xs">
-                      Куратор сізге бүгінге арналған ең тиімді оқу кестесін жасап береді.
+                      AI сіздің әлсіз тұстарыңызды ескере отырып, бүгінге арналған ең тиімді оқу кестесін жасап береді.
                     </p>
                     <Button onClick={handleAiGenerate}>Жоспарды генерациялау</Button>
                   </div>
@@ -304,174 +317,207 @@ export default function PlanPage() {
           </Dialog>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8">
-          <Card className="md:col-span-1 border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Жаңа тапсырма</CardTitle>
-              <CardDescription>Қолмен тапсырма қосу</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Тақырыбы</Label>
-                <Input 
-                  placeholder="М: Логарифм теориясы" 
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+        <div className="grid md:grid-cols-12 gap-8">
+          {/* Left Column: Calendar and New Task Form */}
+          <div className="md:col-span-4 space-y-6">
+            <Card className="border-none shadow-sm overflow-hidden bg-white">
+              <CardHeader className="pb-2 border-b bg-accent/5">
+                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                  <CalendarIcon className="size-4 text-primary" />
+                  Күнтізбе
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="rounded-none border-none"
+                  locale={kk}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Пән</Label>
-                <Select onValueChange={(v) => setNewTask({...newTask, subject: v})} value={newTask.subject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Таңдаңыз" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Түрі</Label>
-                <Select onValueChange={(v: any) => setNewTask({...newTask, type: v})} value={newTask.type}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="theory">Теория</SelectItem>
-                    <SelectItem value="test">Тест</SelectItem>
-                    <SelectItem value="analysis">Талдау</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Уақыт</Label>
-                <Select onValueChange={(v) => setNewTask({...newTask, time: v})} value={newTask.time}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="15 мин">15 мин</SelectItem>
-                    <SelectItem value="30 мин">30 мин</SelectItem>
-                    <SelectItem value="45 мин">45 мин</SelectItem>
-                    <SelectItem value="60 мин">60 мин</SelectItem>
-                    <SelectItem value="90 мин">90 мин</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full gap-2" onClick={() => handleAddTask()} disabled={isLoading}>
-                {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-                Қосу
-              </Button>
-            </CardFooter>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card className="md:col-span-2 border-none shadow-sm h-fit">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-lg">Белсенді тізім</CardTitle>
-                <CardDescription>
-                  {activePlan ? `Прогресс: ${activePlan.completedCount} / ${activePlan.totalCount}` : "Тізім бос"}
-                </CardDescription>
-              </div>
-              {activePlan && (
-                <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">
-                  <Zap className="size-3 mr-1" />
-                  +20 Ұпай (100%)
-                </Badge>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {activeTasks.length > 0 ? (
-                <div className="space-y-3">
-                  {activeTasks.map((task: any) => (
-                    <div 
-                      key={task.id} 
-                      className="flex items-center justify-between p-4 rounded-xl border bg-white shadow-sm hover:border-primary/30 transition-all"
-                    >
-                      <div className="flex items-center gap-4">
-                        <button 
-                          onClick={() => toggleTaskStatus(task.id, task.status)}
-                          className="size-6 rounded-md border border-muted-foreground/30 flex items-center justify-center transition-colors hover:border-primary"
-                        >
-                          <CheckCircle2 className="size-4 text-transparent hover:text-primary/30" />
-                        </button>
-                        <div>
-                          <h4 className="text-sm font-semibold">
-                            {task.title}
-                          </h4>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-[10px] bg-accent/20 px-2 py-0.5 rounded text-accent-foreground font-bold uppercase tracking-wider">
-                              {task.subject}
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <Clock className="size-3" /> {task.time}
-                            </span>
-                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              {task.type === 'theory' ? <BookOpen className="size-3" /> : <ClipboardList className="size-3" />}
-                              {task.type === 'theory' ? 'Теория' : task.type === 'test' ? 'Тест' : 'Талдау'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+            <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Жаңа тапсырма</CardTitle>
+                <CardDescription>Күнделікті мақсаттарды енгізу</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Тақырыбы</Label>
+                  <Input 
+                    placeholder="М: Логарифмдерді қайталау" 
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  />
                 </div>
-              ) : activePlan && completedTasks.length < activePlan.totalCount ? (
-                <div className="text-center py-10 flex flex-col items-center gap-4 bg-muted/10 rounded-2xl border border-dashed">
-                  <CalendarCheck className="size-10 text-muted-foreground opacity-20" />
-                  <p className="text-xs text-muted-foreground">Барлық тапсырмалар орындалды!</p>
+                <div className="space-y-2">
+                  <Label>Пән</Label>
+                  <Select onValueChange={(v) => setNewTask({...newTask, subject: v})} value={newTask.subject}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Таңдаңыз" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : !activePlan ? (
-                <div className="text-center py-20 flex flex-col items-center gap-4 bg-muted/10 rounded-2xl border border-dashed">
-                  <CalendarCheck className="size-12 text-muted-foreground opacity-20" />
-                  <div className="space-y-1">
-                    <p className="font-bold text-sm">Тізім әлі бос</p>
-                    <p className="text-xs text-muted-foreground">AI-дан көмек алыңыз немесе қолмен қосыңыз.</p>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Түрі</Label>
+                  <Select onValueChange={(v: any) => setNewTask({...newTask, type: v})} value={newTask.type}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="theory">Теория</SelectItem>
+                      <SelectItem value="test">Тест</SelectItem>
+                      <SelectItem value="analysis">Талдау</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              ) : null}
+                <div className="space-y-2">
+                  <Label>Уақыт</Label>
+                  <Select onValueChange={(v) => setNewTask({...newTask, time: v})} value={newTask.time}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="15 мин">15 мин</SelectItem>
+                      <SelectItem value="30 мин">30 мин</SelectItem>
+                      <SelectItem value="45 мин">45 мин</SelectItem>
+                      <SelectItem value="60 мин">60 мин</SelectItem>
+                      <SelectItem value="90 мин">90 мин</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+              <CardFooter className="pt-2">
+                <Button className="w-full gap-2 rounded-xl" onClick={() => handleAddTask()} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
+                  Тізімге қосу
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
 
-              {completedTasks.length > 0 && (
-                <Collapsible open={showArchive} onOpenChange={setShowArchive} className="mt-6 border-t pt-4">
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full flex justify-between items-center text-muted-foreground hover:text-foreground">
-                      <div className="flex items-center gap-2">
-                        <Trash2 className="size-4" />
-                        <span className="text-xs font-bold uppercase tracking-wider">Мұрағат (Орындалғандар)</span>
-                        <Badge variant="secondary" className="text-[10px]">{completedTasks.length}</Badge>
-                      </div>
-                      {showArchive ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-3 mt-4">
-                    {completedTasks.map((task: any) => (
+          {/* Right Column: Active Plan List */}
+          <div className="md:col-span-8 space-y-6">
+            <Card className="border-none shadow-sm h-fit bg-white">
+              <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
+                <div>
+                  <CardTitle className="text-xl font-headline">
+                    {selectedDate ? format(selectedDate, 'EEEE', { locale: kk }) : "Жоспар"}
+                  </CardTitle>
+                  <CardDescription>
+                    {activePlan ? `Орындалуы: ${activePlan.completedCount} / ${activePlan.totalCount}` : "Әзірге жоспар бос"}
+                  </CardDescription>
+                </div>
+                {activePlan && (
+                  <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-3 py-1 font-bold">
+                    <Zap className="size-3 mr-1.5" />
+                    +20 Ұпай (100% үшін)
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                {activeTasks.length > 0 ? (
+                  <div className="space-y-3">
+                    {activeTasks.map((task: any) => (
                       <div 
                         key={task.id} 
-                        className="flex items-center justify-between p-3 rounded-xl border bg-accent/5 opacity-60 grayscale-[0.5]"
+                        className="flex items-center justify-between p-5 rounded-2xl border-2 border-border/50 bg-white hover:border-primary/30 transition-all group/item shadow-sm"
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
                           <button 
                             onClick={() => toggleTaskStatus(task.id, task.status)}
-                            className="size-5 rounded-md bg-green-500 flex items-center justify-center text-white"
+                            className="size-7 rounded-lg border-2 border-muted-foreground/20 flex items-center justify-center transition-all hover:border-primary hover:bg-primary/5"
                           >
-                            <CheckCircle2 className="size-3" />
+                            <CheckCircle2 className="size-5 text-transparent group-hover/item:text-primary/20" />
                           </button>
                           <div>
-                            <h4 className="text-xs font-medium line-through text-muted-foreground">
+                            <h4 className="text-base font-bold text-foreground">
                               {task.title}
                             </h4>
-                            <span className="text-[9px] text-muted-foreground uppercase">{task.subject}</span>
+                            <div className="flex items-center gap-4 mt-1.5">
+                              <Badge variant="secondary" className="bg-accent/50 text-accent-foreground text-[10px] font-black uppercase">
+                                {task.subject}
+                              </Badge>
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+                                <Clock className="size-3.5" /> {task.time}
+                              </span>
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium uppercase tracking-widest text-[9px]">
+                                {task.type === 'theory' ? <BookOpen className="size-3.5" /> : <ClipboardList className="size-3.5" />}
+                                {task.type === 'theory' ? 'Теория' : task.type === 'test' ? 'Тест' : 'Талдау'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     ))}
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                ) : activePlan && completedTasks.length < activePlan.totalCount ? (
+                  <div className="text-center py-16 flex flex-col items-center gap-4 bg-muted/5 rounded-[32px] border-2 border-dashed border-muted-foreground/10">
+                    <CalendarCheck className="size-16 text-muted-foreground opacity-20" />
+                    <p className="text-sm text-muted-foreground font-medium">Орындалатын тапсырмалар қалмады!</p>
+                  </div>
+                ) : !activePlan ? (
+                  <div className="text-center py-24 flex flex-col items-center gap-6 bg-muted/5 rounded-[32px] border-2 border-dashed border-muted-foreground/10">
+                    <div className="size-20 rounded-full bg-primary/5 flex items-center justify-center">
+                      <CalendarIcon className="size-10 text-primary/30" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="font-black text-xl">Күнделік бос</p>
+                      <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                        AI Куратордан көмек алыңыз немесе бүгінгі мақсаттарды қолмен енгізіңіз.
+                      </p>
+                    </div>
+                    <Button variant="outline" className="rounded-xl font-bold" onClick={() => setIsAiDialogOpen(true)}>
+                      AI көмегін алу
+                    </Button>
+                  </div>
+                ) : null}
+
+                {completedTasks.length > 0 && (
+                  <Collapsible open={showArchive} onOpenChange={setShowArchive} className="mt-8 border-t pt-6">
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full flex justify-between items-center text-muted-foreground hover:text-foreground font-bold group">
+                        <div className="flex items-center gap-2">
+                          <Trash2 className="size-4 text-muted-foreground/50 group-hover:text-destructive transition-colors" />
+                          <span className="text-xs uppercase tracking-[0.2em]">Орындалғандар</span>
+                          <Badge variant="secondary" className="text-[10px] h-5 min-w-5">{completedTasks.length}</Badge>
+                        </div>
+                        {showArchive ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-3 mt-6">
+                      {completedTasks.map((task: any) => (
+                        <div 
+                          key={task.id} 
+                          className="flex items-center justify-between p-4 rounded-2xl border bg-accent/5 opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                          <div className="flex items-center gap-3">
+                            <button 
+                              onClick={() => toggleTaskStatus(task.id, task.status)}
+                              className="size-6 rounded-lg bg-green-500 flex items-center justify-center text-white shadow-sm"
+                            >
+                              <CheckCircle2 className="size-4" />
+                            </button>
+                            <div>
+                              <h4 className="text-sm font-bold line-through text-muted-foreground">
+                                {task.title}
+                              </h4>
+                              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider">{task.subject}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </AppShell>

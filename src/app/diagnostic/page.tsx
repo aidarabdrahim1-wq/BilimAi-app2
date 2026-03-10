@@ -48,7 +48,7 @@ export default function DiagnosticPage() {
                   {[
                     { icon: Target, title: "Бейімделгіш сұрақтар", desc: "Сұрақтардың қиындығы сіздің жауабыңызға қарай өзгеріп отырады." },
                     { icon: BarChart3, title: "Терең талдау", desc: "Пәндер мен тақырыптар бойынша толық статистика аласыз." },
-                    { icon: BrainCircuit, title: "Жеке жоспар", desc: "Нәтиже негізінде AI сізге 7 күндік жоспар құрып береді." },
+                    { icon: BrainCircuit, title: "Жеке жоспар", desc: "Нәтиже негізінде AI сізге мақсатты балға жетудің толық стратегиясын құрып береді." },
                   ].map((item, i) => (
                     <li key={i} className="flex gap-4">
                       <div className="size-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-sm">

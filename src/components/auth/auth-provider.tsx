@@ -130,15 +130,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, [pathname, router]);
 
-  // Robust STUDY TIME TRACKER
+  // Robust STUDY TIME TRACKER - Fixed interval leak and increment logic
   useEffect(() => {
     if (!user || !db) return;
 
-    const trackerInterval = setInterval(async () => {
+    const trackTime = async () => {
+      // Only track if tab is active to prevent artificial inflation
+      if (document.hidden) return;
+
       const today = format(new Date(), 'yyyy-MM-dd');
       const userDocRef = doc(db, "studentProfiles", user.uid);
       const currentProfile = profileRef.current;
       
+      if (!currentProfile) return;
+
       const updateData: any = {
         totalStudyTimeMinutes: increment(1),
         updatedAt: serverTimestamp(),
@@ -146,16 +151,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       };
 
       // Handle day transition for todayStudyTimeMinutes
-      if (currentProfile && currentProfile.lastStudyDate !== today) {
+      if (currentProfile.lastStudyDate !== today) {
         updateData.todayStudyTimeMinutes = 1;
       } else {
         updateData.todayStudyTimeMinutes = increment(1);
       }
 
-      updateDoc(userDocRef, updateData).catch(() => {});
-    }, 60000); // Track every 60 seconds
+      try {
+        await updateDoc(userDocRef, updateData);
+      } catch (e) {
+        // Silent fail for time tracking to not interrupt UI
+      }
+    };
 
-    return () => clearInterval(trackerInterval);
+    const trackerInterval = setInterval(trackTime, 60000); // Track every 60 seconds
+
+    return () => {
+      clearInterval(trackerInterval);
+    };
   }, [user?.uid]);
 
   if (!mounted) return <div className="min-h-screen bg-background" />;

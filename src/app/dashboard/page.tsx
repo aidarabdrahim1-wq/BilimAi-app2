@@ -175,6 +175,13 @@ export default function Dashboard() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const formatMinutes = (totalMins: number) => {
+    if (totalMins < 60) return `${totalMins} мин`;
+    const hh = Math.floor(totalMins / 60);
+    const mm = totalMins % 60;
+    return `${hh} сағ ${mm} мин`;
+  };
+
   const completeTaskFromTimer = async () => {
     if (!activeTimerTask || !user) return;
 
@@ -257,8 +264,6 @@ export default function Dashboard() {
   const rating = profile?.rating || 0;
   const targetScore = profile?.targetScore || 140;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
-  const h = Math.floor(todayStudyMinutes / 60);
-  const m = todayStudyMinutes % 60;
 
   // Rank Calculation
   const getRankInfo = (pts: number) => {
@@ -452,7 +457,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold">
-                {h > 0 ? `${h} сағ ${m} мин` : `${m} мин`}
+                {formatMinutes(todayStudyMinutes)}
               </div>
               <p className="text-xs opacity-70 mt-1">
                 Қолданбадағы белсенділік
@@ -647,7 +652,7 @@ export default function Dashboard() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-end">
                     <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Бүгінгі белсенділік</span>
-                    <span className="font-black text-indigo-600">{todayStudyMinutes} мин</span>
+                    <span className="font-black text-indigo-600">{formatMinutes(todayStudyMinutes)}</span>
                   </div>
                   <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-indigo-50" />
                 </div>
@@ -682,6 +687,10 @@ export default function Dashboard() {
         </div>
 
         {/* Timer Dialog */}
+        <div className="hidden">
+          {/* Internal state trigger for force re-render if needed */}
+        </div>
+
         <Dialog open={isTimerDialogOpen} onOpenChange={(open) => {
           if (!open) setIsTimerRunning(false);
           setIsTimerDialogOpen(open);

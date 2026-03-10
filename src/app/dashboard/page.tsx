@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -10,7 +9,6 @@ import {
   Target, 
   TrendingUp, 
   AlertCircle,
-  BookMarked,
   Trophy,
   CheckCircle2,
   CalendarDays,
@@ -27,19 +25,17 @@ import {
   RotateCcw,
   Check,
   BarChart,
-  PieChart,
   Timer,
   Quote,
   Zap,
-  Star,
-  Circle
+  Star
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp, collection, query, where, onSnapshot } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -562,29 +558,6 @@ export default function Dashboard() {
                     <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Жалпы</span>
                     <span className="text-2xl font-black text-foreground">{solvedCount}</span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-xl bg-white rounded-[32px] relative overflow-hidden group">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl font-headline flex items-center gap-3 text-primary">
-                  <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <BookMarked className="size-6" />
-                  </div>
-                  AI-дан ұсыныс
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="p-6 rounded-[24px] border-2 bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/10 relative overflow-hidden">
-                  <h4 className="font-black text-base mb-2">{profile?.selectedSubjects?.[3] || "Пән"}: Жаңа тақырып</h4>
-                  <p className="text-xs text-muted-foreground leading-relaxed font-medium">
-                    Сіздің әлсіз тақырыптарыңызға сай: осы бөлімді меңгеріп, <span className="text-primary font-bold">+20 рейтинг ұпайын</span> алыңыз!
-                  </p>
-                  <Button className="w-full mt-5 shadow-lg font-black text-xs h-10 rounded-xl" size="sm" asChild>
-                    <Link href="/theory">Оқуды бастау</Link>
-                  </Button>
-                  <Sparkles className="absolute -bottom-4 -right-4 size-20 text-primary/5 group-hover:text-primary/10 transition-colors" />
                 </div>
               </CardContent>
             </Card>

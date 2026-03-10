@@ -8,7 +8,7 @@ import { doc, onSnapshot, updateDoc, increment, serverTimestamp, arrayUnion } fr
 import { useRouter, usePathname } from "next/navigation";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-import { format, subDays, isSameDay, parseISO } from "date-fns";
+import { format, subDays } from "date-fns";
 
 export interface UserProfile {
   fullName: string;
@@ -55,7 +55,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
-  const trackerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Use a ref to store latest profile data for the interval to access without stale closures
+  const profileRef = useRef<UserProfile | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -75,8 +77,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (docSnap.exists()) {
             const data = docSnap.data() as UserProfile;
             setProfile(data);
+            profileRef.current = data;
             
-            // Check for activity tracking on initial profile load
+            // Initial daily visit check
             const today = format(new Date(), 'yyyy-MM-dd');
             if (data.lastVisitDate !== today) {
               const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
@@ -98,23 +101,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           } else {
             setProfile(null);
+            profileRef.current = null;
           }
           setLoading(false);
         }, (error: any) => {
-          if (error.code === 'permission-denied') {
-            return;
+          if (error.code !== 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userDocRef.path,
+              operation: 'get',
+            }));
           }
-          
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'get',
-          }));
           setLoading(false);
         });
 
         return () => unsubscribeProfile();
       } else {
         setProfile(null);
+        profileRef.current = null;
         setLoading(false);
         
         const protectedRoutes = ["/dashboard", "/curator", "/plan", "/diagnostic", "/analysis", "/admin"];
@@ -127,52 +130,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, [pathname, router]);
 
-  // Robust STUDY TIME TRACKER LOGIC
+  // Robust STUDY TIME TRACKER
   useEffect(() => {
-    if (!user || !db) {
-      if (trackerIntervalRef.current) {
-        clearInterval(trackerIntervalRef.current);
-        trackerIntervalRef.current = null;
+    if (!user || !db) return;
+
+    const trackerInterval = setInterval(async () => {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const userDocRef = doc(db, "studentProfiles", user.uid);
+      const currentProfile = profileRef.current;
+      
+      const updateData: any = {
+        totalStudyTimeMinutes: increment(1),
+        updatedAt: serverTimestamp(),
+        lastStudyDate: today,
+      };
+
+      // Handle day transition for todayStudyTimeMinutes
+      if (currentProfile && currentProfile.lastStudyDate !== today) {
+        updateData.todayStudyTimeMinutes = 1;
+      } else {
+        updateData.todayStudyTimeMinutes = increment(1);
       }
-      return;
-    }
 
-    // Start interval if not already running
-    if (!trackerIntervalRef.current) {
-      trackerIntervalRef.current = setInterval(async () => {
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const userDocRef = doc(db, "studentProfiles", user.uid);
-        
-        // We use a functional approach to check the last study date from the current state/ref if possible
-        // but here simple incremental update is fine because Firestore handles field transforms.
-        // To handle the "new day" reset of todayStudyTimeMinutes, we check the latest profile state.
-        
-        const updateData: any = {
-          totalStudyTimeMinutes: increment(1),
-          updatedAt: serverTimestamp(),
-        };
+      updateDoc(userDocRef, updateData).catch(() => {});
+    }, 60000); // Track every 60 seconds
 
-        // If it's a new day or lastStudyDate is not today, we reset today minutes
-        // We'll peek at the latest profile we have in state
-        if (profile && profile.lastStudyDate !== today) {
-          updateData.todayStudyTimeMinutes = 1;
-          updateData.lastStudyDate = today;
-        } else {
-          updateData.todayStudyTimeMinutes = increment(1);
-          updateData.lastStudyDate = today;
-        }
-
-        updateDoc(userDocRef, updateData).catch(() => {});
-      }, 60000); // Every 1 minute
-    }
-
-    return () => {
-      if (trackerIntervalRef.current) {
-        // We don't necessarily want to clear it on every small profile update
-        // but cleanup on unmount is good.
-      }
-    };
-  }, [user?.uid, profile?.lastStudyDate]); // Only reset interval if user changes or day changes
+    return () => clearInterval(trackerInterval);
+  }, [user?.uid]);
 
   if (!mounted) return <div className="min-h-screen bg-background" />;
 

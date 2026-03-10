@@ -257,6 +257,8 @@ export default function Dashboard() {
   const rating = profile?.rating || 0;
   const targetScore = profile?.targetScore || 140;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
+  const h = Math.floor(todayStudyMinutes / 60);
+  const m = todayStudyMinutes % 60;
 
   // Rank Calculation
   const getRankInfo = (pts: number) => {
@@ -449,7 +451,9 @@ export default function Dashboard() {
               <Timer className="h-4 w-4 opacity-70" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{todayStudyMinutes} мин</div>
+              <div className="text-3xl font-bold">
+                {h > 0 ? `${h} сағ ${m} мин` : `${m} мин`}
+              </div>
               <p className="text-xs opacity-70 mt-1">
                 Қолданбадағы белсенділік
               </p>

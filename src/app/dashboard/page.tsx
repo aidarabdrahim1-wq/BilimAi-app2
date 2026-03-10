@@ -286,8 +286,10 @@ export default function Dashboard() {
               <Megaphone className="size-5 text-primary" />
               Хабарландырулар
             </h2>
-            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1">
-              Барлығы <ChevronRight className="size-3" />
+            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1" asChild>
+              <Link href="/announcements">
+                Барлығы <ChevronRight className="size-3" />
+              </Link>
             </Button>
           </div>
           <div className="grid gap-4 md:grid-cols-3">

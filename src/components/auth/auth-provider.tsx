@@ -4,11 +4,11 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth, db } from "@/lib/firebase/config";
-import { doc, onSnapshot, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc, increment, serverTimestamp, arrayUnion } from "firebase/firestore";
 import { useRouter, usePathname } from "next/navigation";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-import { format } from "date-fns";
+import { format, subDays, isSameDay, parseISO } from "date-fns";
 
 export interface UserProfile {
   fullName: string;
@@ -29,6 +29,8 @@ export interface UserProfile {
   totalStudyTimeMinutes: number;
   todayStudyTimeMinutes: number;
   lastStudyDate?: string;
+  lastVisitDate?: string;
+  activityHistory: string[];
   createdAt: any;
 }
 
@@ -70,7 +72,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         const unsubscribeProfile = onSnapshot(userDocRef, (docSnap) => {
           if (docSnap.exists()) {
-            setProfile(docSnap.data() as UserProfile);
+            const data = docSnap.data() as UserProfile;
+            setProfile(data);
+            
+            // Check for activity tracking on initial profile load
+            const today = format(new Date(), 'yyyy-MM-dd');
+            if (data.lastVisitDate !== today) {
+              const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
+              let newStreak = data.streakDays || 0;
+              
+              if (data.lastVisitDate === yesterday) {
+                newStreak += 1;
+              } else if (!data.lastVisitDate || data.lastVisitDate < yesterday) {
+                newStreak = 1;
+              }
+
+              updateDoc(userDocRef, {
+                lastVisitDate: today,
+                activityHistory: arrayUnion(today),
+                streakDays: newStreak,
+                updatedAt: serverTimestamp()
+              }).catch(() => {});
+            }
+
           } else {
             setProfile(null);
           }

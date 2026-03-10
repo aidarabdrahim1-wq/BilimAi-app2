@@ -51,9 +51,9 @@ import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes("тарих")) return GraduationCap;
-  if (n.includes("мат") && !n.includes("сауаттылық")) return Calculator;
-  if (n.includes("сауаттылық") && n.includes("оқу")) return Languages;
-  if (n.includes("математикалық сауаттылық")) return ListChecks;
+  if (n.includes("мат") && !n.includes("sауаттылық")) return Calculator;
+  if (n.includes("sауаттылық") && n.includes("оқу")) return Languages;
+  if (n.includes("математикалық sауаттылық")) return ListChecks;
   if (n.includes("физика")) return Atom;
   if (n.includes("химия")) return FlaskConical;
   if (n.includes("география")) return Globe;
@@ -72,7 +72,7 @@ export default function TheoryPage() {
   if (!profile) return null;
 
   const userSubjects = profile.selectedSubjects || [];
-  const normalizedUserSubjects = userSubjects.map(s => s === "Мат. сауаттылық" ? "Математикалық сауаттылық" : s);
+  const normalizedUserSubjects = userSubjects.map(s => s === "Мат. sауаттылық" ? "Математикалық sауаттылық" : s);
 
   const mySubjects = Object.keys(UBT_TOPICS).filter(s => {
     const isSelected = normalizedUserSubjects.includes(s);
@@ -104,7 +104,7 @@ export default function TheoryPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
             <Input 
               placeholder="Пәнді немесе тақырыпты іздеу..." 
-              className="pl-12 h-14 bg-white border-none shadow-md rounded-2xl text-base focus-visible:ring-primary" 
+              className="pl-12 h-14 bg-white border-none sхаdow-md rounded-2xl text-base focus-visible:ring-primary" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -138,17 +138,17 @@ function SubjectCard({ subject }: { subject: string }) {
   const ubtInfo = UBT_TOPICS[subject];
   const [isOpen, setIsOpen] = useState(false);
 
-  const specialTopics = ["Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Батыс Түрік қағанаты", "Шығыс Түрік қағанаты", "Түргеш қағанаты", "Қарлұқ қағанаты"];
+  const specialTopics = ["Тас дәуірі", "Қола дәуірі", "Ерте темір дәуірі", "Сақ, ғұн, үйсін, қаңлы", "Түрік қағанаттары", "Батыс Түрік қағанаты", "Шығыс Түрік қағанаты", "Түргеш қағанаты", "Қарлұқ қағанаты", "Оғыз мемлекеті"];
   const hasSpecialInThisSubject = subject === "Қазақстан тарихы" && 
     ubtInfo.topics.some(t => specialTopics.includes(t));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Card className="hover:shadow-xl hover:-translate-y-1 cursor-pointer transition-all group bg-white border-none shadow-sm rounded-3xl overflow-hidden flex flex-col h-full">
+        <Card className="hover:sхаdow-xl hover:-translate-y-1 cursor-pointer transition-all group bg-white border-none sхаdow-sm rounded-3xl overflow-hidden flex flex-col h-full">
           <div className="h-2 bg-gradient-to-r from-primary/20 via-primary/10 to-transparent group-hover:from-primary/40 transition-all" />
           <CardHeader className="p-6">
-            <div className="size-14 rounded-2xl bg-primary/5 text-primary flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-inner">
+            <div className="size-14 rounded-2xl bg-primary/5 text-primary flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-primary-foreground transition-all sхаdow-inner">
               <Icon className="size-7" />
             </div>
             <CardTitle className="text-xl font-black">{subject}</CardTitle>
@@ -162,18 +162,18 @@ function SubjectCard({ subject }: { subject: string }) {
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Тақырыптар</span>
                 <span className="text-sm font-black text-primary">{ubtInfo.topics.length} бөлім</span>
               </div>
-              <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+              <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all sхаdow-sm">
                 <ChevronRight className="size-5" />
               </div>
             </div>
           </CardContent>
         </Card>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl h-[85vh] bg-white border-none shadow-2xl p-0 rounded-3xl overflow-hidden flex flex-col">
+      <DialogContent className="max-w-3xl h-[85vh] bg-white border-none sхаdow-2xl p-0 rounded-3xl overflow-hidden flex flex-col">
         <div className="bg-primary/5 p-8 pb-4 border-b border-primary/10 shrink-0">
           <DialogHeader>
             <div className="flex items-center gap-4 mb-2">
-              <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+              <div className="size-14 rounded-2xl bg-primary text-white flex items-center justify-center sхаdow-lg sхаdow-primary/20">
                 <Icon className="size-7" />
               </div>
               <div>
@@ -194,9 +194,9 @@ function SubjectCard({ subject }: { subject: string }) {
           </div>
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2 shrink-0">
-          <Sparkles className="size-4 text-primary animate-pulse" />
+          <Sparkles className="size-4 text-primary animate-pul sе" />
           <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            {hasSpecialInThisSubject ? "Арнайы тест базасы енгізілді" : "AI Куратор сізге арнап жаңа сұрақтар дайындайды"}
+            {hasSpecialInThisSubject ? "Арнайы тест базасы енгізілді" : "AI Куратор сізге арнап жаңа sұрақтар дайындайды"}
           </p>
         </div>
       </DialogContent>
@@ -213,7 +213,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [testResult, setTestResult] = useState({ score: 0, total: 0 });
+  const [testResult, setTestResult] = useState({ sсore: 0, total: 0 });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -249,7 +249,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     } catch (error: any) {
       let msg = "Sұрақтарды жүктеу мүмкін болмады.";
       if (error.message?.includes("AI_QUOTA_EXCEEDED")) {
-        msg = "AI лимиті аяқталды. 1-2 минуттан соң қайталаңыз.";
+        msg = "AI лимиті аяқталды. 1-2 минуттан sоң қайталаңыз.";
       }
       setErrorMessage(msg);
       setPracticeMode("reading");
@@ -280,7 +280,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       if (answers[idx] === q.correctAnswer) correct++;
     });
     
-    setTestResult({ score: correct, total: questions.length });
+    setTestResult({ sсore: correct, total: questions.length });
     setPracticeMode("results");
 
     if (user && correct > 0) {
@@ -300,24 +300,24 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       }
     }}>
       <DialogTrigger asChild>
-        <div className="flex items-center justify-between p-5 rounded-2xl border bg-white hover:bg-primary/5 hover:border-primary/30 transition-all group/item cursor-pointer shadow-sm">
+        <div className="flex items-center justify-between p-5 rounded-2xl border bg-white hover:bg-primary/5 hover:border-primary/30 transition-all group/item cursor-pointer sхаdow-sm">
           <div className="flex items-center gap-4">
-            <div className="size-10 rounded-xl bg-muted flex items-center justify-center text-xs font-black text-muted-foreground group-hover/item:bg-primary group-hover/item:text-white transition-all shadow-inner">
+            <div className="size-10 rounded-xl bg-muted flex items-center justify-center text-xs font-black text-muted-foreground group-hover/item:bg-primary group-hover/item:text-white transition-all sхаdow-inner">
               {index + 1}
             </div>
             <div className="flex flex-col">
               <span className="text-sm font-bold group-hover/item:text-primary transition-colors">{topic}</span>
               <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 uppercase tracking-wider">
-                <Clock className="size-2.5" /> {isStatic ? `${STATIC_TESTS[subject][topic].length} сұрақ` : "15-20 мин практика"}
+                <Clock className="size-2.5" /> {isStatic ? `${STATIC_TESTS[subject][topic].length} sұрақ` : "15-20 мин практика"}
               </span>
             </div>
           </div>
-          <Button size="sm" variant="ghost" className="rounded-full size-10 p-0 text-primary group-hover/item:bg-primary group-hover/item:text-white">
+          <Button sіze="sm" variant="ghost" className="rounded-full sіze-10 p-0 text-primary group-hover/item:bg-primary group-hover/item:text-white">
             <ChevronRight className="size-5" />
           </Button>
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 rounded-3xl border-none shadow-2xl bg-white overflow-hidden">
+      <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0 rounded-3xl border-none sхаdow-2xl bg-white overflow-hidden">
         <div className="p-8 pb-4 border-b shrink-0">
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
@@ -330,22 +330,22 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         
         <ScrollArea ref={scrollAreaRef} className="flex-1 px-8 py-6">
           {practiceMode === "reading" && (
-            <div className="py-12 flex flex-col items-center text-center gap-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground shadow-inner">
+            <div className="py-12 flex flex-col items-center text-center gap-6 animate-in fade-in sліde-in-from-bottom-2 duration-300">
+              <div className="size-24 rounded-full bg-accent/20 flex items-center justify-center text-accent-foreground sхаdow-inner">
                 <BookOpen className="size-12 opacity-50" />
               </div>
               <div className="space-y-2">
                 <h4 className="text-xl font-bold">Тақырыптық бекіту</h4>
                 <p className="text-sm text-muted-foreground max-w-sm font-medium">
                   {isStatic 
-                    ? `Бұл тақырып бойынша арнайы дайындалған ${STATIC_TESTS[subject][topic].length} тест сұрағын тапсырып, біліміңізді шыңдаңыз.`
+                    ? `Бұл тақырып бойынша арнайы дайындалған ${STATIC_TESTS[subject][topic].length} тест sұрағын тап sырып, біліміңізді шыңдаңыз.`
                     : "Бұл бөлім бойынша біліміңізді AI арқылы тексеріп, рейтинг ұпайына ие болыңыз."}
                 </p>
               </div>
 
-              <div className="pt-8 border-t border-dashed w-full max-w-md mx-auto">
+              <div className="pt-8 border-t border-da sхеd w-full max-w-md mx-auto">
                 <Button 
-                  className="w-full gap-3 h-16 text-xl font-black shadow-xl shadow-primary/20 bg-gradient-to-r from-primary to-secondary rounded-2xl hover:scale-[1.02] transition-all"
+                  className="w-full gap-3 h-16 text-xl font-black sхаdow-xl sхаdow-primary/20 bg-gradient-to-r from-primary to-secondary rounded-2xl hover:sсale-[1.02] transition-all"
                   onClick={startPractice}
                 >
                   <Sparkles className="size-6" />
@@ -353,9 +353,9 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </Button>
                 <div className="flex flex-col items-center gap-1 mt-4">
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                    {isStatic ? "Дайын тест базасы" : "AI Sұрақтарды құрастыруда"}
+                    {isStatic ? "Дайын тест базасы" : "AI Sұрақтарды құра sтыруда"}
                   </p>
-                  <p className="text-[10px] text-primary font-bold">+2 рейтинг ұпайы (әр дұрыс жауапқа)</p>
+                  <p className="text-[10px] text-primary font-bold">+2 рейтинг ұпайы (әр дұры s жауапқа)</p>
                 </div>
                 {errorMessage && (
                   <div className="mt-6 p-4 rounded-2xl bg-destructive/10 text-destructive text-xs font-bold flex items-center gap-3 border border-destructive/20">
@@ -369,20 +369,20 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           {practiceMode === "loading" && (
             <div className="py-24 flex flex-col items-center justify-center gap-6 text-center">
               <div className="relative">
-                <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="size-20 border-4 border-primary border-t-transparent rounded-full animate- sпін" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <Sparkles className="size-8 text-yellow-400 animate-pulse" />
+                  <Sparkles className="size-8 text-yellow-400 animate-pul sе" />
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="font-black text-2xl tracking-tight">{isStatic ? "Тест жүктелуде..." : "AI сұрақтарды құрастыруда..."}</p>
-                <p className="text-sm text-muted-foreground font-medium">Тақырыптың ең маңызды тұстары таңдалуда.</p>
+                <p className="font-black text-2xl tracking-tight">{isStatic ? "Тест жүктелуде..." : "AI sұрақтарды құра sтыруда..."}</p>
+                <p className="text-sm text-muted-foreground font-medium">Тақырыптың ең маңызды тұ sтары таңдалуда.</p>
               </div>
             </div>
           )}
 
           {practiceMode === "testing" && questions.length > 0 && (
-            <div key={currentIndex} className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-10">
+            <div key={currentIndex} className="space-y-8 animate-in sліde-in-from-right-4 duration-500 pb-10">
               <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
@@ -394,7 +394,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2 rounded-full" />
               </div>
 
-              <Card className="border-none shadow-xl bg-white p-8 rounded-3xl ring-1 ring-border min-h-[200px]">
+              <Card className="border-none sхаdow-xl bg-white p-8 rounded-3xl ring-1 ring-border min-h-[200px]">
                 <h3 className="text-xl md:text-2xl font-black leading-tight mb-10 text-foreground">
                   {questions[currentIndex].text}
                 </h3>
@@ -406,12 +406,12 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                       <button 
                         key={i} 
                         onClick={() => handleAnswer(letter)}
-                        className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-5 group active:scale-[0.98] ${
+                        className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-5 group active:sсale-[0.98] ${
                           isSelected ? "border-primary bg-primary/5 ring-4 ring-primary/10" : "border-border bg-white hover:border-primary/30"
                         }`}
                       >
                         <span className={`size-10 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
-                          isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg" : "group-hover:border-primary/50 text-muted-foreground"
+                          isSelected ? "bg-primary text-primary-foreground border-primary sхаdow-lg" : "group-hover:border-primary/50 text-muted-foreground"
                         }`}>
                           {letter}
                         </span>
@@ -433,11 +433,11 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                   Артқа
                 </Button>
                 <Button 
-                  className="flex-[2] h-16 gap-3 font-black text-lg rounded-2xl shadow-xl shadow-primary/20" 
+                  className="flex-[2] h-16 gap-3 font-black text-lg rounded-2xl sхаdow-xl sхаdow-primary/20" 
                   disabled={!answers[currentIndex]}
                   onClick={nextQuestion}
                 >
-                  {currentIndex === questions.length - 1 ? "Нәтижені көру" : "Келесі сұрақ"}
+                  {currentIndex === questions.length - 1 ? "Нәтижені көру" : "Келе sі sұрақ"}
                   <ArrowRight className="size-5" />
                 </Button>
               </div>
@@ -446,15 +446,15 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
 
           {practiceMode === "results" && (
             <div className="py-10 space-y-10 animate-in zoom-in-95 duration-500 pb-20">
-              <div className="text-center space-y-6">
-                <div className="inline-flex size-32 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner relative">
-                  <Trophy className="size-16 drop-shadow-sm" />
-                  <Sparkles className="absolute -top-2 -right-2 size-8 text-yellow-400 animate-pulse" />
+              <div className="text-center sпаce-y-6">
+                <div className="inline-flex sіze-32 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center sхаdow-inner relative">
+                  <Trophy className="size-16 drop- sхаdow-sm" />
+                  <Sparkles className="absolute -top-2 -right-2 sіze-8 text-yellow-400 animate-pul sе" />
                 </div>
                 <div>
-                  <h3 className="text-4xl font-black font-headline tracking-tighter">Нәтиже: {testResult.score} / {testResult.total}</h3>
+                  <h3 className="text-4xl font-black font-headline tracking-tighter">Нәтиже: {testResult.sсore} / {testResult.total}</h3>
                   <p className="text-muted-foreground text-lg font-medium mt-2">
-                    {testResult.score === testResult.total ? "Керемет! Бұл тақырыпты 100% меңгердіңіз! 🚀" : "Жақсы нәтиже! Қателермен жұмыс істеуді ұмытпаңыз."}
+                    {testResult.sсore === testResult.total ? "Керемет! Бұл тақырыпты 100% меңгердіңіз! 🚀" : "Жақ sы нәтиже! Қателермен жұмы s і sтеуді ұмытпаңыз."}
                   </p>
                 </div>
               </div>
@@ -463,21 +463,21 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 <h4 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground text-center">Жауаптарды талдау</h4>
                 <div className="grid gap-4">
                   {questions.map((q, i) => (
-                    <div key={i} className={`p-6 rounded-3xl border ${answers[i] === q.correctAnswer ? 'bg-green-50/50 border-green-100' : 'bg-destructive/5 border-destructive/10'}`}>
+                    <div key={i} className={`p-6 rounded-3xl border ${answers[i] === q.correctAnswer ? 'bg-green-50/50 border-green-100' : 'bg-de sтructive/5 border-de sтructive/10'}`}>
                       <div className="flex items-start gap-4">
-                        <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${answers[i] === q.correctAnswer ? 'bg-green-500 text-white' : 'bg-destructive text-white'}`}>
+                        <div className={`size-10 rounded-xl flex items-center justify-center shrink-0 sхаdow-sm ${answers[i] === q.correctAnswer ? 'bg-green-500 text-white' : 'bg-de sтructive text-white'}`}>
                           {answers[i] === q.correctAnswer ? <CheckCircle2 className="size-6" /> : <XCircle className="size-6" />}
                         </div>
                         <div className="space-y-3">
                           <p className="text-base font-bold leading-tight">{q.text}</p>
                           <div className="flex flex-wrap gap-4 text-[10px] font-black uppercase tracking-widest">
-                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Sенің жауабың: {answers[i] || "—"}</span>
-                            <span className="text-green-700">Дұрыс жауап: {q.correctAnswer}</span>
+                            <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-de sтructive'}>Sенің жауабың: {answers[i] || "—"}</span>
+                            <span className="text-green-700">Дұры s жауап: {q.correctAnswer}</span>
                           </div>
                           {(q.explanation || answers[i] !== q.correctAnswer) && (
                             <div className="p-4 rounded-2xl bg-white/50 border border-border/50">
                               <p className="text-xs text-muted-foreground italic leading-relaxed font-medium">
-                                <span className="font-black text-primary mr-1">Түсіндірме:</span> {q.explanation || "Бұл сұрақтың жауабын есте сақтаңыз."}
+                                <span className="font-black text-primary mr-1">Түсіндірме:</span> {q.explanation || "Бұл sұрақтың жауабын е sте sақтаңыз."}
                               </p>
                             </div>
                           )}

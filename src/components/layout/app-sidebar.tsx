@@ -40,7 +40,7 @@ const mainNavItems = [
   { title: "Басты бет", icon: LayoutDashboard, url: "/dashboard" },
   { title: "Практика", icon: BookOpen, url: "/theory" },
   { title: "Тест тапсыру", icon: ClipboardCheck, url: "/practice" },
-  { title: "Диагностика", icon: BrainCircuit, url: "/diagnostic" },
+  { title: "AI оқу маршруты", icon: Compass, url: "/diagnostic" },
   { title: "Қатемен жұмыс", icon: AlertCircle, url: "/analysis" },
 ];
 

@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -14,10 +14,11 @@ import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { format } from "date-fns";
+import { format, isSameWeek } from "date-fns";
 import { kk } from "date-fns/locale";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Question = {
   id: string;
@@ -100,7 +101,25 @@ export default function PracticePage() {
     return () => unsubscribe();
   }, [user]);
 
+  // Check if user has already taken a test this week
+  const isLimitReached = useMemo(() => {
+    if (recentSessions.length === 0) return false;
+    const lastSession = recentSessions[0];
+    if (!lastSession.createdAt?.seconds) return false;
+    
+    const lastDate = new Date(lastSession.createdAt.seconds * 1000);
+    return isSameWeek(lastDate, new Date(), { weekStartsOn: 1 });
+  }, [recentSessions]);
+
   const startTest = async () => {
+    if (isLimitReached) {
+      toast({
+        title: "Шектеу",
+        description: "Тест тапсыру аптасына 1 рет қана тегін. Келесі аптада қайта көріңіз!",
+        variant: "destructive"
+      });
+      return;
+    }
     setErrorMessage(null);
     setTestState("loading");
     setCurrentSubjectIndex(0);
@@ -131,7 +150,7 @@ export default function PracticePage() {
     } catch (error: any) {
       let msg = "Сұрақтарды жүктеу мүмкін болмады.";
       if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
-        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
+        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз.";
       }
       setErrorMessage(msg);
       setTestState("error");
@@ -343,7 +362,7 @@ export default function PracticePage() {
             <Button variant="outline" size="lg" className="px-8" asChild>
               <a href="/analysis">Қателерді талдау</a>
             </Button>
-            <Button size="lg" className="px-8 font-bold" onClick={startTest}>Қайта тапсыру</Button>
+            <Button size="lg" className="px-8 font-bold" onClick={() => setTestState("idle")}>Мәзірге қайту</Button>
           </div>
         </div>
       </AppShell>
@@ -469,9 +488,25 @@ export default function PracticePage() {
                   <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Рейтинг</span>
                 </div>
               </div>
-              <Button size="lg" variant="secondary" className="mt-12 font-black h-16 px-12 text-xl gap-4 shadow-2xl hover:scale-105 transition-transform" onClick={startTest}>
-                ТЕСТТІ БАСТАУ <Play className="size-6 fill-current" />
-              </Button>
+
+              {isLimitReached ? (
+                <div className="mt-12 space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <Alert className="bg-white/10 border-white/20 text-white">
+                    <Info className="h-4 w-4 text-white" />
+                    <AlertTitle className="font-bold">Апталық лимит аяқталды</AlertTitle>
+                    <AlertDescription className="text-white/80">
+                      Сіз осы аптаға берілген тегін тест мүмкіндігін пайдаландыңыз. Келесі тест келесі дүйсенбіде қолжетімді болады.
+                    </AlertDescription>
+                  </Alert>
+                  <Button size="lg" variant="secondary" className="w-full opacity-50 cursor-not-allowed font-black h-16 text-xl gap-4" disabled>
+                    <Calendar className="size-6" /> КЕЛЕСІ АПТАНЫ КҮТІҢІЗ
+                  </Button>
+                </div>
+              ) : (
+                <Button size="lg" variant="secondary" className="mt-12 font-black h-16 px-12 text-xl gap-4 shadow-2xl hover:scale-105 transition-transform" onClick={startTest}>
+                  ТЕСТТІ БАСТАУ <Play className="size-6 fill-current" />
+                </Button>
+              )}
             </CardContent>
             <div className="absolute -bottom-20 -right-20 size-96 bg-white/10 rounded-full blur-3xl" />
             <Zap className="absolute top-10 right-10 size-48 opacity-10 rotate-12 group-hover:scale-110 transition-transform" />
@@ -511,6 +546,17 @@ export default function PracticePage() {
                     </div>
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-blue-50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-blue-700">Ереже</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xs text-blue-800/70 leading-relaxed font-medium">
+                  Сапалы дайындық үшін толық ҰБТ тестін аптасына 1 рет тапсыру жеткілікті. Қалған уақытта "Практика" бөлімінде тақырыптық жаттығулар жасаңыз.
+                </p>
               </CardContent>
             </Card>
           </div>

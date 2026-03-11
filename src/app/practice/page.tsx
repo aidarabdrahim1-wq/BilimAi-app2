@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, CreditCard, QrCode, ExternalLink } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -17,7 +17,6 @@ import { format, isSameWeek } from "date-fns";
 import { kk } from "date-fns/locale";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Question = {
   id: string;
@@ -54,9 +53,7 @@ export default function PracticePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  const [testState, setTestState] = useState<"idle" | "payment" | "loading" | "testing" | "results" | "error">("idle");
-  const [testMode, setTestMode] = useState<"free" | "paid">("free");
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [testState, setTestState] = useState<"idle" | "loading" | "testing" | "results" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -101,48 +98,6 @@ export default function PracticePage() {
 
     return () => unsubscribe();
   }, [user]);
-
-  const isFreeLimitReached = useMemo(() => {
-    const freeSessions = recentSessions.filter(s => s.type === "free_weekly");
-    if (freeSessions.length === 0) return false;
-    
-    const lastSession = freeSessions[0];
-    if (!lastSession.createdAt?.seconds) return false;
-    
-    const lastDate = new Date(lastSession.createdAt.seconds * 1000);
-    return isSameWeek(lastDate, new Date(), { weekStartsOn: 1 });
-  }, [recentSessions]);
-
-  const handleStartFree = () => {
-    if (isFreeLimitReached) {
-      toast({
-        title: "Шектеу",
-        description: "Тегін тест аптасына 1 рет қана. Ақылы нұсқаны таңдаңыз немесе келесі аптаны күтіңіз.",
-        variant: "destructive"
-      });
-      return;
-    }
-    setTestMode("free");
-    initiateTest();
-  };
-
-  const handleStartPaid = () => {
-    setTestMode("paid");
-    setTestState("payment");
-  };
-
-  const handlePaymentConfirm = () => {
-    setIsProcessingPayment(true);
-    setTimeout(() => {
-      setIsProcessingPayment(false);
-      initiateTest();
-      toast({ title: "Төлем сәтті өтті!", description: "Тест басталды." });
-    }, 1500);
-  };
-
-  const openKaspiLink = () => {
-    window.open("https://pay.kaspi.kz/pay/52tookf8", "_blank");
-  };
 
   const initiateTest = async () => {
     setErrorMessage(null);
@@ -246,7 +201,7 @@ export default function PracticePage() {
       const sessionId = Math.random().toString(36).substring(7);
       const testSession = {
         studentId: user.uid,
-        type: testMode === "free" ? "free_weekly" : "paid_attempt",
+        type: "full_unt_attempt",
         score: totalScore,
         results: finalResults,
         createdAt: serverTimestamp(),
@@ -283,58 +238,6 @@ export default function PracticePage() {
       }
     }
   };
-
-  if (testState === "payment") {
-    return (
-      <AppShell>
-        <div className="max-w-2xl mx-auto py-10 animate-in fade-in slide-in-from-bottom-4">
-          <Card className="border-none shadow-2xl rounded-[40px] overflow-hidden">
-            <CardHeader className="bg-primary/5 p-10 text-center border-b">
-              <div className="size-20 rounded-3xl bg-primary text-white flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/20">
-                <CreditCard className="size-10" />
-              </div>
-              <CardTitle className="text-3xl font-black font-headline">Нұсқаны сатып алу</CardTitle>
-              <CardDescription className="font-bold text-lg">1 толық ҰБТ нұсқасы (120 сұрақ)</CardDescription>
-            </CardHeader>
-            <CardContent className="p-10 space-y-8">
-              <div className="flex justify-between items-center p-6 rounded-3xl bg-accent/30 border-2 border-dashed border-primary/20">
-                <p className="font-black text-xl">ҰБТ Нұсқасы #2026</p>
-                <p className="text-3xl font-black text-primary">390 ₸</p>
-              </div>
-              
-              <div className="space-y-4">
-                <p className="text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Төлем әдісі:</p>
-                <button 
-                  onClick={openKaspiLink}
-                  className="w-full p-6 rounded-3xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-3 cursor-pointer hover:bg-primary/10 transition-all group"
-                >
-                  <QrCode className="size-12 text-primary group-hover:scale-110 transition-transform" />
-                  <div className="text-center">
-                    <span className="text-sm font-black uppercase text-primary">Kaspi арқылы төлеу</span>
-                    <p className="text-[10px] text-primary/60 font-bold">Сілтеме бойынша өту</p>
-                  </div>
-                </button>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
-                <Info className="size-5 text-blue-600 shrink-0" />
-                <p className="text-xs text-blue-800 font-medium leading-relaxed">
-                  Төлем жасап болған соң, «Төледім, растау» батырмасын басыңыз.
-                </p>
-              </div>
-            </CardContent>
-            <CardFooter className="p-10 pt-0 flex flex-col gap-4">
-              <Button className="w-full h-16 rounded-2xl font-black text-xl shadow-lg" onClick={handlePaymentConfirm} disabled={isProcessingPayment}>
-                {isProcessingPayment ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 size-6" />}
-                {isProcessingPayment ? "Тексерілуде..." : "Төледім, растау"}
-              </Button>
-              <Button variant="ghost" className="w-full font-bold" onClick={() => setTestState("idle")}>Бас тарту</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </AppShell>
-    );
-  }
 
   if (testState === "loading") {
     return (
@@ -426,64 +329,32 @@ export default function PracticePage() {
           <p className="text-muted-foreground font-medium">Өз біліміңді жаңа форматтағы 140 балдық шкаламен тексер.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Free Attempt Card */}
+        <div className="grid gap-8">
           <Card className="border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group hover:ring-2 ring-primary/20 transition-all">
             <div className="h-3 bg-primary/10" />
             <CardHeader className="p-8">
-              <Badge variant="secondary" className="w-fit mb-4 font-black">ТЕГІН МҮМКІНДІК</Badge>
-              <CardTitle className="text-3xl font-black font-headline">Апталық нұсқа</CardTitle>
+              <Badge variant="secondary" className="w-fit mb-4 font-black">ТЕГІН ҚОЛЖЕТІМДІЛІК</Badge>
+              <CardTitle className="text-3xl font-black font-headline">Толық ҰБТ нұсқасы</CardTitle>
               <CardDescription className="text-base font-medium mt-2">
-                Аптасына 1 рет тегін тапсыру мүмкіндігі. Нәтижелер талдау бетінде сақталады.
+                AI арқылы құрастырылған 120 сұрақтан тұратын кешенді тест. Нәтижелер талдау бетінде сақталады.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8 pt-0 flex-1">
+            <CardContent className="p-8 pt-0">
               <div className="flex items-center gap-4 text-sm font-bold text-muted-foreground p-4 bg-accent/20 rounded-2xl border-2 border-dashed border-accent/50">
-                <Calendar className="size-5 text-primary" />
-                {isFreeLimitReached ? "Бұл аптаға лимит аяқталды" : "Бұл аптаға қолжетімді: 1 мүмкіндік"}
+                <Zap className="size-5 text-primary" />
+                Барлық оқушылар үшін шектеусіз мүмкіндік
               </div>
             </CardContent>
             <CardFooter className="p-8 pt-0">
               <Button 
                 size="lg" 
-                className={`w-full h-16 rounded-2xl font-black text-xl gap-3 ${isFreeLimitReached ? "bg-muted text-muted-foreground cursor-not-allowed" : "shadow-xl shadow-primary/20"}`}
-                disabled={isFreeLimitReached}
-                onClick={handleStartFree}
+                className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl shadow-primary/20"
+                onClick={initiateTest}
               >
-                {isFreeLimitReached ? "Келесі аптаны күтіңіз" : "Тестті бастау"}
-                {!isFreeLimitReached && <Play className="size-6 fill-current" />}
+                Тестті бастау
+                <Play className="size-6 fill-current" />
               </Button>
             </CardFooter>
-          </Card>
-
-          {/* Paid Attempt Card */}
-          <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[40px] overflow-hidden flex flex-col relative group hover:scale-[1.02] transition-all">
-            <div className="h-3 bg-gradient-to-r from-primary to-secondary" />
-            <CardHeader className="p-8 relative z-10">
-              <Badge className="w-fit mb-4 font-black bg-white/20 text-white border-none">PREMIUM</Badge>
-              <CardTitle className="text-3xl font-black font-headline">Кез келген уақытта</CardTitle>
-              <CardDescription className="text-base font-medium mt-2 text-slate-400">
-                Шектеусіз тапсыру. Әрбір жаңа нұсқа AI арқылы қайталанбас етіп құрастырылады.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-8 pt-0 flex-1 relative z-10">
-              <div className="text-center py-6">
-                <span className="text-5xl font-black tracking-tighter">390 ₸</span>
-                <span className="text-sm font-bold text-slate-500 ml-2">/ 1 нұсқа</span>
-              </div>
-            </CardContent>
-            <CardFooter className="p-8 pt-0 relative z-10">
-              <Button 
-                size="lg" 
-                variant="secondary"
-                className="w-full h-16 rounded-2xl font-black text-xl gap-3 bg-white text-slate-900 hover:bg-slate-100 shadow-2xl"
-                onClick={handleStartPaid}
-              >
-                Сатып алып, бастау
-                <Zap className="size-6 fill-current" />
-              </Button>
-            </CardFooter>
-            <div className="absolute -bottom-20 -right-20 size-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
           </Card>
         </div>
 
@@ -497,10 +368,7 @@ export default function PracticePage() {
               recentSessions.map((item) => (
                 <Card key={item.id} className="border-none shadow-sm bg-white p-5 rounded-2xl flex justify-between items-center">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-sm">ҰБТ Тесті</p>
-                      <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold uppercase">{item.type === 'free_weekly' ? 'Тегін' : 'Ақылы'}</Badge>
-                    </div>
+                    <p className="font-bold text-sm">ҰБТ Тесті</p>
                     <p className="text-[10px] text-muted-foreground font-bold uppercase">
                       {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), "d MMMM", { locale: kk }) : "Жақында"}
                     </p>

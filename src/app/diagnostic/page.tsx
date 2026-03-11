@@ -11,9 +11,7 @@ import {
   BarChart3, 
   Target, 
   AlertTriangle, 
-  CreditCard, 
   ShieldCheck, 
-  QrCode, 
   Loader2, 
   CheckCircle2,
   TrendingUp,
@@ -25,8 +23,7 @@ import {
   Info,
   History,
   ClipboardCheck,
-  XCircle,
-  ExternalLink
+  XCircle
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -35,8 +32,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 
 export default function DiagnosticPage() {
-  const [step, setStep] = useState<"start" | "payment" | "survey" | "rules" | "testing" | "result">("start");
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [step, setStep] = useState<"start" | "survey" | "rules" | "testing" | "result">("start");
   const [testSeconds, setTestSeconds] = useState(0);
   const [prepExperience, setPrepExperience] = useState<string>("");
   const { toast } = useToast();
@@ -59,23 +55,6 @@ export default function DiagnosticPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handlePaymentConfirm = () => {
-    setIsProcessingPayment(true);
-    // Имитация тексеру
-    setTimeout(() => {
-      setIsProcessingPayment(false);
-      setStep("survey");
-      toast({
-        title: "Төлем сәтті өтті!",
-        description: "Мәліметтерді толтыруға өтіңіз.",
-      });
-    }, 2000);
-  };
-
-  const openKaspiLink = () => {
-    window.open("https://pay.kaspi.kz/pay/52tookf8", "_blank");
-  };
-
   return (
     <AppShell>
       <div className="relative min-h-screen overflow-hidden -m-4 md:-m-6 p-4 md:p-6">
@@ -95,7 +74,7 @@ export default function DiagnosticPage() {
                 <BrainCircuit className="size-9" />
               </div>
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 px-4 py-1 rounded-full font-black text-[10px] tracking-widest uppercase backdrop-blur-sm">
-                Premium Intelligence
+                AI Intelligence
               </Badge>
             </div>
             <h1 className="text-5xl md:text-6xl font-black tracking-tight font-headline bg-clip-text text-transparent bg-gradient-to-r from-foreground via-foreground/80 to-primary leading-tight">
@@ -167,7 +146,7 @@ export default function DiagnosticPage() {
                       <div className="flex flex-col gap-2">
                         <Badge className="bg-white/10 text-white border-white/20 w-fit backdrop-blur-md font-bold px-4 py-1.5 rounded-full uppercase tracking-widest text-[9px]">
                           <Zap className="size-3 mr-2 fill-current text-yellow-400" />
-                          PREMIUM ACCESS
+                          FULL ACCESS
                         </Badge>
                         <h3 className="text-4xl font-black font-headline leading-tight">Біліміңіздің цифрлық есебі</h3>
                       </div>
@@ -186,24 +165,14 @@ export default function DiagnosticPage() {
                           <p className="text-sm font-medium text-white/80">AI Куратордан жеке стратегия</p>
                         </div>
                       </div>
-
-                      <div className="pt-10 border-t border-white/10">
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-bold text-white/50 uppercase tracking-widest">Бір реттік пакет</span>
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-5xl font-black text-white">9 990 ₸</span>
-                            <span className="text-sm text-white/40 line-through font-bold">14 900 ₸</span>
-                          </div>
-                        </div>
-                      </div>
                     </div>
 
                     <Button 
                       size="lg" 
                       className="h-20 w-full rounded-[28px] bg-white text-primary hover:bg-white/90 font-black text-xl shadow-2xl shadow-black/20 group gap-3 active:scale-95 transition-all mt-10" 
-                      onClick={() => setStep("payment")}
+                      onClick={() => setStep("survey")}
                     >
-                      Белсендіру
+                      Бастау
                       <ArrowRight className="size-6 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </div>
@@ -211,87 +180,6 @@ export default function DiagnosticPage() {
                   <BrainCircuit className="absolute -bottom-20 -right-20 size-[450px] text-white/5 rotate-12 pointer-events-none" />
                 </Card>
               </div>
-            </div>
-          )}
-
-          {step === "payment" && (
-            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-700">
-              <Card className="border-none shadow-2xl rounded-[48px] overflow-hidden bg-white/80 backdrop-blur-xl border border-white/40">
-                <CardHeader className="bg-accent/10 p-12 text-center border-b border-border/50 relative overflow-hidden">
-                  <div className="relative z-10">
-                    <div className="size-24 rounded-[32px] bg-primary text-white flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-primary/30 rotate-3">
-                      <CreditCard className="size-12" />
-                    </div>
-                    <CardTitle className="text-4xl font-black font-headline tracking-tight">Төлемді растау</CardTitle>
-                    <CardDescription className="font-bold text-lg mt-3 text-muted-foreground">AI Диагностика PRO пакетін іске қосу</CardDescription>
-                  </div>
-                  <div className="absolute top-0 right-0 size-40 bg-primary/5 rounded-full blur-3xl" />
-                </CardHeader>
-                <CardContent className="p-12 space-y-10">
-                  <div className="flex justify-between items-center p-8 rounded-[36px] bg-primary/5 border-2 border-dashed border-primary/20">
-                    <div className="space-y-1">
-                      <p className="text-xs font-black text-primary/60 uppercase tracking-widest">Таңдалған қызмет</p>
-                      <p className="text-2xl font-black text-slate-900">AI Диагностика PRO</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-4xl font-black text-primary tracking-tighter">9 990 ₸</p>
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none font-bold mt-1">LIFETIME</Badge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <p className="text-center text-sm font-bold text-muted-foreground uppercase tracking-widest">Төлем әдісін таңдаңыз:</p>
-                    <div className="grid grid-cols-1 gap-6">
-                      <button 
-                        onClick={openKaspiLink}
-                        className="p-8 rounded-[36px] border-2 border-primary bg-primary/5 flex flex-col items-center gap-4 cursor-pointer transition-all hover:bg-primary/10 shadow-lg shadow-primary/5 group ring-offset-4 ring-primary/20 hover:ring-2"
-                      >
-                        <QrCode className="size-16 text-primary group-hover:scale-110 transition-transform duration-500" />
-                        <div className="text-center">
-                          <span className="text-sm font-black uppercase tracking-widest text-primary block">Kaspi арқылы төлеу</span>
-                          <span className="text-[10px] font-bold text-primary/60">(Сілтеме бойынша өту)</span>
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-5 p-6 rounded-3xl bg-emerald-50 border border-emerald-100 shadow-sm">
-                    <ShieldCheck className="size-8 text-emerald-600 shrink-0" />
-                    <div className="space-y-1">
-                      <p className="text-base font-bold text-emerald-950">Төлем қауіпсіздігі 100%</p>
-                      <p className="text-sm text-emerald-800/70 leading-relaxed font-medium">
-                        Төлегеннен кейін «Төлемді растау» батырмасын басып, тестке өтіңіз.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="p-12 pt-0 flex flex-col gap-6">
-                  <Button 
-                    className="w-full h-20 rounded-[32px] font-black text-2xl shadow-2xl shadow-primary/30 gap-4 hover:scale-[1.02] active:scale-95 transition-all bg-primary hover:bg-primary/95 text-white" 
-                    onClick={handlePaymentConfirm}
-                    disabled={isProcessingPayment}
-                  >
-                    {isProcessingPayment ? (
-                      <>
-                        <Loader2 className="size-10 animate-spin" />
-                        Жүйе тексеруде...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="size-10" />
-                        Төледім, растау
-                      </>
-                    )}
-                  </Button>
-                  <button 
-                    className="text-sm font-black text-muted-foreground/60 uppercase tracking-[0.2em] hover:text-destructive transition-colors py-2" 
-                    onClick={() => setStep("start")}
-                    disabled={isProcessingPayment}
-                  >
-                    Бас тарту
-                  </button>
-                </CardFooter>
-              </Card>
             </div>
           )}
 

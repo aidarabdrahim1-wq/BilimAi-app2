@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { format, isSameWeek, startOfNextWeek } from "date-fns";
+import { format, isSameWeek, startOfWeek, addWeeks } from "date-fns";
 import { kk } from "date-fns/locale";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -355,7 +355,7 @@ export default function PracticePage() {
             <AlertDescription className="text-sm font-medium mt-1">
               Сіз осы аптада тест тапсырып қойдыңыз. Келесі мүмкіндік дүйсенбі күні ашылады.
               <br />
-              <span className="font-bold text-orange-700">Келесі тестке: {format(startOfNextWeek(new Date(), { weekStartsOn: 1 }), "d MMMM", { locale: kk })}</span>
+              <span className="font-bold text-orange-700">Келесі тестке: {format(addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "d MMMM", { locale: kk })}</span>
             </AlertDescription>
           </Alert>
         )}

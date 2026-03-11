@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -10,7 +11,7 @@ import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle, Plus
 import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { useToast } from "@/hooks/use-toast";
@@ -52,11 +53,12 @@ export default function CuratorPage() {
           createdAt: data.timestamp 
         } as Message);
       });
+      
       if (msgs.length === 0) {
         setMessages([
           {
             role: "ai",
-            content: `Сәлем, ${profile?.fullName || "оқушы"}! Мен сенің жеке AI кураторыңмын. Бүгін ҰБТ-ға дайындығың қалай? Қандай көмек керек: теория түсіндіру ме, жоспар құру ма, әлде мотивация ма?`,
+            content: `Сәлем, ${profile?.fullName?.split(' ')[0] || "оқушы"}! Мен сенің жеке AI кураторыңмын. Бүгін ҰБТ-ға дайындығың қалай? Қандай көмек керек: теория түсіндіру ме, жоспар құру ма, әлде мотивация ма?`,
           },
         ]);
       } else {
@@ -90,17 +92,24 @@ export default function CuratorPage() {
     setInput("");
     setIsLoading(true);
 
-    try {
-      // 1. Save user message to Firestore
-      addDoc(interactionsRef, {
-        studentId: user.uid,
-        messageType: "student_query",
-        content: userMessage,
-        timestamp: serverTimestamp(),
-      }).catch(async (err) => {
-        console.error("Firestore Save Error:", err);
-      });
+    // 1. Save user message to Firestore
+    const userDocData = {
+      studentId: user.uid,
+      messageType: "student_query",
+      content: userMessage,
+      timestamp: serverTimestamp(),
+    };
 
+    addDoc(interactionsRef, userDocData).catch(async (err) => {
+      const permissionError = new FirestorePermissionError({
+        path: interactionsRef.path,
+        operation: 'create',
+        requestResourceData: userDocData
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
+
+    try {
       // 2. Get AI Response
       const response = await provideCuratorSupport({ 
         studentMessage: userMessage,
@@ -127,13 +136,20 @@ export default function CuratorPage() {
       }
 
       // 3. Save AI response to Firestore
-      addDoc(interactionsRef, {
+      const aiDocData = {
         studentId: user.uid,
         messageType: "ai_response",
         content: response.aiResponse,
         timestamp: serverTimestamp(),
-      }).catch(async (err) => {
-        console.error("Firestore Save Error AI:", err);
+      };
+
+      addDoc(interactionsRef, aiDocData).catch(async (err) => {
+        const permissionError = new FirestorePermissionError({
+          path: interactionsRef.path,
+          operation: 'create',
+          requestResourceData: aiDocData
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
     } catch (error: any) {
       console.error("AI Curator Error:", error);
@@ -155,8 +171,17 @@ export default function CuratorPage() {
       const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
       const snapshot = await getDocs(interactionsRef);
       
-      const deletePromises = snapshot.docs.map((d) => deleteDoc(doc(db, "studentProfiles", user.uid, "curatorInteractions", d.id)));
-      await Promise.all(deletePromises);
+      if (snapshot.empty) {
+        setIsClearing(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((d) => {
+        batch.delete(doc(db, "studentProfiles", user.uid, "curatorInteractions", d.id));
+      });
+      
+      await batch.commit();
 
       toast({
         title: "Жаңа чат",

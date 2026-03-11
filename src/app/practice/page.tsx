@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, CreditCard, QrCode } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, CreditCard, QrCode, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -132,13 +131,17 @@ export default function PracticePage() {
     setTestState("payment");
   };
 
-  const handlePayment = () => {
+  const handlePaymentConfirm = () => {
     setIsProcessingPayment(true);
     setTimeout(() => {
       setIsProcessingPayment(false);
       initiateTest();
       toast({ title: "Төлем сәтті өтті!", description: "Тест басталды." });
     }, 1500);
+  };
+
+  const openKaspiLink = () => {
+    window.open("https://pay.kaspi.kz/pay/52tookf8", "_blank");
   };
 
   const initiateTest = async () => {
@@ -298,20 +301,32 @@ export default function PracticePage() {
                 <p className="font-black text-xl">ҰБТ Нұсқасы #2026</p>
                 <p className="text-3xl font-black text-primary">390 ₸</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-6 rounded-3xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-3 cursor-pointer">
-                  <QrCode className="size-12 text-primary" />
-                  <span className="text-xs font-black uppercase">Kaspi QR</span>
-                </div>
-                <div className="p-6 rounded-3xl border-2 border-transparent bg-muted/50 flex flex-col items-center gap-3 opacity-50">
-                  <CreditCard className="size-12 text-muted-foreground" />
-                  <span className="text-xs font-black uppercase">Картамен</span>
-                </div>
+              
+              <div className="space-y-4">
+                <p className="text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Төлем әдісі:</p>
+                <button 
+                  onClick={openKaspiLink}
+                  className="w-full p-6 rounded-3xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-3 cursor-pointer hover:bg-primary/10 transition-all group"
+                >
+                  <QrCode className="size-12 text-primary group-hover:scale-110 transition-transform" />
+                  <div className="text-center">
+                    <span className="text-sm font-black uppercase text-primary">Kaspi арқылы төлеу</span>
+                    <p className="text-[10px] text-primary/60 font-bold">Сілтеме бойынша өту</p>
+                  </div>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
+                <Info className="size-5 text-blue-600 shrink-0" />
+                <p className="text-xs text-blue-800 font-medium leading-relaxed">
+                  Төлем жасап болған соң, «Төледім, растау» батырмасын басыңыз.
+                </p>
               </div>
             </CardContent>
             <CardFooter className="p-10 pt-0 flex flex-col gap-4">
-              <Button className="w-full h-16 rounded-2xl font-black text-xl shadow-lg" onClick={handlePayment} disabled={isProcessingPayment}>
-                {isProcessingPayment ? <Loader2 className="animate-spin" /> : "Төлемді растау"}
+              <Button className="w-full h-16 rounded-2xl font-black text-xl shadow-lg" onClick={handlePaymentConfirm} disabled={isProcessingPayment}>
+                {isProcessingPayment ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2 size-6" />}
+                {isProcessingPayment ? "Тексерілуде..." : "Төледім, растау"}
               </Button>
               <Button variant="ghost" className="w-full font-bold" onClick={() => setTestState("idle")}>Бас тарту</Button>
             </CardFooter>

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -26,7 +25,8 @@ import {
   Info,
   History,
   ClipboardCheck,
-  XCircle
+  XCircle,
+  ExternalLink
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +59,9 @@ export default function DiagnosticPage() {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const handlePayment = () => {
+  const handlePaymentConfirm = () => {
     setIsProcessingPayment(true);
+    // Имитация тексеру
     setTimeout(() => {
       setIsProcessingPayment(false);
       setStep("survey");
@@ -69,6 +70,10 @@ export default function DiagnosticPage() {
         description: "Мәліметтерді толтыруға өтіңіз.",
       });
     }, 2000);
+  };
+
+  const openKaspiLink = () => {
+    window.open("https://pay.kaspi.kz/pay/52tookf8", "_blank");
   };
 
   return (
@@ -178,7 +183,7 @@ export default function DiagnosticPage() {
                           <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
                             <CheckCircle2 className="size-5 text-green-400" />
                           </div>
-                          <p className="text-sm font-medium text-white/80">AI Куратордан жеке консультация</p>
+                          <p className="text-sm font-medium text-white/80">AI Куратордан жеке стратегия</p>
                         </div>
                       </div>
 
@@ -234,14 +239,19 @@ export default function DiagnosticPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="p-8 rounded-[36px] border-2 border-primary bg-primary/5 flex flex-col items-center gap-4 cursor-pointer transition-all hover:bg-primary/10 shadow-lg shadow-primary/5 group ring-offset-4 ring-primary/20 hover:ring-2">
-                      <QrCode className="size-16 text-primary group-hover:scale-110 transition-transform duration-500" />
-                      <span className="text-sm font-black uppercase tracking-widest text-primary">Kaspi QR</span>
-                    </div>
-                    <div className="p-8 rounded-[36px] border-2 border-transparent bg-slate-100/50 flex flex-col items-center gap-4 cursor-pointer opacity-60 hover:opacity-100 transition-all group grayscale hover:grayscale-0">
-                      <CreditCard className="size-16 text-muted-foreground group-hover:scale-110 transition-transform duration-500" />
-                      <span className="text-sm font-black uppercase tracking-widest text-muted-foreground">Банк картасы</span>
+                  <div className="space-y-4">
+                    <p className="text-center text-sm font-bold text-muted-foreground uppercase tracking-widest">Төлем әдісін таңдаңыз:</p>
+                    <div className="grid grid-cols-1 gap-6">
+                      <button 
+                        onClick={openKaspiLink}
+                        className="p-8 rounded-[36px] border-2 border-primary bg-primary/5 flex flex-col items-center gap-4 cursor-pointer transition-all hover:bg-primary/10 shadow-lg shadow-primary/5 group ring-offset-4 ring-primary/20 hover:ring-2"
+                      >
+                        <QrCode className="size-16 text-primary group-hover:scale-110 transition-transform duration-500" />
+                        <div className="text-center">
+                          <span className="text-sm font-black uppercase tracking-widest text-primary block">Kaspi арқылы төлеу</span>
+                          <span className="text-[10px] font-bold text-primary/60">(Сілтеме бойынша өту)</span>
+                        </div>
+                      </button>
                     </div>
                   </div>
 
@@ -250,7 +260,7 @@ export default function DiagnosticPage() {
                     <div className="space-y-1">
                       <p className="text-base font-bold text-emerald-950">Төлем қауіпсіздігі 100%</p>
                       <p className="text-sm text-emerald-800/70 leading-relaxed font-medium">
-                        Барлық транзакциялар шифрланған. Деректеріңіз біздің қорғауымызда.
+                        Төлегеннен кейін «Төлемді растау» батырмасын басып, тестке өтіңіз.
                       </p>
                     </div>
                   </div>
@@ -258,18 +268,18 @@ export default function DiagnosticPage() {
                 <CardFooter className="p-12 pt-0 flex flex-col gap-6">
                   <Button 
                     className="w-full h-20 rounded-[32px] font-black text-2xl shadow-2xl shadow-primary/30 gap-4 hover:scale-[1.02] active:scale-95 transition-all bg-primary hover:bg-primary/95 text-white" 
-                    onClick={handlePayment}
+                    onClick={handlePaymentConfirm}
                     disabled={isProcessingPayment}
                   >
                     {isProcessingPayment ? (
                       <>
                         <Loader2 className="size-10 animate-spin" />
-                        Жүйе өңделуде...
+                        Жүйе тексеруде...
                       </>
                     ) : (
                       <>
                         <CheckCircle2 className="size-10" />
-                        Төлемді растау
+                        Төледім, растау
                       </>
                     )}
                   </Button>

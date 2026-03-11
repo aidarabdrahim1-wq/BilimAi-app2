@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle, Trash2 } from "lucide-react";
+import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle, PlusCircle } from "lucide-react";
 import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
@@ -146,9 +146,9 @@ export default function CuratorPage() {
     }
   };
 
-  const handleClearChat = async () => {
+  const handleNewChat = async () => {
     if (!user || !db) return;
-    if (!confirm("Чат тарихын толықтай тазалағыңыз келе ме? Бұл әрекетті қайтару мүмкін емес.")) return;
+    if (!confirm("Жаңа чат бастағыңыз келе ме? Ескі хабарламалар тарихы өшіріледі.")) return;
 
     setIsClearing(true);
     try {
@@ -159,8 +159,8 @@ export default function CuratorPage() {
       await Promise.all(deletePromises);
 
       toast({
-        title: "Тазаланды",
-        description: "Чат тарихы сәтті өшірілді.",
+        title: "Жаңа чат",
+        description: "Жаңа диалог сәтті басталды. AI куратор дайын!",
       });
     } catch (error: any) {
       const permissionError = new FirestorePermissionError({
@@ -192,11 +192,17 @@ export default function CuratorPage() {
             <p className="text-muted-foreground text-sm">Жекелендірілген ҰБТ көмекшісі</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleClearChat} disabled={isClearing || messages.length <= 1}>
-              {isClearing ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-              Чатты тазалау
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="gap-2 bg-primary hover:bg-primary/90 text-white rounded-xl shadow-lg shadow-primary/20 px-4" 
+              onClick={handleNewChat} 
+              disabled={isClearing || messages.length <= 1}
+            >
+              {isClearing ? <Loader2 className="size-4 animate-spin" /> : <PlusCircle className="size-4" />}
+              Жаңа чат
             </Button>
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2 rounded-xl">
               <History className="size-4" /> Тарих
             </Button>
           </div>

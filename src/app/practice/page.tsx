@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -13,10 +13,11 @@ import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc } from "firebase/firestore";
-import { format, isSameWeek } from "date-fns";
+import { format, isSameWeek, startOfNextWeek } from "date-fns";
 import { kk } from "date-fns/locale";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 type Question = {
   id: string;
@@ -99,7 +100,25 @@ export default function PracticePage() {
     return () => unsubscribe();
   }, [user]);
 
+  const hasTakenTestThisWeek = useMemo(() => {
+    if (!recentSessions || recentSessions.length === 0) return false;
+    const now = new Date();
+    return recentSessions.some(session => {
+      if (!session.createdAt) return false;
+      const sessionDate = session.createdAt.toDate ? session.createdAt.toDate() : new Date(session.createdAt.seconds * 1000);
+      return isSameWeek(sessionDate, now, { weekStartsOn: 1 });
+    });
+  }, [recentSessions]);
+
   const initiateTest = async () => {
+    if (hasTakenTestThisWeek) {
+      toast({
+        title: "Апталық лимит",
+        description: "Сіз осы аптада тест тапсырып қойдыңыз. Келесі аптаны күтіңіз.",
+        variant: "destructive"
+      });
+      return;
+    }
     setErrorMessage(null);
     setTestState("loading");
     setCurrentSubjectIndex(0);
@@ -115,7 +134,7 @@ export default function PracticePage() {
         count: config.count 
       });
       
-      const updatedQuestions = newQuestions.map((q, idx) => {
+      const updatedQuestions = (newQuestions || []).map((q, idx) => {
         let points = 1;
         if (subjectIdx >= 3) {
           if (idx >= 30) points = 2; 
@@ -292,9 +311,9 @@ export default function PracticePage() {
           </div>
           <Progress value={progress} className="h-1.5 rounded-full" />
           <Card className="border-none shadow-xl bg-white p-8 rounded-[32px]">
-            <h3 className="text-xl md:text-2xl font-bold leading-relaxed mb-8">{q.text}</h3>
+            <h3 className="text-xl md:text-2xl font-bold leading-relaxed mb-8">{q?.text || "Жүктелуде..."}</h3>
             <div className="grid gap-4">
-              {q.options.map((opt, i) => {
+              {q?.options.map((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isSelected = answers[currentQuestionIndex] === letter;
                 return (
@@ -329,11 +348,23 @@ export default function PracticePage() {
           <p className="text-muted-foreground font-medium">Өз біліміңді жаңа форматтағы 140 балдық шкаламен тексер.</p>
         </div>
 
+        {hasTakenTestThisWeek && (
+          <Alert className="bg-orange-50 border-orange-200 text-orange-800 rounded-3xl p-6">
+            <Calendar className="h-5 w-5 text-orange-600" />
+            <AlertTitle className="font-black text-lg">Апталық лимит орындалды</AlertTitle>
+            <AlertDescription className="text-sm font-medium mt-1">
+              Сіз осы аптада тест тапсырып қойдыңыз. Келесі мүмкіндік дүйсенбі күні ашылады.
+              <br />
+              <span className="font-bold text-orange-700">Келесі тестке: {format(startOfNextWeek(new Date(), { weekStartsOn: 1 }), "d MMMM", { locale: kk })}</span>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-8">
-          <Card className="border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group hover:ring-2 ring-primary/20 transition-all">
+          <Card className={`border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group transition-all ${hasTakenTestThisWeek ? 'opacity-75 grayscale-[0.5]' : 'hover:ring-2 ring-primary/20'}`}>
             <div className="h-3 bg-primary/10" />
             <CardHeader className="p-8">
-              <Badge variant="secondary" className="w-fit mb-4 font-black">ТЕГІН ҚОЛЖЕТІМДІЛІК</Badge>
+              <Badge variant="secondary" className="w-fit mb-4 font-black">АПТАСЫНА 1 РЕТ ТЕГІН</Badge>
               <CardTitle className="text-3xl font-black font-headline">Толық ҰБТ нұсқасы</CardTitle>
               <CardDescription className="text-base font-medium mt-2">
                 AI арқылы құрастырылған 120 сұрақтан тұратын кешенді тест. Нәтижелер талдау бетінде сақталады.
@@ -342,7 +373,7 @@ export default function PracticePage() {
             <CardContent className="p-8 pt-0">
               <div className="flex items-center gap-4 text-sm font-bold text-muted-foreground p-4 bg-accent/20 rounded-2xl border-2 border-dashed border-accent/50">
                 <Zap className="size-5 text-primary" />
-                Барлық оқушылар үшін шектеусіз мүмкіндік
+                Тәртіп пен жүйелілік — табыс кепілі
               </div>
             </CardContent>
             <CardFooter className="p-8 pt-0">
@@ -350,9 +381,19 @@ export default function PracticePage() {
                 size="lg" 
                 className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl shadow-primary/20"
                 onClick={initiateTest}
+                disabled={hasTakenTestThisWeek}
               >
-                Тестті бастау
-                <Play className="size-6 fill-current" />
+                {hasTakenTestThisWeek ? (
+                  <>
+                    <Lock className="size-6" />
+                    Келесі аптаны күтіңіз
+                  </>
+                ) : (
+                  <>
+                    Тестті бастау
+                    <Play className="size-6 fill-current" />
+                  </>
+                )}
               </Button>
             </CardFooter>
           </Card>

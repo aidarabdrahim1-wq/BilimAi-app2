@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, CreditCard, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -55,7 +55,9 @@ export default function PracticePage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  const [testState, setTestState] = useState<"idle" | "loading" | "testing" | "results" | "error">("idle");
+  const [testState, setTestState] = useState<"idle" | "payment" | "loading" | "testing" | "results" | "error">("idle");
+  const [testMode, setTestMode] = useState<"free" | "paid">("free");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -83,7 +85,7 @@ export default function PracticePage() {
     if (!user) return;
 
     const sessionsRef = collection(db, "studentProfiles", user.uid, "testSessions");
-    const q = query(sessionsRef, orderBy("createdAt", "desc"), limit(5));
+    const q = query(sessionsRef, orderBy("createdAt", "desc"), limit(10));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const sessions = snapshot.docs.map(doc => ({
@@ -101,25 +103,45 @@ export default function PracticePage() {
     return () => unsubscribe();
   }, [user]);
 
-  // Check if user has already taken a test this week
-  const isLimitReached = useMemo(() => {
-    if (recentSessions.length === 0) return false;
-    const lastSession = recentSessions[0];
+  const isFreeLimitReached = useMemo(() => {
+    const freeSessions = recentSessions.filter(s => s.type === "free_weekly");
+    if (freeSessions.length === 0) return false;
+    
+    const lastSession = freeSessions[0];
     if (!lastSession.createdAt?.seconds) return false;
     
     const lastDate = new Date(lastSession.createdAt.seconds * 1000);
     return isSameWeek(lastDate, new Date(), { weekStartsOn: 1 });
   }, [recentSessions]);
 
-  const startTest = async () => {
-    if (isLimitReached) {
+  const handleStartFree = () => {
+    if (isFreeLimitReached) {
       toast({
         title: "Шектеу",
-        description: "Тест тапсыру аптасына 1 рет қана тегін. Келесі аптада қайта көріңіз!",
+        description: "Тегін тест аптасына 1 рет қана. Ақылы нұсқаны таңдаңыз немесе келесі аптаны күтіңіз.",
         variant: "destructive"
       });
       return;
     }
+    setTestMode("free");
+    initiateTest();
+  };
+
+  const handleStartPaid = () => {
+    setTestMode("paid");
+    setTestState("payment");
+  };
+
+  const handlePayment = () => {
+    setIsProcessingPayment(true);
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      initiateTest();
+      toast({ title: "Төлем сәтті өтті!", description: "Тест басталды." });
+    }, 1500);
+  };
+
+  const initiateTest = async () => {
     setErrorMessage(null);
     setTestState("loading");
     setCurrentSubjectIndex(0);
@@ -150,7 +172,7 @@ export default function PracticePage() {
     } catch (error: any) {
       let msg = "Сұрақтарды жүктеу мүмкін болмады.";
       if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
-        msg = "AI квотасы (тегін лимит) аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз.";
+        msg = "AI квотасы аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
       }
       setErrorMessage(msg);
       setTestState("error");
@@ -215,14 +237,13 @@ export default function PracticePage() {
 
   const finishTest = async (finalResults: SubjectResult[], finalAnswers: any[]) => {
     setTestState("results");
-    
     const totalScore = finalResults.reduce((acc, r) => acc + r.score, 0);
 
     if (user) {
       const sessionId = Math.random().toString(36).substring(7);
       const testSession = {
         studentId: user.uid,
-        type: "practice_2026",
+        type: testMode === "free" ? "free_weekly" : "paid_attempt",
         score: totalScore,
         results: finalResults,
         createdAt: serverTimestamp(),
@@ -232,7 +253,6 @@ export default function PracticePage() {
         const sessionRef = doc(db, "studentProfiles", user.uid, "testSessions", sessionId);
         await setDoc(sessionRef, testSession);
         
-        // Save missed questions to mistakes collection
         const missed = finalAnswers.filter(ans => !ans.isCorrect);
         const mistakesRef = collection(db, "studentProfiles", user.uid, "mistakes");
         
@@ -246,66 +266,69 @@ export default function PracticePage() {
             subject: m.subject,
             explanation: m.explanation || "",
             createdAt: serverTimestamp()
-          }).catch(err => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: mistakesRef.path,
-              operation: 'create',
-              requestResourceData: m
-            }));
-          });
+          }).catch(() => {});
         }
 
         await updateUserRating(user.uid, totalScore >= 120 ? 'TEST_EXCELLENT' : 'CORRECT_ANSWER');
         
         toast({
           title: "Тест аяқталды!",
-          description: `Сіздің нәтижеңіз: ${totalScore} балл. Қателер талдау бетіне қосылды.`,
+          description: `Нәтиже: ${totalScore} балл. Қателер сақталды.`,
         });
       } catch (e) {
-        console.error("Save result error:", e);
+        console.error(e);
       }
     }
   };
 
-  if (testState === "loading") {
+  if (testState === "payment") {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <div className="relative">
-            <Loader2 className="size-16 animate-spin text-primary opacity-20" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Zap className="size-8 text-primary animate-pulse" />
-            </div>
-          </div>
-          <div className="text-center space-y-2">
-            <p className="font-bold text-xl">{subjectConfigs[currentSubjectIndex].name}</p>
-            <p className="text-sm text-muted-foreground animate-pulse">
-              {subjectConfigs[currentSubjectIndex].count} сұрақ дайындалуда...
-            </p>
-          </div>
+        <div className="max-w-2xl mx-auto py-10 animate-in fade-in slide-in-from-bottom-4">
+          <Card className="border-none shadow-2xl rounded-[40px] overflow-hidden">
+            <CardHeader className="bg-primary/5 p-10 text-center border-b">
+              <div className="size-20 rounded-3xl bg-primary text-white flex items-center justify-center mx-auto mb-6 shadow-xl shadow-primary/20">
+                <CreditCard className="size-10" />
+              </div>
+              <CardTitle className="text-3xl font-black font-headline">Нұсқаны сатып алу</CardTitle>
+              <CardDescription className="font-bold text-lg">1 толық ҰБТ нұсқасы (120 сұрақ)</CardDescription>
+            </CardHeader>
+            <CardContent className="p-10 space-y-8">
+              <div className="flex justify-between items-center p-6 rounded-3xl bg-accent/30 border-2 border-dashed border-primary/20">
+                <p className="font-black text-xl">ҰБТ Нұсқасы #2026</p>
+                <p className="text-3xl font-black text-primary">390 ₸</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-6 rounded-3xl border-2 border-primary bg-primary/5 flex flex-col items-center gap-3 cursor-pointer">
+                  <QrCode className="size-12 text-primary" />
+                  <span className="text-xs font-black uppercase">Kaspi QR</span>
+                </div>
+                <div className="p-6 rounded-3xl border-2 border-transparent bg-muted/50 flex flex-col items-center gap-3 opacity-50">
+                  <CreditCard className="size-12 text-muted-foreground" />
+                  <span className="text-xs font-black uppercase">Картамен</span>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="p-10 pt-0 flex flex-col gap-4">
+              <Button className="w-full h-16 rounded-2xl font-black text-xl shadow-lg" onClick={handlePayment} disabled={isProcessingPayment}>
+                {isProcessingPayment ? <Loader2 className="animate-spin" /> : "Төлемді растау"}
+              </Button>
+              <Button variant="ghost" className="w-full font-bold" onClick={() => setTestState("idle")}>Бас тарту</Button>
+            </CardFooter>
+          </Card>
         </div>
       </AppShell>
     );
   }
 
-  if (testState === "error") {
+  if (testState === "loading") {
     return (
       <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center max-w-md mx-auto">
-          <div className="size-20 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
-            <AlertTriangle className="size-10" />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold font-headline">Байланыс қатесі</h2>
-            <p className="text-muted-foreground text-sm">
-              {errorMessage || "AI жүйесіне қосылу кезінде қате орын алды."}
-            </p>
-          </div>
-          <div className="flex gap-4 w-full">
-            <Button variant="outline" className="flex-1" onClick={() => setTestState("idle")}>Артқа қайту</Button>
-            <Button className="flex-1 gap-2" onClick={startTest}>
-              <RefreshCcw className="size-4" /> Қайта көру
-            </Button>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <Loader2 className="size-16 animate-spin text-primary opacity-20" />
+          <div className="text-center space-y-2">
+            <p className="font-bold text-xl">{subjectConfigs[currentSubjectIndex].name}</p>
+            <p className="text-sm text-muted-foreground animate-pulse">Сұрақтар жүктелуде...</p>
           </div>
         </div>
       </AppShell>
@@ -314,56 +337,23 @@ export default function PracticePage() {
 
   if (testState === "results") {
     const totalScore = results.reduce((acc, r) => acc + r.score, 0);
-    const isAllPassed = results.every(r => r.isThresholdPassed);
-
     return (
       <AppShell>
-        <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-          <div className="text-center space-y-4">
-            <div className="inline-flex size-24 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center mb-2 shadow-inner">
-              <Trophy className="size-12 drop-shadow-sm" />
-            </div>
-            <h1 className="text-4xl font-black font-headline">2026 ҰБТ Нәтижесі</h1>
-            <div className="flex flex-col items-center">
-              <span className="text-8xl font-black text-primary tracking-tighter">{totalScore}</span>
-              <span className="text-sm font-bold text-muted-foreground uppercase tracking-[0.2em]">140 балдан</span>
-            </div>
-            {!isAllPassed && (
-              <Badge variant="destructive" className="px-4 py-1">Шекті балл жиналмаған пәндер бар</Badge>
-            )}
+        <div className="max-w-4xl mx-auto space-y-8 text-center py-10 animate-in zoom-in-95">
+          <div className="size-24 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
+            <Trophy className="size-12" />
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <h1 className="text-5xl font-black font-headline tracking-tighter">Нәтиже: {totalScore} / 140</h1>
+          <div className="grid gap-4 md:grid-cols-3 pt-8">
             {results.map((r, i) => (
-              <Card key={i} className={`border-none shadow-sm overflow-hidden ${!r.isThresholdPassed ? 'ring-2 ring-destructive/20' : ''}`}>
-                <div className={`h-1.5 ${i < 3 ? 'bg-blue-500' : 'bg-primary'}`} />
-                <CardHeader className="py-4">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-xs font-bold uppercase text-muted-foreground tracking-wider">{r.subject}</CardTitle>
-                    <Badge variant={r.isThresholdPassed ? "secondary" : "destructive"} className="text-[10px]">
-                      {r.score} балл
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-4">
-                  <div className="flex justify-between text-[10px] font-bold mb-1.5 uppercase">
-                    <span>Дұрыс: {r.correct} / {r.total}</span>
-                    <span className={r.isThresholdPassed ? "text-green-600" : "text-destructive"}>
-                      {r.isThresholdPassed ? "Өтті" : "Шекті: " + subjectConfigs[i].threshold}
-                    </span>
-                  </div>
-                  <Progress value={(r.score / r.maxScore) * 100} className="h-2 rounded-full" />
-                </CardContent>
+              <Card key={i} className="border-none shadow-sm p-6 text-left bg-white rounded-3xl">
+                <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">{r.subject}</p>
+                <p className="text-2xl font-black text-primary">{r.score} балл</p>
+                <Progress value={(r.score/r.maxScore)*100} className="h-1 mt-3" />
               </Card>
             ))}
           </div>
-
-          <div className="flex justify-center gap-4 pt-4">
-            <Button variant="outline" size="lg" className="px-8" asChild>
-              <a href="/analysis">Қателерді талдау</a>
-            </Button>
-            <Button size="lg" className="px-8 font-bold" onClick={() => setTestState("idle")}>Мәзірге қайту</Button>
-          </div>
+          <Button size="lg" className="mt-10 rounded-2xl h-14 px-10 font-bold" onClick={() => setTestState("idle")}>Басты бетке қайту</Button>
         </div>
       </AppShell>
     );
@@ -372,78 +362,39 @@ export default function PracticePage() {
   if (testState === "testing") {
     const q = questions[currentQuestionIndex];
     const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-
     return (
       <AppShell>
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="space-y-2">
-            <div className="flex justify-between items-end px-1">
-              <div className="flex flex-col">
-                <Badge variant="outline" className="w-fit mb-1 bg-primary/5 text-primary border-primary/20 text-[10px] font-bold">
-                  {subjectConfigs[currentSubjectIndex].name}
-                </Badge>
-                <span className="text-2xl font-black font-headline">Сұрақ {currentQuestionIndex + 1} / {questions.length}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Жалпы барысы</span>
-                <span className="text-sm font-black text-primary">Пән {currentSubjectIndex + 1} / 5</span>
-              </div>
+          <div className="flex justify-between items-end">
+            <div className="space-y-1">
+              <Badge className="bg-primary/10 text-primary border-none">{subjectConfigs[currentSubjectIndex].name}</Badge>
+              <h2 className="text-2xl font-black font-headline">Сұрақ {currentQuestionIndex + 1} / {questions.length}</h2>
             </div>
-            <Progress value={progress} className="h-1.5 rounded-full" />
+            <span className="text-xs font-bold text-muted-foreground uppercase">Пән {currentSubjectIndex + 1} / 5</span>
           </div>
-
-          <Card className="border-none shadow-xl bg-white overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-primary to-secondary" />
-            <CardHeader className="p-8">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase bg-accent/50 px-2 py-1 rounded">
-                  {q.points} БАЛЛЫҚ СҰРАҚ
-                </span>
-              </div>
-              <CardTitle className="text-xl md:text-2xl leading-relaxed font-bold">
-                {q.text}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-8 pb-8 space-y-3">
+          <Progress value={progress} className="h-1.5 rounded-full" />
+          <Card className="border-none shadow-xl bg-white p-8 rounded-[32px]">
+            <h3 className="text-xl md:text-2xl font-bold leading-relaxed mb-8">{q.text}</h3>
+            <div className="grid gap-4">
               {q.options.map((opt, i) => {
                 const letter = String.fromCharCode(65 + i);
                 const isSelected = answers[currentQuestionIndex] === letter;
                 return (
-                  <button 
-                    key={i} 
-                    onClick={() => handleAnswer(letter)}
-                    className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-5 group active:scale-[0.98] ${
-                      isSelected 
-                        ? "border-primary bg-primary/5 ring-4 ring-primary/10" 
-                        : "border-border hover:border-primary/30 hover:bg-accent/5"
-                    }`}
-                  >
-                    <span className={`size-10 rounded-xl border-2 flex items-center justify-center text-sm font-black transition-all ${
-                      isSelected ? "bg-primary text-primary-foreground border-primary shadow-lg" : "group-hover:border-primary/50"
-                    }`}>
-                      {letter}
-                    </span>
-                    <span className={`font-semibold text-base ${isSelected ? "text-primary" : ""}`}>{opt}</span>
+                  <button key={i} onClick={() => handleAnswer(letter)} className={`w-full text-left p-5 rounded-2xl border-2 transition-all flex items-center gap-4 ${isSelected ? "border-primary bg-primary/5 ring-4 ring-primary/10" : "border-border hover:border-primary/20"}`}>
+                    <span className={`size-10 rounded-xl border-2 flex items-center justify-center font-black ${isSelected ? "bg-primary text-white border-primary" : ""}`}>{letter}</span>
+                    <span className="font-bold">{opt}</span>
                   </button>
                 );
               })}
-            </CardContent>
-            <CardFooter className="bg-accent/5 p-6 border-t flex justify-between">
-              <Button variant="ghost" className="font-bold" disabled={currentQuestionIndex === 0} onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}>
-                Артқа
-              </Button>
-              <Button className="gap-2 px-10 h-12 font-black text-lg shadow-lg shadow-primary/20" disabled={!answers[currentQuestionIndex]} onClick={nextStep}>
-                {currentQuestionIndex === questions.length - 1 
-                  ? (currentSubjectIndex === subjectConfigs.length - 1 ? "Аяқтау" : "Келесі пән") 
-                  : "Келесі сұрақ"}
-                <ArrowRight className="size-5" />
-              </Button>
-            </CardFooter>
+            </div>
           </Card>
-          
-          <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-            2026 ҰБТ Стандарты бойынша
-          </p>
+          <div className="flex justify-between items-center px-2">
+            <Button variant="ghost" disabled={currentQuestionIndex === 0} onClick={() => setCurrentQuestionIndex(currentQuestionIndex - 1)}>Артқа</Button>
+            <Button className="h-14 px-10 rounded-2xl font-black text-lg gap-2" disabled={!answers[currentQuestionIndex]} onClick={nextStep}>
+              {currentQuestionIndex === questions.length - 1 ? "Жалғастыру" : "Келесі сұрақ"}
+              <ArrowRight className="size-5" />
+            </Button>
+          </div>
         </div>
       </AppShell>
     );
@@ -451,114 +402,104 @@ export default function PracticePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-8 max-w-6xl mx-auto">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold tracking-tight font-headline flex items-center gap-2">
-            <ClipboardCheck className="size-8 text-primary" />
-            Практикалық жаттығу (ҰБТ 2026)
+          <h1 className="text-4xl font-black tracking-tight font-headline flex items-center gap-3">
+            <ClipboardCheck className="size-10 text-primary" />
+            ҰБТ Тестілеу (2026)
           </h1>
-          <p className="text-muted-foreground text-sm">Жаңа формат бойынша 120 сұрақ және 140 балдық шкаламен дайындал.</p>
+          <p className="text-muted-foreground font-medium">Өз біліміңді жаңа форматтағы 140 балдық шкаламен тексер.</p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-3">
-          <Card className="md:col-span-2 border-none shadow-sm bg-primary text-primary-foreground overflow-hidden relative group">
-            <CardHeader className="relative z-10 p-8">
-              <Badge className="bg-white/20 text-white w-fit mb-4 font-bold">2026 ФОРМАТ</Badge>
-              <CardTitle className="text-4xl md:text-5xl font-black font-headline leading-tight">Толық ҰБТ Тесті</CardTitle>
-              <CardDescription className="text-primary-foreground/80 text-lg max-w-md mt-4 leading-relaxed">
-                5 пән бойынша кешенді тексеру. Жаңа шкаламен (140 балл) деңгейіңді анықта.
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Free Attempt Card */}
+          <Card className="border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group hover:ring-2 ring-primary/20 transition-all">
+            <div className="h-3 bg-primary/10" />
+            <CardHeader className="p-8">
+              <Badge variant="secondary" className="w-fit mb-4 font-black">ТЕГІН МҮМКІНДІК</Badge>
+              <CardTitle className="text-3xl font-black font-headline">Апталық нұсқа</CardTitle>
+              <CardDescription className="text-base font-medium mt-2">
+                Аптасына 1 рет тегін тапсыру мүмкіндігі. Нәтижелер талдау бетінде сақталады.
               </CardDescription>
             </CardHeader>
-            <CardContent className="relative z-10 px-8 pb-8">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 mt-4">
-                <div className="flex flex-col">
-                  <span className="text-4xl font-black tracking-tighter">120</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Сұрақ</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-4xl font-black tracking-tighter">140</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Макс балл</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-4xl font-black tracking-tighter">5</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Пән</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-4xl font-black tracking-tighter">+20</span>
-                  <span className="text-[10px] uppercase font-bold opacity-70 tracking-widest">Рейтинг</span>
-                </div>
+            <CardContent className="p-8 pt-0 flex-1">
+              <div className="flex items-center gap-4 text-sm font-bold text-muted-foreground p-4 bg-accent/20 rounded-2xl border-2 border-dashed border-accent/50">
+                <Calendar className="size-5 text-primary" />
+                {isFreeLimitReached ? "Бұл аптаға лимит аяқталды" : "Бұл аптаға қолжетімді: 1 мүмкіндік"}
               </div>
-
-              {isLimitReached ? (
-                <div className="mt-12 space-y-4 animate-in fade-in slide-in-from-top-2">
-                  <Alert className="bg-white/10 border-white/20 text-white">
-                    <Info className="h-4 w-4 text-white" />
-                    <AlertTitle className="font-bold">Апталық лимит аяқталды</AlertTitle>
-                    <AlertDescription className="text-white/80">
-                      Сіз осы аптаға берілген тегін тест мүмкіндігін пайдаландыңыз. Келесі тест келесі дүйсенбіде қолжетімді болады.
-                    </AlertDescription>
-                  </Alert>
-                  <Button size="lg" variant="secondary" className="w-full opacity-50 cursor-not-allowed font-black h-16 text-xl gap-4" disabled>
-                    <Calendar className="size-6" /> КЕЛЕСІ АПТАНЫ КҮТІҢІЗ
-                  </Button>
-                </div>
-              ) : (
-                <Button size="lg" variant="secondary" className="mt-12 font-black h-16 px-12 text-xl gap-4 shadow-2xl hover:scale-105 transition-transform" onClick={startTest}>
-                  ТЕСТТІ БАСТАУ <Play className="size-6 fill-current" />
-                </Button>
-              )}
             </CardContent>
-            <div className="absolute -bottom-20 -right-20 size-96 bg-white/10 rounded-full blur-3xl" />
-            <Zap className="absolute top-10 right-10 size-48 opacity-10 rotate-12 group-hover:scale-110 transition-transform" />
+            <CardFooter className="p-8 pt-0">
+              <Button 
+                size="lg" 
+                className={`w-full h-16 rounded-2xl font-black text-xl gap-3 ${isFreeLimitReached ? "bg-muted text-muted-foreground cursor-not-allowed" : "shadow-xl shadow-primary/20"}`}
+                disabled={isFreeLimitReached}
+                onClick={handleStartFree}
+              >
+                {isFreeLimitReached ? "Келесі аптаны күтіңіз" : "Тестті бастау"}
+                {!isFreeLimitReached && <Play className="size-6 fill-current" />}
+              </Button>
+            </CardFooter>
           </Card>
 
-          <div className="space-y-6">
-            <Card className="border-none shadow-sm h-fit">
-              <CardHeader className="pb-3 border-b bg-accent/5">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <History className="size-4 text-primary" />
-                  Соңғы нәтижелер
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y">
-                  {recentSessions.length > 0 ? (
-                    recentSessions.map((item) => (
-                      <div key={item.id} className="flex justify-between items-center p-4 hover:bg-accent/5 transition-colors">
-                        <div className="space-y-1">
-                          <p className="font-bold text-sm">ҰБТ Тесті</p>
-                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-                            {item.createdAt?.seconds 
-                              ? format(new Date(item.createdAt.seconds * 1000), "d MMMM, HH:mm", { locale: kk }) 
-                              : "Жақында"}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className={`text-base font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
-                            {item.score}/140
-                          </span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-12 text-center text-xs text-muted-foreground italic">
-                      Әлі тест тапсырылмаған
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+          {/* Paid Attempt Card */}
+          <Card className="border-none shadow-2xl bg-slate-900 text-white rounded-[40px] overflow-hidden flex flex-col relative group hover:scale-[1.02] transition-all">
+            <div className="h-3 bg-gradient-to-r from-primary to-secondary" />
+            <CardHeader className="p-8 relative z-10">
+              <Badge className="w-fit mb-4 font-black bg-white/20 text-white border-none">PREMIUM</Badge>
+              <CardTitle className="text-3xl font-black font-headline">Кез келген уақытта</CardTitle>
+              <CardDescription className="text-base font-medium mt-2 text-slate-400">
+                Шектеусіз тапсыру. Әрбір жаңа нұсқа AI арқылы қайталанбас етіп құрастырылады.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-8 pt-0 flex-1 relative z-10">
+              <div className="text-center py-6">
+                <span className="text-5xl font-black tracking-tighter">390 ₸</span>
+                <span className="text-sm font-bold text-slate-500 ml-2">/ 1 нұсқа</span>
+              </div>
+            </CardContent>
+            <CardFooter className="p-8 pt-0 relative z-10">
+              <Button 
+                size="lg" 
+                variant="secondary"
+                className="w-full h-16 rounded-2xl font-black text-xl gap-3 bg-white text-slate-900 hover:bg-slate-100 shadow-2xl"
+                onClick={handleStartPaid}
+              >
+                Сатып алып, бастау
+                <Zap className="size-6 fill-current" />
+              </Button>
+            </CardFooter>
+            <div className="absolute -bottom-20 -right-20 size-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+          </Card>
+        </div>
 
-            <Card className="border-none shadow-sm bg-blue-50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-blue-700">Ереже</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-xs text-blue-800/70 leading-relaxed font-medium">
-                  Сапалы дайындық үшін толық ҰБТ тестін аптасына 1 рет тапсыру жеткілікті. Қалған уақытта "Практика" бөлімінде тақырыптық жаттығулар жасаңыз.
-                </p>
-              </CardContent>
-            </Card>
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <History className="size-5 text-primary" />
+            Соңғы нәтижелер
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recentSessions.length > 0 ? (
+              recentSessions.map((item) => (
+                <Card key={item.id} className="border-none shadow-sm bg-white p-5 rounded-2xl flex justify-between items-center">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-sm">ҰБТ Тесті</p>
+                      <Badge variant="outline" className="text-[8px] h-4 py-0 font-bold uppercase">{item.type === 'free_weekly' ? 'Тегін' : 'Ақылы'}</Badge>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase">
+                      {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), "d MMMM", { locale: kk }) : "Жақында"}
+                    </p>
+                  </div>
+                  <span className={`text-xl font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
+                    {item.score}/140
+                  </span>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-full py-12 text-center text-muted-foreground bg-accent/5 rounded-3xl border-2 border-dashed font-medium italic">
+                Әлі тест тапсырылмаған
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle } from "lucide-react";
+import { Send, BrainCircuit, User, Sparkles, Loader2, History, AlertCircle, Trash2 } from "lucide-react";
 import { provideCuratorSupport } from "@/ai/flows/provide-curator-support";
 import { useAuth } from "@/components/auth/auth-provider";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { useToast } from "@/hooks/use-toast";
 
 type Message = {
   id?: string;
@@ -23,9 +24,11 @@ type Message = {
 
 export default function CuratorPage() {
   const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -143,6 +146,33 @@ export default function CuratorPage() {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!user || !db) return;
+    if (!confirm("Чат тарихын толықтай тазалағыңыз келе ме? Бұл әрекетті қайтару мүмкін емес.")) return;
+
+    setIsClearing(true);
+    try {
+      const interactionsRef = collection(db, "studentProfiles", user.uid, "curatorInteractions");
+      const snapshot = await getDocs(interactionsRef);
+      
+      const deletePromises = snapshot.docs.map((d) => deleteDoc(doc(db, "studentProfiles", user.uid, "curatorInteractions", d.id)));
+      await Promise.all(deletePromises);
+
+      toast({
+        title: "Тазаланды",
+        description: "Чат тарихы сәтті өшірілді.",
+      });
+    } catch (error: any) {
+      const permissionError = new FirestorePermissionError({
+        path: `studentProfiles/${user.uid}/curatorInteractions`,
+        operation: 'delete',
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const suggestions = [
     { label: "Теория түсіндір", icon: "📚" },
     { label: "10 тест сұрағы", icon: "📝" },
@@ -161,9 +191,15 @@ export default function CuratorPage() {
             </h1>
             <p className="text-muted-foreground text-sm">Жекелендірілген ҰБТ көмекшісі</p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
-            <History className="size-4" /> Тарих
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleClearChat} disabled={isClearing || messages.length <= 1}>
+              {isClearing ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Чатты тазалау
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2">
+              <History className="size-4" /> Тарих
+            </Button>
+          </div>
         </div>
 
         <Card className="flex-1 flex flex-col border-none shadow-sm overflow-hidden bg-white">

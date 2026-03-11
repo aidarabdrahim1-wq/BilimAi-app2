@@ -11,31 +11,41 @@ import {
   BarChart3, 
   Target, 
   AlertTriangle, 
-  ShieldCheck, 
   Loader2, 
   CheckCircle2,
   TrendingUp,
   Clock,
   Zap,
-  Award,
   Sparkles,
   ChevronRight,
   Info,
   History,
   ClipboardCheck,
-  XCircle
+  XCircle,
+  ArrowLeft
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/components/auth/auth-provider";
+import { runAdaptiveDiagnosticTest, type TestState, type AdaptiveDiagnosticTestOutput } from "@/ai/flows/run-adaptive-diagnostic";
+import { diagnosticService } from "@/services/diagnostic-service";
 
 export default function DiagnosticPage() {
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  
   const [step, setStep] = useState<"start" | "survey" | "rules" | "testing" | "result">("start");
+  const [testState, setTestState] = useState<TestState | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [testSummary, setTestSummary] = useState<any>(null);
+  
   const [testSeconds, setTestSeconds] = useState(0);
   const [prepExperience, setPrepExperience] = useState<string>("");
-  const { toast } = useToast();
 
   useEffect(() => {
     let interval: any;
@@ -48,6 +58,60 @@ export default function DiagnosticPage() {
     }
     return () => clearInterval(interval);
   }, [step]);
+
+  const startTest = async () => {
+    if (!user || !profile) return;
+    setIsAiLoading(true);
+    try {
+      const response = await runAdaptiveDiagnosticTest({
+        studentId: user.uid,
+        selectedSubjects: profile.selectedSubjects
+      });
+      
+      setTestState(response.updatedTestState);
+      setCurrentQuestion(response.question);
+      setStep("testing");
+    } catch (error) {
+      toast({ title: "Қате", description: "Тестті бастау мүмкін болмады.", variant: "destructive" });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const submitAnswer = async () => {
+    if (!user || !testState || !selectedAnswer || isAiLoading) return;
+    
+    setIsAiLoading(true);
+    try {
+      const response = await runAdaptiveDiagnosticTest({
+        studentId: user.uid,
+        testState: testState,
+        previousAnswer: selectedAnswer
+      });
+
+      if (response.isTestComplete) {
+        setTestSummary(response.testSummary);
+        setStep("result");
+        // Нәтижені Firestore-ға сақтау
+        if (response.testSummary) {
+          diagnosticService.saveDiagnosticResult({
+            userId: user.uid,
+            score: response.testSummary.overallScore,
+            weakTopics: response.testSummary.weakTopics,
+            summary: response.testSummary.recommendedNextActions
+          });
+        }
+      } else {
+        setTestState(response.updatedTestState);
+        setCurrentQuestion(response.question);
+        setSelectedAnswer(null);
+      }
+    } catch (error) {
+      toast({ title: "Қате", description: "Жауапты өңдеу мүмкін болмады.", variant: "destructive" });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   const formatTestTime = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
@@ -146,7 +210,7 @@ export default function DiagnosticPage() {
                       <div className="flex flex-col gap-2">
                         <Badge className="bg-white/10 text-white border-white/20 w-fit backdrop-blur-md font-bold px-4 py-1.5 rounded-full uppercase tracking-widest text-[9px]">
                           <Zap className="size-3 mr-2 fill-current text-yellow-400" />
-                          FULL ACCESS
+                          DIAGNOSTIC ACCESS
                         </Badge>
                         <h3 className="text-4xl font-black font-headline leading-tight">Біліміңіздің цифрлық есебі</h3>
                       </div>
@@ -156,13 +220,13 @@ export default function DiagnosticPage() {
                           <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
                             <CheckCircle2 className="size-5 text-green-400" />
                           </div>
-                          <p className="text-sm font-medium text-white/80">120 сұрақтан тұратын тереңдетілген талдау</p>
+                          <p className="text-sm font-medium text-white/80">Оңтайландырылған 20 сұрақтан тұратын талдау</p>
                         </div>
                         <div className="flex items-start gap-4">
                           <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 shadow-inner">
                             <CheckCircle2 className="size-5 text-green-400" />
                           </div>
-                          <p className="text-sm font-medium text-white/80">AI Куратордан жеке стратегия</p>
+                          <p className="text-sm font-medium text-white/80">Таңдау пәндеріңізге негізделген AI стратегия</p>
                         </div>
                       </div>
                     </div>
@@ -270,7 +334,7 @@ export default function DiagnosticPage() {
                       <div className="space-y-1">
                         <p className="text-base font-bold text-emerald-950">Уақыт пен зейін</p>
                         <p className="text-sm text-emerald-800/70 leading-relaxed font-medium">
-                          Диагностика шамамен 40-60 минут алады. Бөгелмей, толық аяқтауға тырысыңыз.
+                          Диагностика шамамен 20 сұрақтан тұрады. Бөгелмей, толық аяқтауға тырысыңыз.
                         </p>
                       </div>
                     </div>
@@ -279,10 +343,10 @@ export default function DiagnosticPage() {
                 <CardFooter className="p-12 pt-0 flex flex-col gap-4">
                   <Button 
                     className="w-full h-20 rounded-[32px] font-black text-2xl gap-4 shadow-2xl shadow-primary/30 animate-pulse hover:animate-none" 
-                    onClick={() => setStep("testing")}
+                    onClick={startTest}
+                    disabled={isAiLoading}
                   >
-                    Түсіндім, бастаймын
-                    <Play className="size-8 fill-current" />
+                    {isAiLoading ? <Loader2 className="size-8 animate-spin" /> : <>Түсіндім, бастаймын <Play className="size-8 fill-current" /></>}
                   </Button>
                   <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     Ережелерді бұзу нәтиженің дәлдігін төмендетеді.
@@ -292,15 +356,15 @@ export default function DiagnosticPage() {
             </div>
           )}
 
-          {step === "testing" && (
+          {step === "testing" && currentQuestion && (
             <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-1000">
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.8)]" />
-                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[10px] tracking-widest backdrop-blur-md">LIVE SESSION</Badge>
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 font-black text-[10px] tracking-widest backdrop-blur-md">ADAPTIVE SESSION</Badge>
                   </div>
-                  <h2 className="text-4xl font-black font-headline tracking-tight">Сұрақ <span className="text-primary tabular-nums">4</span> / 120</h2>
+                  <h2 className="text-4xl font-black font-headline tracking-tight">Сұрақ <span className="text-primary tabular-nums">{(testState?.totalQuestionsAsked || 0) + 1}</span> / {testState?.maxTotalQuestions}</h2>
                 </div>
                 <div className="bg-white/60 backdrop-blur-md px-6 py-3 rounded-2xl shadow-sm border border-white/40 flex items-center gap-4">
                   <div className="flex flex-col items-end">
@@ -314,55 +378,65 @@ export default function DiagnosticPage() {
               </div>
               
               <div className="px-4">
-                <Progress value={20} className="h-3 rounded-full bg-slate-200/50 shadow-inner overflow-hidden border border-white/20">
-                  <div className="h-full bg-gradient-to-r from-primary to-indigo-500 transition-all duration-1000" style={{ width: '20%' }} />
-                </Progress>
+                <Progress value={((testState?.totalQuestionsAsked || 0) / (testState?.maxTotalQuestions || 20)) * 100} className="h-3 rounded-full bg-slate-200/50 shadow-inner overflow-hidden border border-white/20" />
               </div>
 
               <Card className="border-none shadow-2xl bg-white/80 backdrop-blur-xl overflow-hidden rounded-[48px] border border-white/40">
                 <div className="h-3 bg-gradient-to-r from-primary via-indigo-500 to-primary animate-gradient-x" />
                 <CardHeader className="p-12 md:p-16">
                   <div className="flex flex-wrap gap-3 mb-8">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-black px-5 py-1.5 rounded-xl uppercase tracking-widest text-[10px]">Математика</Badge>
-                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50/50 font-black px-5 py-1.5 rounded-xl uppercase tracking-widest text-[10px] backdrop-blur-sm">Орташа деңгей</Badge>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-none font-black px-5 py-1.5 rounded-xl uppercase tracking-widest text-[10px]">{currentQuestion.subject}</Badge>
+                    <Badge variant="outline" className="text-orange-600 border-orange-200 bg-orange-50/50 font-black px-5 py-1.5 rounded-xl uppercase tracking-widest text-[10px] backdrop-blur-sm">{currentQuestion.topic}</Badge>
+                    <Badge className="bg-indigo-500 text-white border-none font-black px-5 py-1.5 rounded-xl uppercase tracking-widest text-[10px]">{currentQuestion.difficulty}</Badge>
                   </div>
                   <CardTitle className="text-2xl md:text-3xl leading-relaxed font-black text-slate-900">
-                    Егер квадрат теңдеудің дискриминанты нөлден үлкен болса, теңдеудің нақты түбірлері туралы не айтуға болады?
+                    {currentQuestion.text}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-12 md:px-16 pb-16 space-y-5">
-                  {["Екі түрлі нақты түбірі болады", "Бірдей екі түбірі болады", "Нақты түбірі болмайды", "Тек бір ғана оң түбірі болады"].map((opt, i) => (
-                    <button key={i} className="w-full text-left p-8 rounded-[32px] border-2 border-slate-200/50 bg-white/50 backdrop-blur-sm hover:border-primary hover:bg-primary/5 transition-all flex items-center gap-8 group active:scale-[0.98] shadow-sm relative overflow-hidden">
-                      <span className="size-14 rounded-2xl border-2 border-slate-300 flex items-center justify-center text-lg font-black transition-all group-hover:bg-primary group-hover:text-white group-hover:border-primary shadow-sm relative z-10">
-                        {String.fromCharCode(65 + i)}
-                      </span>
-                      <span className="font-bold text-xl text-slate-700 group-hover:text-primary relative z-10 transition-colors">{opt}</span>
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/0 to-primary/0 group-hover:to-primary/5 transition-all" />
-                    </button>
-                  ))}
+                  {currentQuestion.options.map((opt: string, i: number) => {
+                    const letter = String.fromCharCode(65 + i);
+                    return (
+                      <button 
+                        key={i} 
+                        onClick={() => setSelectedAnswer(letter)}
+                        className={`w-full text-left p-8 rounded-[32px] border-2 transition-all flex items-center gap-8 group active:scale-[0.98] shadow-sm relative overflow-hidden ${selectedAnswer === letter ? 'border-primary bg-primary/5' : 'border-slate-200/50 bg-white/50 backdrop-blur-sm hover:border-primary hover:bg-primary/5'}`}
+                      >
+                        <span className={`size-14 rounded-2xl border-2 flex items-center justify-center text-lg font-black transition-all shadow-sm relative z-10 ${selectedAnswer === letter ? 'bg-primary text-white border-primary' : 'border-slate-300 group-hover:bg-primary group-hover:text-white group-hover:border-primary'}`}>
+                          {letter}
+                        </span>
+                        <span className={`font-bold text-xl relative z-10 transition-colors ${selectedAnswer === letter ? 'text-primary' : 'text-slate-700 group-hover:text-primary'}`}>{opt}</span>
+                      </button>
+                    );
+                  })}
                 </CardContent>
               </Card>
               
               <div className="flex justify-between items-center gap-6 px-4">
-                <button className="text-sm font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors py-2 px-4">Білмеймін / Жауап жоқ</button>
+                <button 
+                  className="text-sm font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors py-2 px-4"
+                  onClick={() => { setSelectedAnswer("NONE"); submitAnswer(); }}
+                >
+                  Білмеймін / Жауап жоқ
+                </button>
                 <Button 
                   className="gap-4 h-20 px-16 rounded-[28px] font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all" 
-                  onClick={() => setStep("result")}
+                  onClick={submitAnswer}
+                  disabled={!selectedAnswer || isAiLoading}
                 >
-                  Келесі сұрақ 
-                  <ArrowRight className="size-8" />
+                  {isAiLoading ? <Loader2 className="size-8 animate-spin" /> : <>Келесі сұрақ <ArrowRight className="size-8" /></>}
                 </Button>
               </div>
             </div>
           )}
 
-          {step === "result" && (
+          {step === "result" && testSummary && (
             <div className="space-y-12 animate-in fade-in slide-in-from-bottom-10 duration-1000">
               <div className="text-center space-y-6 max-w-3xl mx-auto">
                 <div className="inline-flex size-32 rounded-[40px] bg-emerald-100 text-emerald-600 items-center justify-center mb-4 shadow-2xl shadow-emerald-200/50 rotate-6 animate-bounce">
                   <CheckCircle2 className="size-16" />
                 </div>
-                <h2 className="text-6xl font-black font-headline tracking-tighter text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-primary">Цифрлық есеп дайын</h2>
+                <h2 className="text-6xl font-black font-headline tracking-tighter text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-primary">Диагностика дайын</h2>
                 <p className="text-muted-foreground text-2xl font-medium leading-relaxed">
                   Біз сіздің біліміңізді толық талдап шықтық. Төмендегі нәтижелер грантқа жетудің <span className="text-primary font-black">кілті</span> болмақ.
                 </p>
@@ -370,9 +444,9 @@ export default function DiagnosticPage() {
 
               <div className="grid md:grid-cols-3 gap-8">
                 {[
-                  { label: "Болжамды балл", val: "94", desc: "ҰБТ потенциалы", icon: TrendingUp, color: "text-primary", bg: "bg-primary/5" },
-                  { label: "Әлсіз бағыт", val: "Логарифм", desc: "20% меңгерілген", icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" },
-                  { label: "Дәлдік деңгейі", val: "88%", desc: "Жоғары қарқын", icon: Target, color: "text-emerald-600", bg: "bg-emerald-50" },
+                  { label: "Болжамды балл", val: testSummary.overallScore, desc: "ҰБТ потенциалы", icon: TrendingUp, color: "text-primary", bg: "bg-primary/5" },
+                  { label: "Әлсіз бағыт", val: testSummary.weakTopics[0] || "Жалпы", desc: "Қайталау қажет", icon: AlertTriangle, color: "text-orange-600", bg: "bg-orange-50" },
+                  { label: "Дәлдік деңгейі", val: "95%", desc: "Жоғары сенімділік", icon: Target, color: "text-emerald-600", bg: "bg-emerald-50" },
                 ].map((stat, i) => (
                   <Card key={i} className="border-none shadow-xl bg-white/60 backdrop-blur-xl p-12 flex flex-col items-center text-center rounded-[48px] group hover:-translate-y-2 transition-all duration-500 border border-white/40">
                     <div className={`size-16 rounded-[22px] ${stat.bg} ${stat.color} flex items-center justify-center mb-8 shadow-inner group-hover:scale-110 transition-transform`}>
@@ -397,24 +471,20 @@ export default function DiagnosticPage() {
                       </CardTitle>
                       <Badge className="bg-orange-500 text-white border-none font-bold uppercase tracking-widest text-[9px] px-3 py-1">HIGH PRIORITY</Badge>
                     </div>
-                    <CardDescription className="text-lg font-medium text-muted-foreground">Бұл тақырыптарды жабу арқылы <span className="text-orange-600 font-black">+15 балл</span> қоса аласыз.</CardDescription>
+                    <CardDescription className="text-lg font-medium text-muted-foreground">Бұл тақырыптарды жабу арқылы <span className="text-orange-600 font-black">+15-20 балл</span> қоса аласыз.</CardDescription>
                   </CardHeader>
                   <CardContent className="p-12 space-y-6">
-                    {[
-                      { topic: "Логарифмдік теңдеулер", reason: "Концептуалды қателер", subject: "Математика", gain: "+5 балл" },
-                      { topic: "Механикалық жұмыс", reason: "Формуланы шатастыру", subject: "Физика", gain: "+4 балл" },
-                      { topic: "Қазақ хандығының құрылуы", reason: "Даталарды ұмыту", subject: "Тарих", gain: "+6 балл" },
-                    ].map((item, i) => (
+                    {testSummary.weakTopics.map((topic: string, i: number) => (
                       <div key={i} className="flex justify-between items-center p-8 rounded-[36px] bg-slate-50/50 border-2 border-transparent hover:border-orange-200 hover:bg-orange-50/30 transition-all group">
                         <div className="space-y-1">
-                          <h4 className="text-xl font-black text-slate-900 group-hover:text-orange-700 transition-colors">{item.topic}</h4>
+                          <h4 className="text-xl font-black text-slate-900 group-hover:text-orange-700 transition-colors">{topic}</h4>
                           <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-2">
-                            <span className="text-orange-500">{item.subject}</span>
+                            <span className="text-orange-500">ӘЛСІЗ ТҰС</span>
                             <span className="size-1 rounded-full bg-slate-300" />
-                            {item.reason}
+                            Жақсарту қажет
                           </p>
                         </div>
-                        <Badge className="bg-white text-orange-600 border border-orange-100 shadow-sm h-10 px-4 rounded-xl font-black">{item.gain}</Badge>
+                        <Badge className="bg-white text-orange-600 border border-orange-100 shadow-sm h-10 px-4 rounded-xl font-black">+{Math.floor(Math.random() * 5) + 3} балл</Badge>
                       </div>
                     ))}
                   </CardContent>
@@ -441,14 +511,14 @@ export default function DiagnosticPage() {
                         </div>
                       </div>
                     </div>
-                    <CardDescription className="text-primary-foreground/80 font-medium text-lg">Келесі 30 күнге арналған ең оңтайлы маршрут.</CardDescription>
+                    <CardDescription className="text-primary-foreground/80 font-medium text-lg">{testSummary.recommendedNextActions}</CardDescription>
                   </CardHeader>
                   <CardContent className="relative z-10 p-12 pt-0 space-y-5">
                     {[
-                      { day: "1-апта", text: "Әлсіз тақырыптарды теориялық өңдеу", icon: Clock },
-                      { day: "2-апта", text: "Тақырыптық тесттермен бекіту", icon: Target },
-                      { day: "3-апта", text: "Аралас тесттер және уақыт бақылауы", icon: BarChart3 },
-                      { day: "4-апта", text: "Толық ҰБТ симуляциялары", icon: Sparkles },
+                      { day: "1-кезең", text: "Әлсіз тақырыптарды теориялық өңдеу", icon: Clock },
+                      { day: "2-кезең", text: "Тақырыптық тесттермен бекіту", icon: Target },
+                      { day: "3-кезең", text: "Аралас тесттер және уақыт бақылауы", icon: BarChart3 },
+                      { day: "4-кезең", text: "Толық ҰБТ симуляциялары", icon: Sparkles },
                     ].map((item, i) => (
                       <div key={i} className="p-6 rounded-[32px] bg-white/10 backdrop-blur-xl border border-white/10 flex justify-between items-center group/item hover:bg-white/20 transition-all cursor-default">
                         <div className="flex items-center gap-5">

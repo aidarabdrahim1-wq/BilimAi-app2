@@ -1,17 +1,13 @@
 'use server';
 /**
- * @fileOverview This file defines a Genkit flow for an adaptive diagnostic test.
- * It dynamically generates questions based on student performance to identify weak subjects and topics.
- *
- * - runAdaptiveDiagnosticTest - A function to start or continue an adaptive diagnostic test.
- * - AdaptiveDiagnosticTestInput - The input type for the runAdaptiveDiagnosticTest function.
- * - AdaptiveDiagnosticTestOutput - The return type for the runAdaptiveDiagnosticTest function.
+ * @fileOverview Оқушының таңдаған пәндері мен тақырыптарына негізделген бейімделгіш диагностикалық тест.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {UBT_TOPICS} from '@/lib/ubt-data';
 
-// --- Helper Types for Test State Management ---
+// --- Көмекші схемалар ---
 const QuestionAttemptSchema = z.object({
   questionId: z.string(),
   subject: z.string(),
@@ -23,11 +19,9 @@ const QuestionAttemptSchema = z.object({
 });
 
 const TopicPerformanceSchema = z.object({
-  correct: z.number().int().min(0),
-  incorrect: z.number().int().min(0),
-  attempts: z.number().int().min(0),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-  weaknessScore: z.number().min(0).max(1), 
+  correct: z.number().default(0),
+  attempts: z.number().default(0),
+  weaknessScore: z.number().default(0), // 0-1 (1 - өте әлсіз)
 });
 
 const CurrentQuestionInStateSchema = z.object({
@@ -42,57 +36,48 @@ const CurrentQuestionInStateSchema = z.object({
 
 const TestStateSchema = z.object({
   studentId: z.string(),
-  testId: z.string(),
   subjectsToTest: z.array(z.string()),
-  topicsPerSubject: z.record(z.array(z.string())),
-  currentSubjectIndex: z.number().int().min(0),
-  currentTopicIndex: z.number().int().min(0),
-  answeredQuestions: z.array(QuestionAttemptSchema),
-  performanceByTopic: z.record(TopicPerformanceSchema), 
-  isTestComplete: z.boolean(),
-  totalQuestionsAsked: z.number().int().min(0),
-  maxQuestionsPerTopic: z.number().int().min(1),
-  maxQuestionsPerSubject: z.number().int().min(1),
-  maxTotalQuestions: z.number().int().min(1),
+  currentSubjectIndex: z.number().default(0),
+  currentTopicIndex: z.number().default(0),
+  answeredQuestions: z.array(QuestionAttemptSchema).default([]),
+  performanceByTopic: z.record(TopicPerformanceSchema).default({}),
+  isTestComplete: z.boolean().default(false),
+  totalQuestionsAsked: z.number().default(0),
+  maxTotalQuestions: z.number().default(20), // Диагностика үшін оңтайлы сан
   currentQuestion: CurrentQuestionInStateSchema.optional(),
 });
 
 export type TestState = z.infer<typeof TestStateSchema>;
 
-// --- Input/Output Schema ---
 const AdaptiveDiagnosticTestInputSchema = z.object({
-  studentId: z.string().describe('The ID of the student taking the test.'),
-  testState: TestStateSchema.optional().describe('The current state of the diagnostic test.'),
-  previousAnswer: z.string().optional().describe('The student answer (A, B, C, D).'),
-});
-
-const QuestionOutputSchema = z.object({
-  id: z.string(),
-  text: z.string(),
-  options: z.array(z.string()),
-  subject: z.string(),
-  topic: z.string(),
-  difficulty: z.enum(['easy', 'medium', 'hard']),
-});
-
-const TestSummaryOutputSchema = z.object({
-  weakSubjects: z.array(z.string()),
-  weakTopics: z.array(z.string()),
-  overallScore: z.number(),
-  scorePerSubject: z.record(z.number()),
-  recommendedNextActions: z.string(),
+  studentId: z.string(),
+  selectedSubjects: z.array(z.string()).optional(), // Алғашқы рет бастағанда керек
+  testState: TestStateSchema.optional(),
+  previousAnswer: z.string().optional(),
 });
 
 const AdaptiveDiagnosticTestOutputSchema = z.object({
-  question: QuestionOutputSchema.optional(),
+  question: z.object({
+    id: z.string(),
+    text: z.string(),
+    options: z.array(z.string()),
+    subject: z.string(),
+    topic: z.string(),
+    difficulty: z.enum(['easy', 'medium', 'hard']),
+  }).optional(),
   isTestComplete: z.boolean(),
-  testSummary: TestSummaryOutputSchema.optional(),
+  testSummary: z.object({
+    weakSubjects: z.array(z.string()),
+    weakTopics: z.array(z.string()),
+    overallScore: z.number(),
+    recommendedNextActions: z.string(),
+  }).optional(),
   updatedTestState: TestStateSchema,
 });
 
 export type AdaptiveDiagnosticTestOutput = z.infer<typeof AdaptiveDiagnosticTestOutputSchema>;
 
-// --- Prompt Definition ---
+// --- Промпт анықтамасы ---
 const generateQuestionPrompt = ai.definePrompt({
   name: 'generateDiagnosticQuestionPrompt',
   input: {
@@ -105,16 +90,17 @@ const generateQuestionPrompt = ai.definePrompt({
   output: {
     schema: z.object({
       questionText: z.string(),
-      options: z.array(z.string()),
-      correctAnswer: z.string(),
+      options: z.array(z.string()).describe('4 нұсқа (A, B, C, D)'),
+      correctAnswer: z.string().describe('Тек әріп (A, B, C немесе D)'),
     }),
   },
-  prompt: `Сіз ҰБТ сарапшысысыз. Төмендегі тақырып бойынша сапалы тест сұрағын құрастырыңыз:
+  prompt: `Сіз ҰБТ сарапшысысыз. Оқушының білімін диагностикалау үшін келесі тақырып бойынша сапалы сұрақ құрастырыңыз:
 Пән: {{{subject}}}
-Тақырып: {{{topic}}}
+Тақырып (тарау): {{{topic}}}
 Қиындық деңгейі: {{{difficulty}}}
 
-Сұрақ қазақ тілінде, 4 нұсқалы (A, B, C, D) болуы керек. Жауапты JSON форматында беріңіз.`,
+Сұрақ қазақ тілінде болуы керек. Нұсқалар нақты және бір-біріне ұқсас болсын. 
+Жауапты JSON форматында беріңіз.`,
 });
 
 export async function runAdaptiveDiagnosticTest(input: z.infer<typeof AdaptiveDiagnosticTestInputSchema>): Promise<AdaptiveDiagnosticTestOutput> {
@@ -128,84 +114,132 @@ const diagnosticFlow = ai.defineFlow(
     outputSchema: AdaptiveDiagnosticTestOutputSchema,
   },
   async (input) => {
-    let state = input.testState || {
-      studentId: input.studentId,
-      testId: Math.random().toString(36).substring(7),
-      subjectsToTest: ["Математика", "Физика"],
-      topicsPerSubject: { "Математика": ["Алгебра", "Геометрия"], "Физика": ["Механика"] },
-      currentSubjectIndex: 0,
-      currentTopicIndex: 0,
-      answeredQuestions: [],
-      performanceByTopic: {},
-      isTestComplete: false,
-      totalQuestionsAsked: 0,
-      maxQuestionsPerTopic: 2,
-      maxQuestionsPerSubject: 5,
-      maxTotalQuestions: 10,
-    };
+    let state: TestState;
 
-    // Update state if previous answer exists
-    if (input.previousAnswer && state.currentQuestion) {
-      const isCorrect = input.previousAnswer === state.currentQuestion.correctAnswer;
-      state.answeredQuestions.push({
-        questionId: state.currentQuestion.id,
-        subject: state.currentQuestion.subject,
-        topic: state.currentQuestion.topic,
-        difficulty: state.currentQuestion.difficulty,
-        studentAnswer: input.previousAnswer,
-        isCorrect,
-        correctAnswer: state.currentQuestion.correctAnswer,
-      });
-      state.totalQuestionsAsked++;
+    if (!input.testState) {
+      // Инициализация
+      state = {
+        studentId: input.studentId,
+        subjectsToTest: input.selectedSubjects || ["Математика", "Қазақстан тарихы"],
+        currentSubjectIndex: 0,
+        currentTopicIndex: 0,
+        answeredQuestions: [],
+        performanceByTopic: {},
+        isTestComplete: false,
+        totalQuestionsAsked: 0,
+        maxTotalQuestions: 20,
+      };
+    } else {
+      state = input.testState;
     }
 
-    // Check if test should end
-    if (state.totalQuestionsAsked >= state.maxTotalQuestions) {
+    // Алдыңғы жауапты өңдеу
+    if (input.previousAnswer && state.currentQuestion) {
+      const isCorrect = input.previousAnswer === state.currentQuestion.correctAnswer;
+      const q = state.currentQuestion;
+
+      state.answeredQuestions.push({
+        questionId: q.id,
+        subject: q.subject,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        studentAnswer: input.previousAnswer,
+        isCorrect,
+        correctAnswer: q.correctAnswer,
+      });
+
+      // Статистиканы жаңарту
+      const topicKey = `${q.subject}:${q.topic}`;
+      const perf = state.performanceByTopic[topicKey] || { correct: 0, attempts: 0, weaknessScore: 0 };
+      perf.attempts += 1;
+      if (isCorrect) perf.correct += 1;
+      perf.weaknessScore = 1 - (perf.correct / perf.attempts);
+      state.performanceByTopic[topicKey] = perf;
+
+      state.totalQuestionsAsked++;
+
+      // Келесі тақырыпқа көшу (әр тақырыптан 1-2 сұрақ жеткілікті диагностика үшін)
+      state.currentTopicIndex++;
+      const currentSubject = state.subjectsToTest[state.currentSubjectIndex];
+      const topics = UBT_TOPICS[currentSubject]?.topics || ["Жалпы"];
+      
+      if (state.currentTopicIndex >= topics.length || state.currentTopicIndex >= 5) { // Бір пәннен макс 5 тақырып
+        state.currentTopicIndex = 0;
+        state.currentSubjectIndex++;
+      }
+    }
+
+    // Тесттің аяқталуын тексеру
+    if (state.totalQuestionsAsked >= state.maxTotalQuestions || state.currentSubjectIndex >= state.subjectsToTest.length) {
       state.isTestComplete = true;
+      
+      // Қорытынды жасау
+      const weakTopics: string[] = [];
+      Object.entries(state.performanceByTopic).forEach(([key, perf]) => {
+        if (perf.weaknessScore > 0.5) weakTopics.push(key.split(':')[1]);
+      });
+
+      const correctCount = state.answeredQuestions.filter(a => a.isCorrect).length;
+      const overallScore = Math.round((correctCount / state.maxTotalQuestions) * 140);
+
       return {
         isTestComplete: true,
         testSummary: {
-          weakSubjects: ["Математика"],
-          weakTopics: ["Логарифмдер"],
-          overallScore: 70,
-          scorePerSubject: { "Математика": 65 },
-          recommendedNextActions: "Көбірек практика қажет."
+          weakSubjects: Array.from(new Set(state.answeredQuestions.filter(a => !a.isCorrect).map(a => a.subject))),
+          weakTopics: weakTopics.slice(0, 5),
+          overallScore,
+          recommendedNextActions: "Әлсіз тақырыптар бойынша теорияны қайталап, практикалық базадан тест тапсыруды ұсынамын."
         },
         updatedTestState: state
       };
     }
 
-    // Generate next question
+    // Келесі сұрақты генерациялау
     const currentSubject = state.subjectsToTest[state.currentSubjectIndex];
-    const currentTopic = state.topicsPerSubject[currentSubject][state.currentTopicIndex];
-    
-    const { output } = await generateQuestionPrompt({
-      subject: currentSubject,
-      topic: currentTopic,
-      difficulty: 'medium'
-    });
+    const topics = UBT_TOPICS[currentSubject]?.topics || ["Жалпы"];
+    const currentTopic = topics[state.currentTopicIndex] || topics[0];
 
-    state.currentQuestion = {
-      id: Math.random().toString(36).substring(7),
-      text: output!.questionText,
-      options: output!.options,
-      subject: currentSubject,
-      topic: currentTopic,
-      difficulty: 'medium',
-      correctAnswer: output!.correctAnswer
-    };
+    // Қиындықты бейімдеу (алдыңғы жауаптарға қарай)
+    let difficulty: 'easy' | 'medium' | 'hard' = 'medium';
+    const lastThree = state.answeredQuestions.slice(-3);
+    if (lastThree.length === 3) {
+      const correctCount = lastThree.filter(a => a.isCorrect).length;
+      if (correctCount === 3) difficulty = 'hard';
+      if (correctCount === 0) difficulty = 'easy';
+    }
 
-    return {
-      question: {
-        id: state.currentQuestion.id,
-        text: state.currentQuestion.text,
-        options: state.currentQuestion.options,
-        subject: state.currentQuestion.subject,
-        topic: state.currentQuestion.topic,
-        difficulty: state.currentQuestion.difficulty
-      },
-      isTestComplete: false,
-      updatedTestState: state
-    };
+    try {
+      const { output } = await generateQuestionPrompt({
+        subject: currentSubject,
+        topic: currentTopic,
+        difficulty
+      });
+
+      state.currentQuestion = {
+        id: Math.random().toString(36).substring(7),
+        text: output!.questionText,
+        options: output!.options,
+        subject: currentSubject,
+        topic: currentTopic,
+        difficulty,
+        correctAnswer: output!.correctAnswer
+      };
+
+      return {
+        question: {
+          id: state.currentQuestion.id,
+          text: state.currentQuestion.text,
+          options: state.currentQuestion.options,
+          subject: state.currentQuestion.subject,
+          topic: state.currentQuestion.topic,
+          difficulty: state.currentQuestion.difficulty
+        },
+        isTestComplete: false,
+        updatedTestState: state
+      };
+    } catch (error) {
+      console.error("AI Generation Error:", error);
+      throw new Error("AI_GENERATION_FAILED");
+    }
   }
 );

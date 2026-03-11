@@ -23,16 +23,22 @@ import {
   Award,
   Sparkles,
   ChevronRight,
-  Dna
+  Info,
+  History,
+  ClipboardCheck,
+  XCircle
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 export default function DiagnosticPage() {
-  const [step, setStep] = useState<"start" | "payment" | "testing" | "result">("start");
+  const [step, setStep] = useState<"start" | "payment" | "survey" | "rules" | "testing" | "result">("start");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [testSeconds, setTestSeconds] = useState(0);
+  const [prepExperience, setPrepExperience] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -57,10 +63,10 @@ export default function DiagnosticPage() {
     setIsProcessingPayment(true);
     setTimeout(() => {
       setIsProcessingPayment(false);
-      setStep("testing");
+      setStep("survey");
       toast({
         title: "Төлем сәтті өтті!",
-        description: "AI Диагностика іске қосылды. Сәттілік!",
+        description: "Мәліметтерді толтыруға өтіңіз.",
       });
     }, 2000);
   };
@@ -117,7 +123,7 @@ export default function DiagnosticPage() {
                     { 
                       icon: BrainCircuit, 
                       title: "Толық стратегия", 
-                      desc: "AI сіздің мақсатты балыңызға жету үшін нақты апталық және айлық іс-қимыл жоспарын құрады.",
+                      desc: "AI сіздің мақсатты балыңызға жету үшін нақты апталық және айлық стратегиялық жоспар құрады.",
                       color: "text-purple-600",
                       bg: "bg-purple-50"
                     },
@@ -279,6 +285,115 @@ export default function DiagnosticPage() {
             </div>
           )}
 
+          {step === "survey" && (
+            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-right-10 duration-700">
+              <Card className="border-none shadow-2xl rounded-[48px] overflow-hidden bg-white/80 backdrop-blur-xl border border-white/40">
+                <CardHeader className="p-12 pb-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <History className="size-6" />
+                    </div>
+                    <Badge variant="outline" className="text-primary border-primary/20">1-ҚАДАМ: ТӘЖІРИБЕ</Badge>
+                  </div>
+                  <CardTitle className="text-3xl font-black font-headline">Өзіңіз жайлы мәлімет</CardTitle>
+                  <CardDescription className="text-base font-medium">AI стратегияңызды нақтылау үшін жауап беріңіз.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-12 pt-0 space-y-8">
+                  <div className="space-y-4">
+                    <Label className="text-lg font-bold">Бұрын ҰБТ-ға арнайы дайындалдыңыз ба?</Label>
+                    <RadioGroup onValueChange={setPrepExperience} className="grid gap-4">
+                      {[
+                        { id: "none", label: "Жоқ, енді бастап жатырмын", desc: "Нөлден бастағандарға арналған маршрут." },
+                        { id: "basic", label: "Иә, мектепте немесе өз бетімше", desc: "Негізгі базасы бар оқушыларға арналған." },
+                        { id: "intensive", label: "Иә, курстарда қарқынды дайындалдым", desc: "Тереңдетілген талдауды қажет ететіндерге." },
+                      ].map((opt) => (
+                        <div key={opt.id} className={`flex items-start gap-4 p-5 rounded-3xl border-2 transition-all cursor-pointer hover:bg-primary/5 ${prepExperience === opt.id ? 'border-primary bg-primary/5' : 'border-border bg-white'}`} onClick={() => setPrepExperience(opt.id)}>
+                          <RadioGroupItem value={opt.id} id={opt.id} className="mt-1" />
+                          <div className="space-y-1">
+                            <Label htmlFor={opt.id} className="font-black text-base cursor-pointer">{opt.label}</Label>
+                            <p className="text-xs text-muted-foreground font-medium">{opt.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  </div>
+                </CardContent>
+                <CardFooter className="p-12 pt-0">
+                  <Button 
+                    className="w-full h-16 rounded-[24px] font-black text-xl gap-3 shadow-xl" 
+                    disabled={!prepExperience}
+                    onClick={() => setStep("rules")}
+                  >
+                    Жалғастыру
+                    <ArrowRight className="size-6" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
+
+          {step === "rules" && (
+            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-right-10 duration-700">
+              <Card className="border-none shadow-2xl rounded-[48px] overflow-hidden bg-white/80 backdrop-blur-xl border border-white/40">
+                <CardHeader className="p-12 pb-6 bg-orange-50/50">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="size-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                      <ClipboardCheck className="size-6" />
+                    </div>
+                    <Badge variant="outline" className="text-orange-600 border-orange-200">2-ҚАДАМ: ТАЛАПТАР</Badge>
+                  </div>
+                  <CardTitle className="text-3xl font-black font-headline">Диагностика ережелері</CardTitle>
+                  <CardDescription className="text-base font-medium">Шынайы нәтиже алу үшін осы талаптарды орындаңыз.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-12 space-y-8">
+                  <div className="grid gap-6">
+                    <div className="flex items-start gap-5 p-6 rounded-3xl bg-blue-50 border border-blue-100">
+                      <Info className="size-8 text-blue-600 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="text-base font-bold text-blue-950">Нақты білетін сұраққа ғана жауап беріңіз</p>
+                        <p className="text-sm text-blue-800/70 leading-relaxed font-medium">
+                          Егер сұрақтың жауабын мүлдем білмесеңіз, оны белгілемеңіз. Бұл AI-ға сіздің білім деңгейіңізді 100% дәл анықтауға мүмкіндік береді.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-5 p-6 rounded-3xl bg-red-50 border border-red-100">
+                      <XCircle className="size-8 text-red-600 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="text-base font-bold text-red-950">Ешнәрседен көшірмеңіз</p>
+                        <p className="text-sm text-red-800/70 leading-relaxed font-medium">
+                          Интернетті, Google-ды немесе оқулықтарды қолданбаңыз. Көшіру арқылы алынған жоғары балл сізге қате стратегия құрылуына алып келеді.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-5 p-6 rounded-3xl bg-emerald-50 border border-emerald-100">
+                      <Zap className="size-8 text-emerald-600 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="text-base font-bold text-emerald-950">Уақыт пен зейін</p>
+                        <p className="text-sm text-emerald-800/70 leading-relaxed font-medium">
+                          Диагностика шамамен 40-60 минут алады. Бөгелмей, толық аяқтауға тырысыңыз.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+                <CardFooter className="p-12 pt-0 flex flex-col gap-4">
+                  <Button 
+                    className="w-full h-20 rounded-[32px] font-black text-2xl gap-4 shadow-2xl shadow-primary/30 animate-pulse hover:animate-none" 
+                    onClick={() => setStep("testing")}
+                  >
+                    Түсіндім, бастаймын
+                    <Play className="size-8 fill-current" />
+                  </Button>
+                  <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Ережелерді бұзу нәтиженің дәлдігін төмендетеді.
+                  </p>
+                </CardFooter>
+              </Card>
+            </div>
+          )}
+
           {step === "testing" && (
             <div className="max-w-4xl mx-auto space-y-10 animate-in fade-in duration-1000">
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4">
@@ -331,7 +446,7 @@ export default function DiagnosticPage() {
               </Card>
               
               <div className="flex justify-between items-center gap-6 px-4">
-                <button className="text-sm font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors py-2 px-4">Кейін қарау</button>
+                <button className="text-sm font-black text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors py-2 px-4">Білмеймін / Жауап жоқ</button>
                 <Button 
                   className="gap-4 h-20 px-16 rounded-[28px] font-black text-2xl shadow-2xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all" 
                   onClick={() => setStep("result")}

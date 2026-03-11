@@ -4,39 +4,39 @@
 
 @layer base {
   :root {
-    --background: 210 20% 98%;
+    --background: 210 40% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 220 74% 46%;
+    --primary: 243 75% 59%;
     --primary-foreground: 210 40% 98%;
-    --secondary: 191 56% 50%;
+    --secondary: 199 89% 48%;
     --secondary-foreground: 210 40% 98%;
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 191 56% 95%;
-    --accent-foreground: 191 56% 30%;
+    --accent: 243 75% 95%;
+    --accent-foreground: 243 75% 30%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 220 74% 46%;
-    --chart-1: 220 74% 46%;
-    --chart-2: 191 56% 50%;
+    --ring: 243 75% 59%;
+    --chart-1: 243 75% 59%;
+    --chart-2: 199 89% 48%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.75rem;
+    --radius: 1rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 220 74% 46%;
+    --sidebar-primary: 243 75% 59%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96.1%;
-    --sidebar-accent-foreground: 220 74% 46%;
+    --sidebar-accent: 243 75% 96%;
+    --sidebar-accent-foreground: 243 75% 40%;
     --sidebar-border: 214.3 31.8% 91.4%;
-    --sidebar-ring: 220 74% 46%;
+    --sidebar-ring: 243 75% 59%;
   }
   .dark {
     --background: 222.2 84% 4.9%;
@@ -67,5 +67,31 @@
   }
   body {
     @apply bg-background text-foreground font-body;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(243, 75%, 59%, 0.05) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(199, 89%, 48%, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-xl;
+  }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+  }
+
+  .animated-gradient {
+    background: linear-gradient(-45deg, #6366f1, #0ea5e9, #3b82f6, #2563eb);
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  @keyframes gradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 }

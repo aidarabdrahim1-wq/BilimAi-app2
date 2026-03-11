@@ -107,7 +107,7 @@ export default function Dashboard() {
     setRandomQuote(MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)]);
   }, []);
 
-  // Fetch only TODAY'S plan
+  // Fetch only TODAY's plan
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   
   const plansQuery = useMemoFirebase(() => {

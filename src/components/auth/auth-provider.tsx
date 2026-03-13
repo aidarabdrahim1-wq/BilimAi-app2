@@ -9,6 +9,15 @@ import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { format, subDays } from "date-fns";
 
+// Telegram WebApp types
+declare global {
+  interface Window {
+    Telegram?: {
+      WebApp: any;
+    };
+  }
+}
+
 export interface UserProfile {
   fullName: string;
   email: string;
@@ -59,6 +68,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   
   const profileRef = useRef<UserProfile | null>(null);
+
+  // Initialize Telegram WebApp
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      tg.expand();
+      // Adjust theme colors to match Telegram's UI if desired
+      if (tg.themeParams?.bg_color) {
+        // You could set CSS variables here if needed
+      }
+    }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -163,7 +185,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => clearInterval(trackerInterval);
   }, [user?.uid]);
 
-  // Admin logic updated to include Абдрахым Айдар
   const isAdmin = profile?.role === 'admin' || 
                   profile?.email === 'admin@bilimai.kz' || 
                   profile?.fullName === 'Абдрахым Айдар';

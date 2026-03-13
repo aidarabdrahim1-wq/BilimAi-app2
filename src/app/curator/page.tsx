@@ -123,16 +123,23 @@ export default function CuratorPage() {
         } : undefined
       });
 
-      if (response.error === 'AI_QUOTA_EXCEEDED') {
-        setMessages((prev) => [...prev, { 
-          role: "error", 
-          content: "AI куратордың тегін лимиті аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз. ⏳" 
-        }]);
+      if (response.error) {
+        const errorMsg = response.error === 'AI_QUOTA_EXCEEDED' 
+          ? "AI куратордың тегін лимиті аяқталды. Сәлден соң (1-2 минут) қайта жазып көріңіз. ⏳" 
+          : "Кешіріңіз, байланыста ақау болды. Қайта көріңізші.";
+          
+        setMessages((prev) => [...prev, { role: "error", content: errorMsg }]);
+        setIsLoading(false);
         return;
       }
 
-      if (!response || !response.aiResponse) {
-        throw new Error("EMPTY_RESPONSE");
+      if (!response.aiResponse) {
+        setMessages((prev) => [...prev, { 
+          role: "error", 
+          content: "Кешіріңіз, жауап алу мүмкін болмады. Қайта жазып көріңіз." 
+        }]);
+        setIsLoading(false);
+        return;
       }
 
       // 3. Save AI response to Firestore

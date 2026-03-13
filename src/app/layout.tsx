@@ -28,7 +28,7 @@ export default function RootLayout({
           strategy="beforeInteractive" 
         />
       </head>
-      <body className="font-body antialiased">
+      <body className="font-body antialiased" suppressHydrationWarning>
         <FirebaseClientProvider>
           <AuthProvider>
             <FirebaseErrorListener />

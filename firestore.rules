@@ -3,107 +3,47 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * CORE PHILOSOPHY
-     * This ruleset enforces a strict User-Ownership model. All user-generated content is hierarchically 
-     * nested under a specific student's profile path (/studentProfiles/{studentId}). 
-     */
-
-    // --- Helper Functions ---
-
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.role == 'admin' ||
+        request.auth.token.email == 'admin@bilimai.kz' ||
+        get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.fullName == 'Абдрахым Айдар'
+      );
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    // --- Collection Rules ---
-
     match /studentProfiles/{studentId} {
-      allow get: if isOwner(studentId) || isSignedIn(); // Allow reading other profiles for leaderboard
-      allow list: if isSignedIn(); // Allow listing profiles for leaderboard
-      allow create: if isOwner(studentId) && request.resource.data.id == studentId;
-      allow update: if isExistingOwner(studentId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(studentId);
+      allow read: if isSignedIn();
+      allow create: if isOwner(studentId);
+      allow update: if isOwner(studentId) || isAdmin();
+      allow delete: if isAdmin();
 
-      match /mistakes/{mistakeId} {
-        allow get, list: if isOwner(studentId);
-        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
-        allow delete: if isExistingOwner(studentId);
-      }
-
-      match /testSessions/{testSessionId} {
-        allow get, list: if isOwner(studentId);
-        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
-        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
-        allow delete: if isExistingOwner(studentId);
-
-        match /questionAttempts/{attemptId} {
-          allow get, list: if isOwner(studentId);
-          allow create: if isOwner(studentId) && request.resource.data.testSessionId == testSessionId;
-          allow update: if isExistingOwner(studentId) && request.resource.data.testSessionId == resource.data.testSessionId;
-          allow delete: if isExistingOwner(studentId);
-        }
-      }
-
-      match /studyPlans/{studyPlanId} {
-        allow get, list: if isOwner(studentId);
-        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
-        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
-        allow delete: if isExistingOwner(studentId);
-
-        match /items/{itemId} {
-          allow get, list: if isOwner(studentId);
-          allow create: if isOwner(studentId) && request.resource.data.studyPlanId == studyPlanId;
-          allow update: if isExistingOwner(studentId) && request.resource.data.studyPlanId == resource.data.studyPlanId;
-          allow delete: if isExistingOwner(studentId);
-        }
-      }
-
-      match /progressEntries/{progressEntryId} {
-        allow get, list: if isOwner(studentId);
-        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
-        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
-        allow delete: if isExistingOwner(studentId);
-      }
-
-      match /curatorInteractions/{interactionId} {
-        allow get, list: if isOwner(studentId);
-        allow create: if isOwner(studentId) && request.resource.data.studentId == studentId;
-        allow update: if isExistingOwner(studentId) && request.resource.data.studentId == resource.data.studentId;
-        allow delete: if isExistingOwner(studentId);
+      match /{allSubcollections=**} {
+        allow read: if isOwner(studentId) || isAdmin();
+        allow write: if isOwner(studentId) || isAdmin();
       }
     }
 
     match /subjects/{subjectId} {
-      allow get, list: if isSignedIn();
-      // Allow creation/updates for the purpose of development seeding
-      allow create, update: if isSignedIn();
-      allow delete: if false;
-
-      match /topics/{topicId} {
-        allow get, list: if isSignedIn();
-        allow create, update: if isSignedIn();
-        allow delete: if false;
-
-        match /questions/{questionId} {
-          allow get, list: if isSignedIn();
-          allow create, update: if isSignedIn();
-          allow delete: if false;
-        }
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+      
+      match /{allSubcollections=**} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin();
       }
     }
 
-    match /mistakePatterns/{mistakePatternId} {
-      allow get, list: if isSignedIn();
-      allow create, update: if isSignedIn();
-      allow delete: if false;
+    match /announcements/{annId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }

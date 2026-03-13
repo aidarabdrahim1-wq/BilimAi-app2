@@ -27,42 +27,13 @@
           "type": "number",
           "description": "The student's desired target score or goal."
         },
-        "dailyAvailableStudyTimeMinutes": {
+        "rating": {
           "type": "number",
-          "description": "The amount of time (in minutes) the student can dedicate to studying daily."
-        },
-        "preferredLanguage": {
-          "type": "string",
-          "description": "The student's preferred interface and content language (e.g., 'Kazakh')."
-        },
-        "preferredFormat": {
-          "type": "string",
-          "description": "The student's preferred content format (e.g., 'short' for concise, 'detailed' for in-depth explanations)."
-        },
-        "activityHistory": {
-          "type": "array",
-          "description": "List of dates (YYYY-MM-DD) when the student accessed the platform.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "streakDays": {
-          "type": "number",
-          "description": "Number of consecutive days the student has been active."
-        },
-        "lastVisitDate": {
-          "type": "string",
-          "description": "The last date the user visited the app.",
-          "format": "date"
+          "description": "The student's gamification points."
         },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the student profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the student profile was last updated.",
           "format": "date-time"
         }
       },
@@ -73,6 +44,17 @@
         "targetScore",
         "createdAt"
       ]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["urgent", "info", "success"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -91,6 +73,16 @@
             "$ref": "#/backend/entities/StudentProfile"
           },
           "description": "Stores a student's personal learning profile."
+        }
+      },
+      {
+        "path": "/announcements/{announcementId}",
+        "definition": {
+          "entityName": "Announcement",
+          "schema": {
+            "$ref": "#/backend/entities/Announcement"
+          },
+          "description": "Global platform announcements."
         }
       }
     ]

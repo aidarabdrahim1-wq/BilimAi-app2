@@ -42,7 +42,7 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where, orderBy, limit } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -59,30 +59,6 @@ const MOTIVATION_QUOTES = [
   { text: "Сен бүгін шаршаған шығарсың, бірақ ертең грант иегері атанғанда бұл қиындықтардың бәрі тек жағымды естелікке айналады.", author: "Сенімділік жолы" },
   { text: "Білім — қару, оны тек еңбекпен ғана шыңдай аласың. ҰБТ — сенің мүмкіндігің!", author: "Білім жолы" },
   { text: "Талап пен еңбек болса, алынбайтын қамал жоқ. Сенің қолыңнан бәрі келеді!", author: "Жеңімпаз мотивациясы" }
-];
-
-const ANNOUNCEMENTS = [
-  {
-    id: 1,
-    title: "Наурыз ҰБТ-ға тіркелу басталды!",
-    content: "Ресми сайтта тіркелу 10-наурызға дейін жалғасады. Уақытты өткізіп алмаңыз!",
-    date: "2024-03-01",
-    type: "urgent"
-  },
-  {
-    id: 2,
-    title: "Жаңа пән: Информатика қосылды",
-    content: "Енді IT бағытын таңдаған оқушылар үшін Информатикадан тест тапсыру мүмкіндігі бар.",
-    date: "2024-02-28",
-    type: "info"
-  },
-  {
-    id: 3,
-    title: "Апталық рейтинг қорытындысы",
-    content: "Өткен аптаның үздіктері анықталды. Топ-10 оқушыға қосымша бонус берілді.",
-    date: "2024-02-25",
-    type: "success"
-  }
 ];
 
 export default function Dashboard() {
@@ -109,7 +85,6 @@ export default function Dashboard() {
 
   // Fetch only TODAY's plan
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  
   const plansQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -117,12 +92,15 @@ export default function Dashboard() {
       where("planDate", "==", todayStr)
     );
   }, [user, todayStr]);
-
   const { data: plansData } = useCollection(plansQuery);
+
+  // Fetch real announcements from Admin
+  const annQuery = useMemoFirebase(() => query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(3)), []);
+  const { data: dbAnnouncements } = useCollection(annQuery);
 
   const todayTasks = useMemo(() => {
     if (!plansData || plansData.length === 0) return [];
-    const plan = plansData[0]; // Should be only one plan per date
+    const plan = plansData[0];
     if (!plan.tasks) return [];
     return plan.tasks.map((t: any) => ({ ...t, planId: plan.id, fullPlan: plan }));
   }, [plansData]);
@@ -134,7 +112,6 @@ export default function Dashboard() {
       const diff = differenceInDays(targetDate, now);
       setDaysLeft(diff > 0 ? diff : 0);
     };
-
     calculateDiff();
   }, [profile?.untDate]);
 
@@ -153,10 +130,7 @@ export default function Dashboard() {
       }, 1000);
     } else if (timeLeft === 0 && isTimerRunning) {
       setIsTimerRunning(false);
-      toast({
-        title: "Уақыт аяқталды!",
-        description: "Тапсырманы аяқтауды ұмытпаңыз.",
-      });
+      toast({ title: "Уақыт аяқталды!", description: "Тапсырманы аяқтауды ұмытпаңыз." });
     }
     return () => clearInterval(interval);
   }, [isTimerRunning, timeLeft, toast]);
@@ -184,80 +158,37 @@ export default function Dashboard() {
 
   const completeTaskFromTimer = async () => {
     if (!activeTimerTask || !user) return;
-
     const planId = activeTimerTask.planId;
     const fullPlan = activeTimerTask.fullPlan;
-    
-    const updatedTasks = fullPlan.tasks.map((t: any) => 
-      t.id === activeTimerTask.id ? { ...t, status: "completed" } : t
-    );
-
+    const updatedTasks = fullPlan.tasks.map((t: any) => t.id === activeTimerTask.id ? { ...t, status: "completed" } : t);
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
-    
     const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
-    updateDoc(planRef, {
-      tasks: updatedTasks,
-      completedCount,
-      updatedAt: serverTimestamp()
-    }).catch(err => {
-       errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: planRef.path,
-          operation: 'update',
-          requestResourceData: { completedCount }
-       }));
-    });
-
+    updateDoc(planRef, { tasks: updatedTasks, completedCount, updatedAt: serverTimestamp() });
     if (completedCount === fullPlan.totalCount) {
       updateUserRating(user.uid, 'PLAN_COMPLETED');
       updateDoc(planRef, { status: 'completed' });
       toast({ title: "Жоспар толық орындалды!", description: "+20 рейтинг ұпайы қосылды! 🔥" });
     }
-
     setIsTimerDialogOpen(false);
     setActiveTimerTask(null);
-    toast({ title: "Тапсырма орындалды!", variant: "default" });
   };
 
   const handleUpdateDate = async () => {
-    if (!user || !db) return;
+    if (!user) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
-    updateDoc(userRef, {
-      untDate: newDate,
-      updatedAt: serverTimestamp(),
-    }).then(() => {
-      toast({ title: "Күн жаңартылды", description: `Жаңа ҰБТ күні: ${newDate}` });
-      setIsDateDialogOpen(false);
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { untDate: newDate }
-      }));
-    }).finally(() => {
-      setIsUpdating(false);
-    });
+    updateDoc(userRef, { untDate: newDate, updatedAt: serverTimestamp() })
+      .then(() => { setIsDateDialogOpen(false); toast({ title: "Күн жаңартылды" }); })
+      .finally(() => setIsUpdating(false));
   };
 
   const handleUpdateScore = async () => {
-    if (!user || !db) return;
+    if (!user) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
-    updateDoc(userRef, {
-      currentScore: Number(newScore),
-      updatedAt: serverTimestamp(),
-    }).then(() => {
-      toast({ title: "Балл жаңартылды", description: `Жаңа ағымдағы балл: ${newScore}` });
-      setIsScoreDialogOpen(false);
-    }).catch(err => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: userRef.path,
-        operation: 'update',
-        requestResourceData: { currentScore: Number(newScore) }
-      }));
-    }).finally(() => {
-      setIsUpdating(false);
-    });
+    updateDoc(userRef, { currentScore: Number(newScore), updatedAt: serverTimestamp() })
+      .then(() => { setIsScoreDialogOpen(false); toast({ title: "Балл жаңартылды" }); })
+      .finally(() => setIsUpdating(false));
   };
 
   const currentScore = profile?.currentScore || 0;
@@ -265,7 +196,6 @@ export default function Dashboard() {
   const targetScore = profile?.targetScore || 140;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
-  // Rank Calculation
   const getRankInfo = (pts: number) => {
     if (pts < 100) return { name: "Бастаушы", next: 100, icon: Medal, color: "text-slate-400" };
     if (pts < 500) return { name: "Ізденуші", next: 500, icon: Star, color: "text-blue-500" };
@@ -274,11 +204,8 @@ export default function Dashboard() {
   };
   const rank = getRankInfo(rating);
   const rankProgress = (rating / rank.next) * 100;
-
-  // Grant Probability
   const grantProb = Math.min(Math.round((currentScore / 140) * 100), 100);
   const grantStatus = grantProb > 85 ? "Жоғары сенімділік" : grantProb > 60 ? "Жақсы мүмкіндік" : "Көбірек еңбек керек";
-
   const completedTodayCount = todayTasks.filter(t => t.status === 'completed').length;
   const pendingTasks = todayTasks.filter(t => t.status !== 'completed');
   const dailyProgress = todayTasks.length > 0 ? Math.round((completedTodayCount / todayTasks.length) * 100) : 0;
@@ -286,7 +213,7 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
-        {/* Announcements Section */}
+        {/* Announcements Section (Dynamic) */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold font-headline flex items-center gap-2">
@@ -300,34 +227,40 @@ export default function Dashboard() {
             </Button>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {ANNOUNCEMENTS.map((ann) => (
-              <Card key={ann.id} className={`border-none shadow-sm overflow-hidden relative group transition-all hover:shadow-md ${
-                ann.type === 'urgent' ? 'bg-red-50 border-l-4 border-l-red-500' : 
-                ann.type === 'success' ? 'bg-green-50 border-l-4 border-l-green-500' : 
-                'bg-blue-50 border-l-4 border-l-blue-500'
-              }`}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-widest ${
-                      ann.type === 'urgent' ? 'text-red-600 bg-red-100/50 border-red-200' : 
-                      ann.type === 'success' ? 'text-green-600 bg-green-100/50 border-green-200' : 
-                      'text-blue-600 bg-blue-100/50 border-blue-200'
-                    }`}>
-                      {ann.type === 'urgent' ? 'Шұғыл' : ann.type === 'success' ? 'Жаңалық' : 'Ақпарат'}
-                    </Badge>
-                    <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
-                  </div>
-                  <CardTitle className="text-sm font-black mt-2 leading-tight group-hover:text-primary transition-colors">
-                    {ann.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                    {ann.content}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
+            {dbAnnouncements && dbAnnouncements.length > 0 ? (
+              dbAnnouncements.map((ann) => (
+                <Card key={ann.id} className={`border-none shadow-sm overflow-hidden relative group transition-all hover:shadow-md ${
+                  ann.type === 'urgent' ? 'bg-red-50 border-l-4 border-l-red-500' : 
+                  ann.type === 'success' ? 'bg-green-50 border-l-4 border-l-green-500' : 
+                  'bg-blue-50 border-l-4 border-l-blue-500'
+                }`}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-widest ${
+                        ann.type === 'urgent' ? 'text-red-600 bg-red-100/50 border-red-200' : 
+                        ann.type === 'success' ? 'text-green-600 bg-green-100/50 border-green-200' : 
+                        'text-blue-600 bg-blue-100/50 border-blue-200'
+                      }`}>
+                        {ann.type === 'urgent' ? 'Шұғыл' : ann.type === 'success' ? 'Жаңалық' : 'Ақпарат'}
+                      </Badge>
+                      <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
+                    </div>
+                    <CardTitle className="text-sm font-black mt-2 leading-tight group-hover:text-primary transition-colors">
+                      {ann.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                      {ann.content}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <div className="col-span-3 p-8 text-center bg-muted/5 border-2 border-dashed rounded-2xl text-xs text-muted-foreground">
+                Жаңа хабарландырулар жоқ.
+              </div>
+            )}
           </div>
         </section>
 
@@ -378,32 +311,16 @@ export default function Dashboard() {
                 </Card>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>ҰБТ күнін таңдау</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>ҰБТ күнін таңдау</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="untDate">Тапсыратын күніңізді белгілеңіз</Label>
-                    <Input
-                      id="untDate"
-                      type="date"
-                      value={newDate}
-                      onChange={(e) => setNewDate(e.target.value)}
-                    />
-                  </div>
-                  <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>
-                    {isUpdating ? "Жаңартылуда..." : "Сақтау"}
-                  </Button>
+                  <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+                  <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>Сақтау</Button>
                 </div>
               </DialogContent>
             </Dialog>
-
-            <div className="flex flex-col gap-1.5">
-              <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
-                <Trophy className="size-3.5 fill-current" />
-                {rating} ұпай
-              </Badge>
-            </div>
+            <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
+              <Trophy className="size-3.5 fill-current" /> {rating} ұпай
+            </Badge>
           </div>
         </div>
 
@@ -420,32 +337,15 @@ export default function Dashboard() {
                     <div className="text-3xl font-bold">{currentScore}</div>
                     <Edit2 className="size-3 opacity-0 group-hover:opacity-70" />
                   </div>
-                  <p className="text-xs opacity-70 mt-1">
-                    ҰБТ потенциалы: {Math.round(currentScore)} / 140
-                  </p>
+                  <p className="text-xs opacity-70 mt-1">ҰБТ потенциалы: {Math.round(currentScore)} / 140</p>
                 </CardContent>
-                <div className="absolute top-0 right-0 size-16 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
               </Card>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Ағымдағы баллды жаңарту</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle>Ағымдағы баллды жаңарту</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="scoreInput">Соңғы тест нәтижесін енгізіңіз (0-140)</Label>
-                  <Input
-                    id="scoreInput"
-                    type="number"
-                    min="0"
-                    max="140"
-                    value={newScore}
-                    onChange={(e) => setNewScore(Number(e.target.value))}
-                  />
-                </div>
-                <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>
-                  {isUpdating ? "Жаңартылуда..." : "Сақтау"}
-                </Button>
+                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(e.target.value))} />
+                <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>Сақтау</Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -456,15 +356,8 @@ export default function Dashboard() {
               <Timer className="h-4 w-4 opacity-70" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">
-                {formatMinutes(todayStudyMinutes)}
-              </div>
-              <p className="text-xs opacity-70 mt-1">
-                Қолданбадағы белсенділік
-              </p>
-              <div className="mt-4">
-                <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-white/20" />
-              </div>
+              <div className="text-3xl font-bold">{formatMinutes(todayStudyMinutes)}</div>
+              <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-white/20 mt-4" />
             </CardContent>
           </Card>
 
@@ -474,19 +367,9 @@ export default function Dashboard() {
               <rank.icon className={`h-5 w-5 ${rank.color} animate-bounce`} />
             </CardHeader>
             <CardContent className="space-y-2">
-              <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-black ${rank.color}`}>{rank.name}</span>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-end text-[10px] font-bold uppercase text-muted-foreground">
-                  <span>Прогресс</span>
-                  <span>{Math.round(rankProgress)}%</span>
-                </div>
-                <Progress value={rankProgress} className="h-1.5 bg-accent/20" />
-                <p className="text-[9px] font-bold text-muted-foreground/70 uppercase">
-                  Келесі деңгейге: {rank.next - rating} ұпай
-                </p>
-              </div>
+              <div className="flex items-baseline gap-2"><span className={`text-2xl font-black ${rank.color}`}>{rank.name}</span></div>
+              <Progress value={rankProgress} className="h-1.5 bg-accent/20" />
+              <p className="text-[9px] font-bold text-muted-foreground/70 uppercase">Келесі деңгейге: {rank.next - rating} ұпай</p>
             </CardContent>
           </Card>
 
@@ -495,22 +378,9 @@ export default function Dashboard() {
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Грант мүмкіндігі</CardTitle>
               <GraduationCap className="h-5 w-5 text-green-600" />
             </CardHeader>
-            <CardContent className="relative">
-              <div className="flex items-center gap-3">
-                <div className="text-4xl font-black text-green-600 tracking-tighter">{grantProb}%</div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-green-700/60 uppercase">{grantStatus}</span>
-                  <div className="flex gap-0.5 mt-0.5">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <div key={i} className={`h-1 w-3 rounded-full ${i <= Math.ceil(grantProb/20) ? 'bg-green-500' : 'bg-slate-100'}`} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="mt-3 p-2 rounded-lg bg-green-50 text-[10px] font-bold text-green-800 border border-green-100 flex items-center gap-2">
-                <Sparkles className="size-3 shrink-0" />
-                Мақсатты баллға дейін: {targetScore - currentScore} балл
-              </div>
+            <CardContent>
+              <div className="text-4xl font-black text-green-600 tracking-tighter">{grantProb}%</div>
+              <p className="text-[10px] font-black text-green-700/60 uppercase">{grantStatus}</p>
             </CardContent>
           </Card>
         </div>
@@ -526,254 +396,92 @@ export default function Dashboard() {
                   Бүгінгі оқу жоспары
                 </CardTitle>
                 <CardDescription className="font-bold text-primary mt-1">
-                  {todayTasks.length > 0 
-                    ? `Прогресс: ${dailyProgress}% (${completedTodayCount}/${todayTasks.length})` 
-                    : "Бүгінге мақсаттар қойылмаған"}
+                  {todayTasks.length > 0 ? `Прогресс: ${dailyProgress}% (${completedTodayCount}/${todayTasks.length})` : "Бүгінге мақсаттар қойылмаған"}
                 </CardDescription>
               </div>
               <Button variant="outline" size="sm" asChild className="rounded-xl font-bold border-2">
-                <Link href="/plan">
-                  Барлығы <ArrowRight className="size-4 ml-1" />
-                </Link>
+                <Link href="/plan">Барлығы <ArrowRight className="size-4 ml-1" /></Link>
               </Button>
             </CardHeader>
             <CardContent className="p-0">
               {todayTasks.length > 0 ? (
                 pendingTasks.length > 0 ? (
                   <div className="divide-y divide-border/50">
-                    {pendingTasks.map((task, i) => (
-                      <div 
-                        key={task.id} 
-                        className="flex items-center justify-between p-6 hover:bg-accent/5 transition-all group"
-                      >
+                    {pendingTasks.map((task) => (
+                      <div key={task.id} className="flex items-center justify-between p-6 hover:bg-accent/5 transition-all group">
                         <div className="flex items-center gap-5">
-                          <div className="size-12 rounded-2xl bg-white border-2 border-primary/10 text-primary flex items-center justify-center transition-all shadow-sm group-hover:scale-105 group-hover:border-primary/30 group-hover:shadow-md">
-                            {task.type === 'test' 
-                              ? <ClipboardList className="size-6" /> 
-                              : <BookOpen className="size-6" />
-                            }
+                          <div className="size-12 rounded-2xl bg-white border-2 border-primary/10 text-primary flex items-center justify-center shadow-sm">
+                            {task.type === 'test' ? <ClipboardList className="size-6" /> : <BookOpen className="size-6" />}
                           </div>
                           <div className="space-y-1">
-                            <h4 className="font-black text-lg leading-tight">
-                              {task.title}
-                            </h4>
+                            <h4 className="font-black text-lg">{task.title}</h4>
                             <div className="flex items-center gap-4">
-                              <Badge variant="secondary" className="bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border-none">
-                                {task.subject}
-                              </Badge>
-                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold">
-                                <Clock className="size-3.5" /> {task.time}
-                              </span>
+                              <Badge variant="secondary" className="bg-primary/5 text-primary text-[10px] font-black uppercase tracking-widest border-none">{task.subject}</Badge>
+                              <span className="flex items-center gap-1.5 text-xs text-muted-foreground font-bold"><Clock className="size-3.5" /> {task.time}</span>
                             </div>
                           </div>
                         </div>
-                        <Button 
-                          size="sm" 
-                          className="h-10 rounded-xl px-6 font-black text-sm shadow-lg shadow-primary/10 hover:scale-105 active:scale-95 transition-all"
-                          onClick={() => startTaskTimer(task)}
-                        >
-                          Бастау
-                        </Button>
+                        <Button size="sm" className="h-10 rounded-xl px-6 font-black text-sm shadow-lg shadow-primary/10" onClick={() => startTaskTimer(task)}>Бастау</Button>
                       </div>
                     ))}
-                    <div className="p-6 bg-accent/5">
-                       <Progress value={dailyProgress} className="h-2 rounded-full" />
-                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-24 flex flex-col items-center gap-6 bg-green-50/30 rounded-[40px] m-6 border-2 border-dashed border-green-200">
-                    <div className="size-24 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
-                      <Sparkles className="size-12 text-green-600 animate-bounce" />
-                    </div>
-                    <div className="max-w-[300px]">
-                      <h4 className="font-black text-2xl text-green-800">Керемет жұмыс! 🚀</h4>
-                      <p className="text-green-700/70 font-medium mt-2 leading-relaxed">
-                        Бүгінгі барлық тапсырмаларды аяқтадыңыз. ҰБТ-ға тағы бір қадам жақындадыңыз!
-                      </p>
-                    </div>
-                    <Button variant="outline" size="lg" className="mt-4 rounded-xl border-2 border-green-200 text-green-700 hover:bg-green-100 font-bold" asChild>
-                      <Link href="/plan">Ертеңгіні жоспарлау</Link>
-                    </Button>
+                    <div className="size-24 rounded-full bg-green-100 flex items-center justify-center shadow-inner"><Sparkles className="size-12 text-green-600 animate-bounce" /></div>
+                    <div className="max-w-[300px]"><h4 className="font-black text-2xl text-green-800">Керемет жұмыс! 🚀</h4></div>
                   </div>
                 )
               ) : (
                 <div className="text-center py-24 flex flex-col items-center gap-8 bg-muted/5 rounded-[40px] m-6 border-4 border-dashed border-white">
-                  <div className="size-24 rounded-full bg-primary/5 flex items-center justify-center shadow-inner">
-                    <PlusCircle className="size-12 text-primary/30" />
-                  </div>
-                  <div className="max-w-[260px] space-y-3">
-                    <h4 className="font-black text-2xl">Жоспар бос</h4>
-                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                      Бүгінгі күніңізге мақсат қойып, дайындықты тиімді өткізіңіз.
-                    </p>
-                  </div>
-                  <Button size="lg" className="mt-4 rounded-xl font-black px-10 shadow-xl shadow-primary/20" asChild>
-                    <Link href="/plan">Жоспар құру</Link>
-                  </Button>
+                  <div className="size-24 rounded-full bg-primary/5 flex items-center justify-center"><PlusCircle className="size-12 text-primary/30" /></div>
+                  <Button size="lg" className="mt-4 rounded-xl font-black px-10 shadow-xl" asChild><Link href="/plan">Жоспар құру</Link></Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
           <div className="md:col-span-3 space-y-6">
-            <Card className="border-none shadow-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-[32px] overflow-hidden relative group">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <Zap className="size-4 fill-current" />
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Күн мотивациясы</span>
-                </div>
-                <CardTitle className="text-xl font-headline flex items-center gap-2">
-                  <Quote className="size-6 opacity-50" />
-                  Сенің қолыңнан келеді!
-                </CardTitle>
+            <Card className="border-none shadow-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-[32px] overflow-hidden relative group p-8">
+              <CardHeader className="pb-2 p-0">
+                <div className="flex items-center gap-2 mb-1"><Zap className="size-4 fill-current" /><span className="text-[10px] font-black uppercase tracking-widest opacity-80">Күн мотивациясы</span></div>
+                <CardTitle className="text-xl font-headline flex items-center gap-2"><Quote className="size-6 opacity-50" />Сенің қолыңнан келеді!</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-lg font-medium leading-relaxed italic opacity-95">
-                  "{randomQuote.text}"
-                </p>
-                <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                  <span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">— {randomQuote.author}</span>
-                  <Star className="size-5 fill-yellow-300 text-yellow-300 animate-pulse" />
-                </div>
+              <CardContent className="p-0 mt-4 space-y-4">
+                <p className="text-lg font-medium leading-relaxed italic opacity-95">"{randomQuote.text}"</p>
+                <div className="flex items-center justify-between pt-4 border-t border-white/10"><span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">— {randomQuote.author}</span><Star className="size-5 fill-yellow-300 text-yellow-300" /></div>
               </CardContent>
-              <div className="absolute -bottom-6 -right-6 size-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
             </Card>
 
-            <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden flex flex-col">
-              <CardHeader className="pb-4 border-b bg-accent/5">
-                <CardTitle className="text-base font-black flex items-center gap-3">
-                  <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                    <BarChart className="size-4" />
-                  </div>
-                  Статистика
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
+            <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden p-6">
+              <CardTitle className="text-base font-black flex items-center gap-3 mb-6"><div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center"><BarChart className="size-4" /></div>Статистика</CardTitle>
+              <div className="space-y-6">
                 <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Бүгінгі белсенділік</span>
-                    <span className="font-black text-indigo-600">{formatMinutes(todayStudyMinutes)}</span>
-                  </div>
+                  <div className="flex justify-between items-end"><span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Бүгінгі белсенділік</span><span className="font-black text-indigo-600">{formatMinutes(todayStudyMinutes)}</span></div>
                   <Progress value={Math.min((todayStudyMinutes / 120) * 100, 100)} className="h-2 bg-indigo-50" />
                 </div>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Орындалуы</span>
-                    <span className="font-black text-green-600">{completedTodayCount} / {todayTasks.length || 0}</span>
-                  </div>
-                  <Progress value={dailyProgress} className="h-2 bg-green-50" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center"><span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Стрим (Streak)</span><div className="flex items-center justify-center gap-1.5"><Flame className="size-5 text-orange-500 fill-current" /><span className="text-2xl font-black">{profile?.streakDays || 0} күн</span></div></div>
+                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center"><span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Рейтинг</span><div className="flex items-center justify-center gap-1.5"><Medal className="size-5 text-primary" /><span className="text-2xl font-black">{rating}</span></div></div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center shadow-inner">
-                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Стрим (Streak)</span>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Flame className="size-5 text-orange-500 fill-current" />
-                      <span className="text-2xl font-black text-foreground">{profile?.streakDays || 0} күн</span>
-                    </div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-accent/5 border border-border/50 text-center shadow-inner">
-                    <span className="text-[9px] font-black text-muted-foreground block uppercase tracking-widest">Рейтинг</span>
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Medal className="size-5 text-primary" />
-                      <span className="text-2xl font-black text-foreground">{rating}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
+              </div>
             </Card>
           </div>
         </div>
 
-        {/* Timer Dialog */}
-        <div className="hidden">
-          {/* Internal state trigger for force re-render if needed */}
-        </div>
-
-        <Dialog open={isTimerDialogOpen} onOpenChange={(open) => {
-          if (!open) setIsTimerRunning(false);
-          setIsTimerDialogOpen(open);
-        }}>
+        <Dialog open={isTimerDialogOpen} onOpenChange={(open) => { if (!open) setIsTimerRunning(false); setIsTimerDialogOpen(open); }}>
           <DialogContent className="sm:max-w-md bg-white border-none shadow-2xl rounded-[40px]">
-            <DialogHeader>
-              <DialogTitle className="text-center font-headline text-2xl font-black flex flex-col items-center gap-4">
-                <div className="size-20 rounded-3xl bg-primary/10 text-primary flex items-center justify-center animate-pulse shadow-inner">
-                  <Clock className="size-10" />
-                </div>
-                {activeTimerTask?.title}
-              </DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle className="text-center font-headline text-2xl font-black">{activeTimerTask?.title}</DialogTitle></DialogHeader>
             <div className="flex flex-col items-center justify-center py-12 gap-10">
               <div className="relative size-56 flex items-center justify-center">
-                <svg className="size-full -rotate-90 transform">
-                  <circle
-                    cx="112"
-                    cy="112"
-                    r="104"
-                    stroke="currentColor"
-                    strokeWidth="10"
-                    fill="transparent"
-                    className="text-accent/20"
-                  />
-                  <circle
-                    cx="112"
-                    cy="112"
-                    r="104"
-                    stroke="currentColor"
-                    strokeWidth="10"
-                    fill="transparent"
-                    strokeDasharray={653}
-                    strokeDashoffset={653 - (653 * timeLeft) / ((parseInt(activeTimerTask?.time) || 30) * 60)}
-                    className="text-primary transition-all duration-1000"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-6xl font-black font-mono tracking-tighter text-foreground">
-                    {formatTime(timeLeft)}
-                  </span>
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mt-2">
-                    қалған уақыт
-                  </span>
-                </div>
+                <svg className="size-full -rotate-90 transform"><circle cx="112" cy="112" r="104" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-accent/20" /><circle cx="112" cy="112" r="104" stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={653} strokeDashoffset={653 - (653 * timeLeft) / ((parseInt(activeTimerTask?.time) || 30) * 60)} className="text-primary transition-all duration-1000" strokeLinecap="round" /></svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center"><span className="text-6xl font-black font-mono tracking-tighter">{formatTime(timeLeft)}</span></div>
               </div>
-
               <div className="flex items-center gap-6">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="rounded-2xl size-14 border-2"
-                  onClick={() => {
-                    const mins = parseInt(activeTimerTask?.time) || 30;
-                    setTimeLeft(mins * 60);
-                  }}
-                >
-                  <RotateCcw className="size-6" />
-                </Button>
-                <Button 
-                  variant={isTimerRunning ? "secondary" : "default"} 
-                  size="icon" 
-                  className="rounded-[32px] size-20 shadow-2xl shadow-primary/30"
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                >
-                  {isTimerRunning ? <Pause className="size-10 fill-current" /> : <Play className="size-10 fill-current ml-1" />}
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="rounded-2xl size-14 text-green-600 hover:text-green-700 hover:bg-green-50 border-2 border-green-100"
-                  onClick={completeTaskFromTimer}
-                >
-                  <Check className="size-6" />
-                </Button>
+                <Button variant="outline" size="icon" className="rounded-2xl size-14 border-2" onClick={() => setTimeLeft((parseInt(activeTimerTask?.time) || 30) * 60)}><RotateCcw className="size-6" /></Button>
+                <Button variant={isTimerRunning ? "secondary" : "default"} size="icon" className="rounded-[32px] size-20 shadow-2xl" onClick={() => setIsTimerRunning(!isTimerRunning)}>{isTimerRunning ? <Pause className="size-10 fill-current" /> : <Play className="size-10 fill-current ml-1" />}</Button>
+                <Button variant="outline" size="icon" className="rounded-2xl size-14 text-green-600 border-2" onClick={completeTaskFromTimer}><Check className="size-6" /></Button>
               </div>
             </div>
-            <DialogFooter className="sm:justify-center border-t border-dashed pt-6 pb-2">
-              <p className="text-xs text-muted-foreground text-center font-bold uppercase tracking-widest">
-                Тәртіп — жеңістің кілті. Назарыңды сал! 🚀
-              </p>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

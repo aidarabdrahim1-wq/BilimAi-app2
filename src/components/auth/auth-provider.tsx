@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           }
           setLoading(false);
         }, (error: any) => {
-          if (error.code !== 'permission-denied') {
+          if (error.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
               path: userDocRef.path,
               operation: 'get',

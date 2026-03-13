@@ -65,7 +65,7 @@ export default function CuratorPage() {
         setMessages(msgs);
       }
     }, async (error) => {
-      if (error.code !== 'permission-denied') {
+      if (error.code === 'permission-denied') {
         const permissionError = new FirestorePermissionError({
           path: interactionsRef.path,
           operation: 'list',

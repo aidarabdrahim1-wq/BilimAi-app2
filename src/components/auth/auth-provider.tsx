@@ -69,17 +69,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   
   const profileRef = useRef<UserProfile | null>(null);
 
-  // Initialize Telegram WebApp
+  // Initialize Telegram WebApp dynamically to avoid hydration issues
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-      const tg = window.Telegram.WebApp;
-      tg.ready();
-      tg.expand();
-      // Adjust theme colors to match Telegram's UI if desired
-      if (tg.themeParams?.bg_color) {
-        // You could set CSS variables here if needed
-      }
-    }
+    const loadTelegram = () => {
+      if (document.getElementById('telegram-widget')) return;
+      
+      const script = document.createElement('script');
+      script.id = 'telegram-widget';
+      script.src = 'https://telegram.org/js/telegram-web-app.js';
+      script.async = true;
+      script.onload = () => {
+        if (window.Telegram?.WebApp) {
+          const tg = window.Telegram.WebApp;
+          tg.ready();
+          tg.expand();
+        }
+      };
+      document.head.appendChild(script);
+    };
+
+    loadTelegram();
   }, []);
 
   useEffect(() => {

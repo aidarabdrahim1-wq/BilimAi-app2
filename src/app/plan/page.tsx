@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -51,10 +50,14 @@ export default function PlanPage() {
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [allPlans, setAllPlans] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
   const [aiPreview, setAiPreview] = useState<any[] | null>(null);
   const [showArchive, setShowArchive] = useState(false);
+
+  useEffect(() => {
+    setSelectedDate(new Date());
+  }, []);
 
   const [newTask, setNewTask] = useState({
     title: "",
@@ -65,12 +68,10 @@ export default function PlanPage() {
 
   const subjects = profile?.selectedSubjects || ["Математика", "Физика", "Тарих"];
 
-  // Fetch all plans for the current student
   useEffect(() => {
     if (!user) return;
 
     const plansRef = collection(db, "studentProfiles", user.uid, "studyPlans");
-    // We fetch all plans to show indicators on the calendar
     const q = query(plansRef);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -375,7 +376,6 @@ export default function PlanPage() {
         </div>
 
         <div className="grid lg:grid-cols-12 gap-8">
-          {/* Sidebar: Calendar & New Task */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
               <CardHeader className="pb-2 border-b bg-accent/5">
@@ -467,7 +467,6 @@ export default function PlanPage() {
             </Card>
           </div>
 
-          {/* Main View: Day / Week / Month */}
           <div className="lg:col-span-8 space-y-6">
             {viewMode === "day" && (
               <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden h-fit min-h-[600px]">
@@ -685,7 +684,7 @@ export default function PlanPage() {
                 <div className="space-y-4 max-w-md">
                   <h3 className="text-3xl font-black font-headline">Айлық шолу</h3>
                   <p className="text-muted-foreground font-medium leading-relaxed">
-                    Сол жақтағы күнтізбе арқылы кез келген күнді таңдап, оның жоспарын көре аласыз. Асты сызылған күндерде белсенді тапсырмалар бар.
+                    Сол жақтағы күнтізбе арқылы кез келген күнді таңдап, оның жоспарын көре аласыз.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 w-full max-w-sm">

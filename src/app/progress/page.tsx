@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
@@ -25,7 +24,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Progress } from "@/components/ui/progress";
-import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { format, subDays } from "date-fns";
 import { kk } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,16 +32,22 @@ import Link from "next/link";
 
 export default function ProgressPage() {
   const { profile } = useAuth();
+  const [currentDate, setCurrentDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setCurrentDate(new Date());
+  }, []);
 
   const totalMinutes = profile?.totalStudyTimeMinutes || 0;
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
-  // Calculate activity for the last 7 days
+  // Calculate activity for the last 7 days - stabilized for hydration
   const last7Days = useMemo(() => {
+    if (!currentDate) return [];
     const days = [];
     for (let i = 6; i >= 0; i--) {
-      const date = subDays(new Date(), i);
+      const date = subDays(currentDate, i);
       const dateStr = format(date, 'yyyy-MM-dd');
       const isActive = profile?.activityHistory?.includes(dateStr);
       days.push({
@@ -52,7 +57,7 @@ export default function ProgressPage() {
       });
     }
     return days;
-  }, [profile?.activityHistory]);
+  }, [profile?.activityHistory, currentDate]);
 
   const subjectProgress = [
     { 
@@ -109,7 +114,7 @@ export default function ProgressPage() {
           </div>
           <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-widest bg-white px-4 py-2 rounded-xl shadow-sm border">
             <Clock className="size-4 text-primary" />
-            Соңғы жаңарту: Бүгін, {format(new Date(), 'HH:mm')}
+            Соңғы жаңарту: {currentDate ? `Бүгін, ${format(currentDate, 'HH:mm')}` : 'Жүктелуде...'}
           </div>
         </div>
 
@@ -181,7 +186,7 @@ export default function ProgressPage() {
           </Card>
         </div>
 
-        {/* Subjects Progress - Creative Redesign */}
+        {/* Subjects Progress */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -278,7 +283,6 @@ export default function ProgressPage() {
                       ) : (
                         <div className="size-2 rounded-full bg-muted-foreground/20" />
                       )}
-                      {/* Tooltip Simulation */}
                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
                         {day.fullDate}
                       </div>
@@ -308,7 +312,7 @@ export default function ProgressPage() {
                   </div>
                   <div>
                     <h4 className="text-sm font-bold text-orange-900">Уақытты үлестіру</h4>
-                    <p className="text-[10px] text-orange-700/70 font-medium">Көбіне кешкі уақытта (19:00-21:00) өнімдісіз</p>
+                    <p className="text-[10px] text-orange-700/70 font-medium">Көбіне кешкі уақытта өнімдісіз</p>
                   </div>
                 </div>
               </div>
@@ -326,7 +330,6 @@ export default function ProgressPage() {
             </CardHeader>
             <CardContent className="relative z-10 flex-1 flex flex-col justify-center items-center py-10 gap-8">
               <div className="relative size-48">
-                {/* Circular Progress Path */}
                 <svg className="size-full -rotate-90">
                   <circle
                     cx="96"
@@ -358,7 +361,7 @@ export default function ProgressPage() {
 
               <div className="text-center space-y-2">
                 <p className="text-sm font-bold leading-tight px-4 italic">
-                  "Сіздің қазіргі қарқыныңызбен грантқа түсу мүмкіндігіңіз <span className="underline decoration-2 underline-offset-4">85%</span>"
+                  "Сіздің қазіргі қарқыныңызбен грантқа түсу мүмкіндігіңіз жоғары"
                 </p>
                 <div className="flex items-center justify-center gap-1.5 pt-2">
                   <div className="size-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -366,7 +369,6 @@ export default function ProgressPage() {
                 </div>
               </div>
             </CardContent>
-            {/* Background elements */}
             <div className="absolute top-0 right-0 size-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
             <div className="absolute bottom-0 left-0 size-64 bg-indigo-500/30 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl" />
           </Card>

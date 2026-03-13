@@ -140,20 +140,21 @@ export default function DiagnosticPage() {
 
   const handleAnswer = (val: string) => {
     const qId = questions[currentQuestionIdx].id;
-    setAnswers({ ...responses, [qId]: val });
+    const nextResponses = { ...responses, [qId]: val };
+    setAnswers(nextResponses);
     
     if (currentQuestionIdx < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     } else {
-      processResults();
+      processResults(nextResponses);
     }
   };
 
-  const processResults = async () => {
+  const processResults = async (surveyResponses: typeof responses = responses) => {
     setStep("analyzing");
     setIsAiLoading(true);
     try {
-      const res = await generateStartingRoute(responses);
+      const res = await generateStartingRoute(surveyResponses);
       setRouteResult(res);
       setStep("result");
     } catch (error: any) {

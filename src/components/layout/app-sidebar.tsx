@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -17,6 +18,7 @@ import {
   LogOut,
   Trophy,
   Compass,
+  BookMarked,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
@@ -46,6 +48,7 @@ const mainNavItems = [
 
 const secondaryNavItems = [
   { title: "Оқу жоспары", icon: CalendarDays, url: "/plan" },
+  { title: "Кітаптар", icon: BookMarked, url: "/books" },
   { title: "Профориентолог", icon: Compass, url: "/proforientologist" },
   { title: "Прогресс", icon: BarChart3, url: "/progress" },
   { title: "Рейтинг", icon: Trophy, url: "/leaderboard" },
@@ -60,7 +63,7 @@ const adminItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -124,27 +127,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Әкімшілік</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.url}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === item.url}
-                    tooltip={item.title}
-                  >
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup className="mt-auto">
+            <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Әкімшілік</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname === item.url}
+                      tooltip={item.title}
+                    >
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter className="p-4 group-data-[collapsible=icon]:p-2">
         <div className="flex flex-col gap-2">

@@ -14,6 +14,7 @@ export interface UserProfile {
   fullName: string;
   email: string;
   grade: string;
+  role?: 'admin' | 'student';
   targetScore: number;
   currentScore: number;
   rating: number;
@@ -37,12 +38,14 @@ export interface UserProfile {
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  isAdmin: boolean;
   loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  isAdmin: false,
   loading: true,
 });
 
@@ -56,7 +59,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
   const pathname = usePathname();
   
-  // Use a ref to store latest profile data for the interval to access without stale closures
   const profileRef = useRef<UserProfile | null>(null);
 
   useEffect(() => {
@@ -79,7 +81,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setProfile(data);
             profileRef.current = data;
             
-            // Initial daily visit check
             const today = format(new Date(), 'yyyy-MM-dd');
             if (data.lastVisitDate !== today) {
               const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
@@ -130,12 +131,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsubscribeAuth();
   }, [pathname, router]);
 
-  // Robust STUDY TIME TRACKER - Fixed interval leak and increment logic
   useEffect(() => {
     if (!user || !db) return;
 
     const trackTime = async () => {
-      // Only track if tab is active to prevent artificial inflation
       if (document.hidden) return;
 
       const today = format(new Date(), 'yyyy-MM-dd');
@@ -150,7 +149,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         lastStudyDate: today,
       };
 
-      // Handle day transition for todayStudyTimeMinutes
       if (currentProfile.lastStudyDate !== today) {
         updateData.todayStudyTimeMinutes = 1;
       } else {
@@ -159,17 +157,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       try {
         await updateDoc(userDocRef, updateData);
-      } catch (e) {
-        // Silent fail for time tracking to not interrupt UI
-      }
+      } catch (e) {}
     };
 
-    const trackerInterval = setInterval(trackTime, 60000); // Track every 60 seconds
-
-    return () => {
-      clearInterval(trackerInterval);
-    };
+    const trackerInterval = setInterval(trackTime, 60000);
+    return () => clearInterval(trackerInterval);
   }, [user?.uid]);
+
+  const isAdmin = profile?.role === 'admin' || profile?.email === 'admin@bilimai.kz';
 
   if (!mounted) return <div className="min-h-screen bg-background" />;
 
@@ -185,7 +180,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading }}>
+    <AuthContext.Provider value={{ user, profile, isAdmin, loading }}>
       {children}
     </AuthContext.Provider>
   );

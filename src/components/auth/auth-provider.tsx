@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
@@ -164,7 +163,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => clearInterval(trackerInterval);
   }, [user?.uid]);
 
-  const isAdmin = profile?.role === 'admin' || profile?.email === 'admin@bilimai.kz';
+  // Admin logic updated to include Абдрахым Айдар
+  const isAdmin = profile?.role === 'admin' || 
+                  profile?.email === 'admin@bilimai.kz' || 
+                  profile?.fullName === 'Абдрахым Айдар';
 
   if (!mounted) return <div className="min-h-screen bg-background" />;
 

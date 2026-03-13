@@ -73,9 +73,12 @@ export default function AdminPage() {
     setError(null);
     try {
       const data = JSON.parse(jsonInput);
-      if (!data.subjects) throw new Error("JSON files must contain 'subjects' array.");
+      if (!data.subjects) throw new Error("JSON файлында 'subjects' массиві болуы керек.");
       
-      let count = 0;
+      let subjectCount = 0;
+      let topicCount = 0;
+      let questionCount = 0;
+
       for (const subject of data.subjects) {
         const subjectId = subject.id || subject.name.toLowerCase().replace(/\s+/g, '-');
         await setDoc(doc(db, "subjects", subjectId), {
@@ -83,6 +86,7 @@ export default function AdminPage() {
           description: subject.description || "",
           updatedAt: serverTimestamp()
         });
+        subjectCount++;
 
         if (subject.topics) {
           for (const topic of subject.topics) {
@@ -93,11 +97,30 @@ export default function AdminPage() {
               subjectId: subjectId,
               updatedAt: serverTimestamp()
             });
-            count++;
+            topicCount++;
+
+            // Сұрақтарды жүктеу логикасы
+            if (topic.questions && Array.isArray(topic.questions)) {
+              for (const q of topic.questions) {
+                const qId = q.id || Math.random().toString(36).substring(7);
+                await setDoc(doc(db, "subjects", subjectId, "topics", topicId, "questions", qId), {
+                  text: q.text,
+                  options: q.options,
+                  correctAnswer: q.correctAnswer,
+                  explanation: q.explanation || "",
+                  points: q.points || 1,
+                  updatedAt: serverTimestamp()
+                });
+                questionCount++;
+              }
+            }
           }
         }
       }
-      toast({ title: "Деректер жүктелді", description: `${count} тақырып қосылды.` });
+      toast({ 
+        title: "Деректер жүктелді", 
+        description: `${subjectCount} пән, ${topicCount} тақырып және ${questionCount} сұрақ қосылды.` 
+      });
       setJsonInput("");
     } catch (err: any) {
       setError(err.message);
@@ -310,7 +333,7 @@ export default function AdminPage() {
                     <FileJson className="size-5 text-primary" />
                     JSON Импорт
                   </CardTitle>
-                  <CardDescription>Базаға арналған жаңа пәндер мен тақырыптарды қосу.</CardDescription>
+                  <CardDescription>Базаға арналған жаңа пәндерді, тақырыптарды және тест сұрақтарын қосу.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {error && (
@@ -336,13 +359,13 @@ export default function AdminPage() {
                   </CardHeader>
                   <CardContent className="text-xs space-y-3 leading-relaxed relative z-10 opacity-90">
                     <p>1. Деректерді JSON форматына келтіріңіз.</p>
-                    <p>2. Тақырыптар мен мазмұнды дұрыс толтырыңыз.</p>
+                    <p>2. Тақырыптар ішіне "questions" массивін қосуға болады.</p>
                     <p>3. Жүктеу батырмасын басып, нәтижені күтіңіз.</p>
                   </CardContent>
                   <div className="absolute top-0 right-0 size-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
                 </Card>
                 <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm font-bold flex items-center gap-2"><Code className="size-4 text-primary" /> Үлгі</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm font-bold flex items-center gap-2"><Code className="size-4 text-primary" /> Тестпен жүктеу үлгісі</CardTitle></CardHeader>
                   <CardContent>
                     <pre className="p-4 rounded-2xl bg-black text-[10px] text-green-400 overflow-x-auto shadow-inner leading-relaxed">
 {`{
@@ -350,7 +373,17 @@ export default function AdminPage() {
     {
       "name": "Математика",
       "topics": [
-        { "title": "Логарифм", "content": "..." }
+        { 
+          "title": "Логарифм", 
+          "questions": [
+            {
+              "text": "log2(8) неге тең?",
+              "options": ["1", "2", "3", "4"],
+              "correctAnswer": "C",
+              "explanation": "2^3 = 8"
+            }
+          ]
+        }
       ]
     }
   ]

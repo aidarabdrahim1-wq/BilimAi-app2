@@ -47,6 +47,8 @@ import { Progress } from "@/components/ui/progress";
 import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";
+import { db } from "@/lib/firebase/config";
+import { collection, getDocs } from "firebase/firestore";
 
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
@@ -228,6 +230,20 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     setAnswers({});
     
     try {
+      // 1. Алдымен Firestore-дан Админ жүктеген сұрақтарды іздейміз
+      const subjectId = subject.toLowerCase().replace(/\s+/g, '-');
+      const topicId = topic.toLowerCase().replace(/\s+/g, '-');
+      const qRef = collection(db, "subjects", subjectId, "topics", topicId, "questions");
+      const qSnap = await getDocs(qRef);
+      
+      if (!qSnap.empty) {
+        const firestoreQuestions = qSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setQuestions(firestoreQuestions);
+        setPracticeMode("testing");
+        return;
+      }
+
+      // 2. Егер базада жоқ болса, статикалық ескі базадан іздейміз
       if (STATIC_TESTS[subject] && STATIC_TESTS[subject][topic]) {
         const staticQuestions = STATIC_TESTS[subject][topic];
         setQuestions(staticQuestions);
@@ -235,6 +251,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         return;
       }
 
+      // 3. Соңғы нұсқа ретінде AI генерациясын қолданамыз
       const { questions: newQuestions } = await generateUntQuestions({ 
         subject, 
         topic, 
@@ -284,7 +301,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     }
   };
 
-  const isStatic = STATIC_TESTS[subject] && STATIC_TESTS[subject][topic];
+  const isStatic = (STATIC_TESTS[subject] && STATIC_TESTS[subject][topic]) || questions.length > 0;
 
   return (
     <Dialog open={isDetailOpen} onOpenChange={(open) => {
@@ -304,7 +321,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
             <div className="flex flex-col">
               <span className="text-sm font-bold group-hover/item:text-primary transition-colors">{topic}</span>
               <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1 uppercase tracking-wider">
-                <Clock className="size-2.5" /> {isStatic ? `${STATIC_TESTS[subject][topic].length} сұрақ` : "15-20 мин практика"}
+                <Clock className="size-2.5" /> 15-20 мин практика
               </span>
             </div>
           </div>
@@ -318,7 +335,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
           <DialogHeader>
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] font-bold">{subject}</Badge>
-              {isStatic && <Badge className="bg-green-500 text-white text-[9px] uppercase tracking-tighter">Бекітілген база</Badge>}
             </div>
             <DialogTitle className="text-3xl font-black font-headline tracking-tight">{topic}</DialogTitle>
           </DialogHeader>
@@ -333,9 +349,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
               <div className="space-y-2">
                 <h4 className="text-xl font-bold">Тақырыптық бекіту</h4>
                 <p className="text-sm text-muted-foreground max-w-sm font-medium">
-                  {isStatic 
-                    ? `Бұл тақырып бойынша арнайы дайындалған ${STATIC_TESTS[subject][topic].length} тест сұрағын тапсырып, біліміңізді шыңдаңыз.`
-                    : "Бұл бөлім бойынша біліміңізді AI арқылы тексеріп, рейтинг ұпайына ие болыңыз."}
+                  Бұл тақырып бойынша дайын тест сұрақтарын тапсырып немесе AI арқылы біліміңізді тексеріп, рейтинг ұпайына ие болыңыз.
                 </p>
               </div>
 
@@ -349,7 +363,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </Button>
                 <div className="flex flex-col items-center gap-1 mt-4">
                   <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
-                    {isStatic ? "Дайын тест базасы" : "AI сұрақтарды құрастыруда"}
+                    Жүйе сұрақтарды базадан немесе AI-мен дайындайды
                   </p>
                   <p className="text-[10px] text-primary font-bold">+2 рейтинг ұпайы (әр дұрыс жауапқа)</p>
                 </div>
@@ -371,8 +385,8 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="font-black text-2xl tracking-tight">{isStatic ? "Тест жүктелуде..." : "AI сұрақтарды құрастыруда..."}</p>
-                <p className="text-sm text-muted-foreground font-medium">Тақырыптың ең маңызды тұстары таңдалуда.</p>
+                <p className="font-black text-2xl tracking-tight">Сұрақтар жүктелуде...</p>
+                <p className="text-sm text-muted-foreground font-medium">Мазмұн сарапталуда. Сәл күте тұрыңыз.</p>
               </div>
             </div>
           )}

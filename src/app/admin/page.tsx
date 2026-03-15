@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -181,13 +181,16 @@ export default function AdminPage() {
   const deleteAnnouncement = (id: string) => {
     if (!confirm("Өшіруді растайсыз ба?")) return;
     const annRef = doc(db, "announcements", id);
-    deleteDoc(annRef).catch(async (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: annRef.path,
-        operation: 'delete',
-      }));
-    });
-    toast({ title: "Өшірілуде..." });
+    deleteDoc(annRef)
+      .then(() => {
+        toast({ title: "Сәтті өшірілді" });
+      })
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: annRef.path,
+          operation: 'delete',
+        }));
+      });
   };
 
   if (loading || !isAdmin) {
@@ -323,8 +326,8 @@ export default function AdminPage() {
                   ) : (
                     <div className="divide-y">
                       {announcements?.map((ann) => (
-                        <div key={ann.id} className="p-6 flex items-start justify-between group">
-                          <div className="space-y-2">
+                        <div key={ann.id} className="p-6 flex items-start justify-between group bg-white hover:bg-accent/5 transition-colors">
+                          <div className="space-y-2 flex-1 pr-4">
                             <div className="flex items-center gap-3">
                               <Badge variant="outline" className={`uppercase font-black text-[9px] ${
                                 ann.type === 'urgent' ? 'bg-red-50 text-red-600 border-red-200' :
@@ -335,16 +338,16 @@ export default function AdminPage() {
                               </Badge>
                               <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
                             </div>
-                            <h4 className="font-bold text-lg">{ann.title}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{ann.content}</p>
+                            <h4 className="font-bold text-lg leading-tight">{ann.title}</h4>
+                            <p className="text-sm text-muted-foreground line-clamp-3">{ann.content}</p>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="text-muted-foreground hover:text-destructive transition-opacity" 
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 self-center" 
                             onClick={() => deleteAnnouncement(ann.id)}
                           >
-                            <Trash2 className="size-4" />
+                            <Trash2 className="size-5" />
                           </Button>
                         </div>
                       ))}

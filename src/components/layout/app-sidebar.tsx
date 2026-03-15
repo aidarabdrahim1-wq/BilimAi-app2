@@ -51,11 +51,11 @@ const secondaryNavItems = [
   { title: "Прогресс", icon: BarChart3, url: "/progress" },
   { title: "Рейтинг", icon: Trophy, url: "/leaderboard" },
   { title: "AI Куратор", icon: MessageSquare, url: "/curator" },
+  { title: "Баптаулар", icon: Settings, url: "/settings" },
 ];
 
 const adminItems = [
   { title: "Мазмұн басқару", icon: ShieldCheck, url: "/admin" },
-  { title: "Баптаулар", icon: Settings, url: "/settings" },
 ];
 
 export function AppSidebar() {

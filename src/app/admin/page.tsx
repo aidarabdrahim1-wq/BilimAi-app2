@@ -31,12 +31,12 @@ import { doc, setDoc, collection, query, orderBy, serverTimestamp, deleteDoc } f
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AdminPage() {
   const { isAdmin, loading, profile } = useAuth();
-  const firestore = useFirestore();
+  const { firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -188,7 +188,6 @@ export default function AdminPage() {
     
     const annRef = doc(firestore, "announcements", id);
     
-    // Non-blocking delete pattern
     deleteDoc(annRef)
       .then(() => {
         toast({ title: "Хабарландыру сәтті өшірілді" });
@@ -334,7 +333,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="divide-y">
                       {announcements?.map((ann) => (
-                        <div key={ann.id} className="p-6 flex items-start justify-between bg-white hover:bg-accent/5 transition-colors">
+                        <div key={ann.id} className="p-6 flex items-center justify-between bg-white hover:bg-accent/5 transition-colors">
                           <div className="space-y-2 flex-1 pr-4">
                             <div className="flex items-center gap-3">
                               <Badge variant="outline" className={`uppercase font-black text-[9px] ${
@@ -347,7 +346,7 @@ export default function AdminPage() {
                               <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
                             </div>
                             <h4 className="font-bold text-lg leading-tight">{ann.title}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-3">{ann.content}</p>
+                            <p className="text-sm text-muted-foreground line-clamp-2">{ann.content}</p>
                           </div>
                           <Button 
                             variant="ghost" 

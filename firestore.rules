@@ -9,9 +9,11 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.role == 'admin' ||
         request.auth.token.email == 'admin@bilimai.kz' ||
-        get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.fullName == 'Абдрахым Айдар'
+        request.auth.token.email == 'aaidarabdrahim1@gmail.com' ||
+        (exists(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)) && 
+         (get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.fullName == 'Абдрахым Айдар'))
       );
     }
 

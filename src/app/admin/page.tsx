@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +32,7 @@ import { doc, setDoc, collection, query, orderBy, serverTimestamp, deleteDoc, ad
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError, deleteDocumentNonBlocking } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 
@@ -176,14 +176,11 @@ export default function AdminPage() {
     }
   };
 
-  const deleteAnnouncement = async (id: string) => {
+  const handleDeleteAnnouncement = (id: string) => {
     if (!firestore || !confirm("Өшіргіңіз келе ме?")) return;
-    try {
-      await deleteDoc(doc(firestore, "announcements", id));
-      toast({ title: "Өшірілді" });
-    } catch (e) {
-      console.error(e);
-    }
+    const annRef = doc(firestore, "announcements", id);
+    deleteDocumentNonBlocking(annRef);
+    toast({ title: "Өшіру басталды..." });
   };
 
   if (loading || !isAdmin) {
@@ -349,7 +346,7 @@ export default function AdminPage() {
                               </div>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => deleteAnnouncement(ann.id)}>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleDeleteAnnouncement(ann.id)}>
                             <Trash2 className="size-4" />
                           </Button>
                         </div>

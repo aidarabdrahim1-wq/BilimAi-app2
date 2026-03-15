@@ -67,27 +67,13 @@
     ]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/studentProfiles/{studentId}",
-        "definition": {
-          "entityName": "StudentProfile",
-          "schema": {
-            "$ref": "#/backend/entities/StudentProfile"
-          },
-          "description": "Stores a student's personal learning profile."
-        }
-      },
-      {
-        "path": "/announcements/{announcementId}",
-        "definition": {
-          "entityName": "Announcement",
-          "schema": {
-            "$ref": "#/backend/entities/Announcement"
-          },
-          "description": "Stores global announcements."
-        }
-      }
-    ]
+    "/studentProfiles/{studentId}": {
+      "schema": "StudentProfile",
+      "description": "Stores a student's personal learning profile."
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Stores global platform announcements."
+    }
   }
 }

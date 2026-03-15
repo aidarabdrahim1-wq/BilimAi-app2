@@ -27,18 +27,16 @@ import {
   Star,
   ExternalLink
 } from "lucide-react";
-import { db } from "@/lib/firebase/config";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function AdminPage() {
   const { isAdmin, loading, profile } = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -59,15 +57,21 @@ export default function AdminPage() {
   }, [isAdmin, loading, router]);
 
   // Fetch users for monitoring
-  const usersQuery = useMemoFirebase(() => query(collection(db, "studentProfiles"), orderBy("rating", "desc")), []);
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
+  }, [firestore]);
   const { data: students, isLoading: loadingUsers } = useCollection(usersQuery);
 
   // Fetch announcements for management
-  const annQuery = useMemoFirebase(() => query(collection(db, "announcements"), orderBy("createdAt", "desc")), []);
+  const annQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, "announcements"), orderBy("createdAt", "desc"));
+  }, [firestore]);
   const { data: announcements, isLoading: loadingAnn } = useCollection(annQuery);
 
   const handleBulkUpload = async () => {
-    if (!jsonInput.trim()) return;
+    if (!jsonInput.trim() || !firestore) return;
     setIsUploading(true);
     setError(null);
     try {
@@ -76,7 +80,7 @@ export default function AdminPage() {
       
       for (const subject of data.subjects) {
         const subjectId = subject.id || subject.name.toLowerCase().replace(/\s+/g, '-');
-        const subjectRef = doc(db, "subjects", subjectId);
+        const subjectRef = doc(firestore, "subjects", subjectId);
         const subjectData = {
           name: subject.name,
           description: subject.description || "",
@@ -94,7 +98,7 @@ export default function AdminPage() {
         if (subject.topics) {
           for (const topic of subject.topics) {
             const topicId = topic.id || topic.title.toLowerCase().replace(/\s+/g, '-');
-            const topicRef = doc(db, "subjects", subjectId, "topics", topicId);
+            const topicRef = doc(firestore, "subjects", subjectId, "topics", topicId);
             const topicData = {
               title: topic.title,
               content: topic.content || "",
@@ -113,7 +117,7 @@ export default function AdminPage() {
             if (topic.questions && Array.isArray(topic.questions)) {
               for (const q of topic.questions) {
                 const qId = q.id || Math.random().toString(36).substring(7);
-                const qRef = doc(db, "subjects", subjectId, "topics", topicId, "questions", qId);
+                const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
                 const qData = {
                   text: q.text,
                   options: q.options,
@@ -147,10 +151,10 @@ export default function AdminPage() {
   };
 
   const handleAddAnnouncement = () => {
-    if (!annTitle || !annContent) return;
+    if (!annTitle || !annContent || !firestore) return;
     setIsAnnouncing(true);
     const id = Math.random().toString(36).substring(7);
-    const annRef = doc(db, "announcements", id);
+    const annRef = doc(firestore, "announcements", id);
     const annData = {
       id,
       title: annTitle,
@@ -179,11 +183,22 @@ export default function AdminPage() {
   };
 
   const handleDeleteAnnouncement = (id: string) => {
+    if (!firestore) return;
     if (!confirm("Бұл хабарландыруды өшіруді растайсыз ба?")) return;
     
-    const annRef = doc(db, "announcements", id);
-    deleteDocumentNonBlocking(annRef);
-    toast({ title: "Хабарландыру өшірілді" });
+    const annRef = doc(firestore, "announcements", id);
+    
+    // Non-blocking delete pattern
+    deleteDoc(annRef)
+      .then(() => {
+        toast({ title: "Хабарландыру сәтті өшірілді" });
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: annRef.path,
+          operation: 'delete'
+        }));
+      });
   };
 
   if (loading || !isAdmin) {
@@ -275,7 +290,7 @@ export default function AdminPage() {
 
           <TabsContent value="announcements" className="space-y-8">
             <div className="grid lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1 border-none shadow-xl bg-white rounded-[32px]">
+              <Card className="lg:col-span-1 border-none shadow-xl bg-white rounded-3xl">
                 <CardHeader>
                   <CardTitle className="text-xl font-black">Жаңа хабарландыру</CardTitle>
                   <CardDescription>Платформадағы барлық оқушыларға көрінеді.</CardDescription>
@@ -309,7 +324,7 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
 
-              <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
+              <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-3xl overflow-hidden">
                 <CardHeader className="bg-accent/5 border-b">
                   <CardTitle className="text-xl font-black">Жарияланғандар</CardTitle>
                 </CardHeader>
@@ -319,7 +334,7 @@ export default function AdminPage() {
                   ) : (
                     <div className="divide-y">
                       {announcements?.map((ann) => (
-                        <div key={ann.id} className="p-6 flex items-start justify-between group bg-white hover:bg-accent/5 transition-colors">
+                        <div key={ann.id} className="p-6 flex items-start justify-between bg-white hover:bg-accent/5 transition-colors">
                           <div className="space-y-2 flex-1 pr-4">
                             <div className="flex items-center gap-3">
                               <Badge variant="outline" className={`uppercase font-black text-[9px] ${

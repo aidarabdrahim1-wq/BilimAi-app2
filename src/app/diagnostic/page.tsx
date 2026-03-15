@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -24,22 +24,30 @@ import {
   MapPin,
   ListTodo,
   TrendingUp,
-  Award
+  Award,
+  Save
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { generateStartingRoute, type StartingRouteOutput } from "@/ai/flows/generate-starting-route-flow";
+import { db } from "@/lib/firebase/config";
+import { collection, addDoc, serverTimestamp, doc, updateDoc, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { errorEmitter, FirestorePermissionError } from "@/firebase";
+import { format } from "date-fns";
+import { kk } from "date-fns/locale";
 
 export default function DiagnosticPage() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   
-  const [step, setStep] = useState<"start" | "survey" | "analyzing" | "result">("start");
+  const [step, setStep] = useState<"start" | "survey" | "analyzing" | "result" | "history">("start");
   const [currentQuestionIdx, setCurrentQuestionIndex] = useState(0);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [routeResult, setRouteResult] = useState<StartingRouteOutput | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   
   const [responses, setAnswers] = useState({
     prepExperience: "",
@@ -51,6 +59,37 @@ export default function DiagnosticPage() {
     preferredFormat: "",
     goal: ""
   });
+
+  const loadingSteps = [
+    "Жауаптарыңызды сараптауда...",
+    "Оқушы сегментін анықтауда...",
+    "Тиімді пәндер тізімін құруда...",
+    "Апталық стратегияны дайындауда...",
+    "Жеке старттық маршрут сызылуда..."
+  ];
+
+  useEffect(() => {
+    if (isAiLoading) {
+      const interval = setInterval(() => {
+        setLoadingStep((prev) => (prev + 1) % loadingSteps.length);
+      }, 2000);
+      return () => clearInterval(interval);
+    }
+  }, [isAiLoading]);
+
+  // Fetch History
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "studentProfiles", user.uid, "startingRoutes"),
+      orderBy("createdAt", "desc"),
+      limit(5)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [user]);
 
   const questions = [
     {
@@ -155,6 +194,25 @@ export default function DiagnosticPage() {
     try {
       const res = await generateStartingRoute(responses);
       setRouteResult(res);
+      
+      // Save to Firestore
+      if (user) {
+        const routeData = {
+          ...res,
+          responses,
+          createdAt: serverTimestamp()
+        };
+        const routesRef = collection(db, "studentProfiles", user.uid, "startingRoutes");
+        await addDoc(routesRef, routeData);
+
+        // Update profile segment
+        const userRef = doc(db, "studentProfiles", user.uid);
+        await updateDoc(userRef, {
+          segment: res.segment,
+          updatedAt: serverTimestamp()
+        });
+      }
+
       setStep("result");
     } catch (error: any) {
       toast({ 
@@ -168,9 +226,14 @@ export default function DiagnosticPage() {
     }
   };
 
+  const loadFromHistory = (item: any) => {
+    setRouteResult(item);
+    setStep("result");
+  };
+
   return (
     <AppShell>
-      <div className="relative min-h-screen overflow-hidden -m-4 md:-m-6 p-4 md:p-6">
+      <div className="relative min-h-screen -m-4 md:-m-6 p-4 md:p-6 overflow-x-hidden">
         {/* Background Elements */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
@@ -179,7 +242,7 @@ export default function DiagnosticPage() {
         </div>
 
         <div className="max-w-5xl mx-auto space-y-10 pb-20 relative z-10">
-          {step !== "result" && (
+          {step !== "result" && step !== "history" && (
             <div className="flex flex-col gap-4 text-center max-w-2xl mx-auto">
               <div className="flex items-center justify-center gap-3">
                 <div className="size-14 rounded-[22px] bg-gradient-to-br from-primary to-indigo-600 text-white flex items-center justify-center shadow-2xl shadow-primary/40">
@@ -199,43 +262,67 @@ export default function DiagnosticPage() {
           )}
 
           {step === "start" && (
-            <div className="grid lg:grid-cols-2 gap-8 items-center max-w-4xl mx-auto pt-10">
-              <div className="space-y-6">
-                <h3 className="text-2xl font-black font-headline">Бұл сауалнама саған не береді?</h3>
-                <div className="space-y-4">
-                  {[
-                    { icon: MapPin, text: "Нақты старттық маршрут", desc: "Дайындықты неден бастау керек екенін білесің." },
-                    { icon: Target, text: "Сегментация", desc: "Өз деңгейіңе сай оқу қарқынын анықтайсың." },
-                    { icon: Sparkles, text: "AI стратегия", desc: "Алғашқы 7 күнге арналған нақты жоспар." }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/50 backdrop-blur-sm border">
-                      <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <item.icon className="size-5" />
+            <div className="space-y-12">
+              <div className="grid lg:grid-cols-2 gap-12 items-center max-w-4xl mx-auto pt-10">
+                <div className="space-y-8">
+                  <h3 className="text-2xl font-black font-headline">Бұл сауалнама саған не береді?</h3>
+                  <div className="space-y-4">
+                    {[
+                      { icon: MapPin, text: "Нақты старттық маршрут", desc: "Дайындықты неден бастау керек екенін білесің." },
+                      { icon: Target, text: "Сегментация", desc: "Өз деңгейіңе сай оқу қарқынын анықтайсың." },
+                      { icon: Sparkles, text: "AI стратегия", desc: "Алғашқы 7 күнге арналған нақты жоспар." }
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start gap-4 p-5 rounded-3xl bg-white/80 backdrop-blur-sm border shadow-sm hover:shadow-md transition-all group">
+                        <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <item.icon className="size-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-base">{item.text}</p>
+                          <p className="text-sm text-muted-foreground">{item.desc}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-sm">{item.text}</p>
-                        <p className="text-xs text-muted-foreground">{item.desc}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <Button 
+                      size="lg" 
+                      className="h-16 flex-1 rounded-2xl bg-primary text-white hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-3" 
+                      onClick={() => setStep("survey")}
+                    >
+                      Бастау
+                      <ArrowRight className="size-5" />
+                    </Button>
+                    {history.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="lg" 
+                        className="h-16 flex-1 rounded-2xl border-2 font-bold gap-2"
+                        onClick={() => setStep("history")}
+                      >
+                        <History className="size-5" />
+                        Тарих
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <Button 
-                  size="lg" 
-                  className="h-16 w-full rounded-2xl bg-primary text-white hover:bg-primary/90 font-black text-lg shadow-xl shadow-primary/20 gap-3" 
-                  onClick={() => setStep("survey")}
-                >
-                  Бастау
-                  <ArrowRight className="size-5" />
-                </Button>
-              </div>
-              <div className="hidden lg:block relative">
-                <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full" />
-                <img 
-                  src="https://picsum.photos/seed/starting/600/600" 
-                  alt="Starting strategy" 
-                  className="rounded-[40px] shadow-2xl relative z-10 border-8 border-white"
-                  data-ai-hint="education student"
-                />
+                <div className="hidden lg:block relative">
+                  <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full" />
+                  <img 
+                    src="https://picsum.photos/seed/starting/600/600" 
+                    alt="Starting strategy" 
+                    className="rounded-[40px] shadow-2xl relative z-10 border-8 border-white transform hover:scale-[1.02] transition-transform duration-500"
+                    data-ai-hint="education student"
+                  />
+                  <div className="absolute -bottom-6 -right-6 z-20 bg-white p-6 rounded-3xl shadow-xl border flex items-center gap-4 animate-bounce duration-[3000ms]">
+                    <div className="size-12 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                      <CheckCircle2 className="size-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Сенің мақсатың</p>
+                      <p className="text-lg font-bold">Грантқа түсу</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -244,8 +331,11 @@ export default function DiagnosticPage() {
             <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="mb-8 space-y-4">
                 <div className="flex justify-between items-end">
-                  <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Прогресс</span>
-                  <span className="text-sm font-black text-primary">{currentQuestionIdx + 1} / {questions.length}</span>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Прогресс</span>
+                    <span className="text-sm font-black text-primary">{currentQuestionIdx + 1} / {questions.length}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-primary/5 text-primary border-none">Survey Mode</Badge>
                 </div>
                 <Progress value={((currentQuestionIdx + 1) / questions.length) * 100} className="h-2 rounded-full" />
               </div>
@@ -288,16 +378,68 @@ export default function DiagnosticPage() {
           )}
 
           {step === "analyzing" && (
-            <div className="max-w-2xl mx-auto py-32 flex flex-col items-center justify-center text-center gap-8">
+            <div className="max-w-2xl mx-auto py-32 flex flex-col items-center justify-center text-center gap-8 animate-in fade-in duration-700">
               <div className="relative">
-                <div className="size-32 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+                <div className="size-40 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <BrainCircuit className="size-12 text-primary animate-pulse" />
+                  <BrainCircuit className="size-16 text-primary animate-pulse" />
+                </div>
+                <div className="absolute -top-2 -right-2">
+                  <Sparkles className="size-10 text-yellow-400 animate-bounce" />
                 </div>
               </div>
-              <div className="space-y-3">
-                <h2 className="text-3xl font-black font-headline animate-pulse">AI Маршрутты құруда...</h2>
-                <p className="text-muted-foreground font-medium max-w-sm">Жауаптарыңды саралап, саған ең тиімді оқу стратегиясын дайындап жатырмыз.</p>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black font-headline tracking-tight">AI Маршрутты құруда...</h2>
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-primary font-black text-sm uppercase tracking-widest animate-pulse">
+                    {loadingSteps[loadingStep]}
+                  </p>
+                  <div className="flex gap-1">
+                    {loadingSteps.map((_, i) => (
+                      <div key={i} className={`size-1.5 rounded-full transition-all duration-500 ${i === loadingStep ? 'bg-primary w-6' : 'bg-primary/20'}`} />
+                    ))}
+                  </div>
+                </div>
+                <p className="text-muted-foreground font-medium max-w-sm mx-auto pt-4 border-t border-dashed">
+                  Жауаптарыңды саралап, саған ең тиімді оқу стратегиясын дайындап жатырмыз.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {step === "history" && (
+            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black font-headline">Сақталған маршруттар</h2>
+                <Button variant="ghost" onClick={() => setStep("start")} className="gap-2 font-bold">
+                  <ArrowLeft className="size-4" /> Артқа
+                </Button>
+              </div>
+              <div className="grid gap-4">
+                {history.map((item) => (
+                  <Card 
+                    key={item.id} 
+                    className="border-none shadow-md hover:shadow-xl transition-all cursor-pointer group bg-white rounded-3xl overflow-hidden"
+                    onClick={() => loadFromHistory(item)}
+                  >
+                    <div className="flex items-center justify-between p-6">
+                      <div className="flex items-center gap-6">
+                        <div className="size-14 rounded-2xl bg-primary/5 text-primary flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all">
+                          <Award className="size-7" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-xl font-black">{item.segment}</h4>
+                          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">
+                            {format(item.createdAt?.toDate(), 'd MMMM, yyyy HH:mm', { locale: kk })}
+                          </p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="rounded-full group-hover:translate-x-1 transition-transform">
+                        <ArrowRight className="size-6" />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
               </div>
             </div>
           )}
@@ -394,9 +536,12 @@ export default function DiagnosticPage() {
                 <Zap className="absolute -bottom-10 -right-10 size-64 text-white/5 rotate-12 pointer-events-none" />
               </Card>
 
-              <div className="flex justify-center gap-4 pt-10">
+              <div className="flex flex-col sm:flex-row justify-center gap-4 pt-10">
                 <Button variant="outline" className="h-12 rounded-xl px-8 font-bold border-2" onClick={() => setStep("start")}>
-                  Сауалнамадан қайта өту
+                  Жаңа сауалнама бастау
+                </Button>
+                <Button variant="secondary" className="h-12 rounded-xl px-8 font-bold" onClick={() => setStep("history")}>
+                  Тарихты көру
                 </Button>
                 <Button variant="ghost" className="h-12 rounded-xl px-8 font-bold text-muted-foreground" asChild>
                   <a href="/dashboard">Дашбордқа қайту</a>

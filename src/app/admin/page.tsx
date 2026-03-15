@@ -27,9 +27,10 @@ import {
   Plus,
   Trash2,
   Calendar,
-  AlertTriangle
+  AlertTriangle,
+  Eraser
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp, addDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, addDoc, writeBatch, getDocs } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
@@ -54,6 +55,7 @@ export default function AdminPage() {
     type: "info" as "urgent" | "success" | "info"
   });
   const [isAnnLoading, setIsAnnLoading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -182,7 +184,27 @@ export default function AdminPage() {
     if (confirm("Бұл хабарландыруды өшіргіңіз келе ме?")) {
       const annRef = doc(firestore, "announcements", id);
       deleteDocumentNonBlocking(annRef);
-      toast({ title: "Өшірілді", description: "Хабарландыру базадан жойылды." });
+      toast({ title: "Өшірілді" });
+    }
+  };
+
+  const handleClearAllAnnouncements = async () => {
+    if (!firestore || !announcements || announcements.length === 0) return;
+    if (confirm("БАРЛЫҚ хабарландыруларды өшіргіңіз келе ме? Бұл амалды қайтару мүмкін емес.")) {
+      setIsClearing(true);
+      try {
+        const batch = writeBatch(firestore);
+        announcements.forEach((ann) => {
+          batch.delete(doc(firestore, "announcements", ann.id));
+        });
+        await batch.commit();
+        toast({ title: "Барлық хабарландырулар тазартылды" });
+      } catch (e) {
+        console.error(e);
+        toast({ title: "Қате орын алды", variant: "destructive" });
+      } finally {
+        setIsClearing(false);
+      }
     }
   };
 
@@ -209,8 +231,8 @@ export default function AdminPage() {
           <p className="text-muted-foreground font-medium">Пайдаланушылар, хабарландырулар және оқу контентін басқару орталығы.</p>
         </div>
 
-        <Tabs defaultValue="users" className="w-full">
-          <TabsList className="bg-white border p-1.5 h-14 rounded-2xl shadow-sm mb-8">
+        <Tabs defaultValue="announcements" className="w-full">
+          <TabsList className="bg-white border p-1.5 h-14 rounded-2xl shadow-sm mb-8 overflow-x-auto">
             <TabsTrigger value="users" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Users className="size-4" /> Пайдаланушылар
             </TabsTrigger>
@@ -320,8 +342,20 @@ export default function AdminPage() {
               </Card>
 
               <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
-                <CardHeader className="bg-accent/5 pb-6 border-b">
+                <CardHeader className="bg-accent/5 pb-6 border-b flex flex-row items-center justify-between">
                   <CardTitle>Жарияланғандар</CardTitle>
+                  {announcements && announcements.length > 0 && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-destructive hover:bg-destructive/10 border-destructive/20 gap-2 font-bold rounded-xl"
+                      onClick={handleClearAllAnnouncements}
+                      disabled={isClearing}
+                    >
+                      {isClearing ? <Loader2 className="size-4 animate-spin" /> : <Eraser className="size-4" />}
+                      Барлығын тазалау
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent className="p-0">
                   {loadingAnn ? (
@@ -352,7 +386,7 @@ export default function AdminPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="text-destructive hover:bg-destructive/10 rounded-full" 
+                            className="text-destructive hover:bg-destructive/10 rounded-full shrink-0" 
                             onClick={() => handleDeleteAnnouncement(ann.id)}
                           >
                             <Trash2 className="size-4" />

@@ -26,9 +26,10 @@ import {
   Megaphone,
   Plus,
   Trash2,
-  Calendar
+  Calendar,
+  AlertTriangle
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp, deleteDoc, addDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, addDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
@@ -177,10 +178,12 @@ export default function AdminPage() {
   };
 
   const handleDeleteAnnouncement = (id: string) => {
-    if (!firestore || !confirm("Өшіргіңіз келе ме?")) return;
-    const annRef = doc(firestore, "announcements", id);
-    deleteDocumentNonBlocking(annRef);
-    toast({ title: "Өшіру басталды..." });
+    if (!firestore) return;
+    if (confirm("Бұл хабарландыруды өшіргіңіз келе ме?")) {
+      const annRef = doc(firestore, "announcements", id);
+      deleteDocumentNonBlocking(annRef);
+      toast({ title: "Өшірілді", description: "Хабарландыру базадан жойылды." });
+    }
   };
 
   if (loading || !isAdmin) {
@@ -346,7 +349,12 @@ export default function AdminPage() {
                               </div>
                             </div>
                           </div>
-                          <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 rounded-full" onClick={() => handleDeleteAnnouncement(ann.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:bg-destructive/10 rounded-full" 
+                            onClick={() => handleDeleteAnnouncement(ann.id)}
+                          >
                             <Trash2 className="size-4" />
                           </Button>
                         </div>

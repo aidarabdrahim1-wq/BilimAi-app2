@@ -9,9 +9,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Target, 
   TrendingUp, 
-  AlertCircle,
   Trophy,
-  CheckCircle2,
   CalendarDays,
   Edit2,
   PlusCircle,
@@ -32,26 +30,20 @@ import {
   Star,
   Medal,
   GraduationCap,
-  Flame,
-  Megaphone,
-  Info,
-  ChevronRight
+  Flame
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp, collection, query, where, orderBy, limit } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { updateUserRating } from "@/lib/rating";
 import { useMemoFirebase, useCollection } from "@/firebase";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 const MOTIVATION_QUOTES = [
   { text: "Жетістіктің құпиясы — бастауда. Ал бүгінгі 1 сағаттық дайындық ертеңгі үлкен жеңістің негізі.", author: "BilimAI Рухы" },
@@ -93,10 +85,6 @@ export default function Dashboard() {
     );
   }, [user, todayStr]);
   const { data: plansData } = useCollection(plansQuery);
-
-  // Fetch real announcements from Admin
-  const annQuery = useMemoFirebase(() => query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(3)), []);
-  const { data: dbAnnouncements } = useCollection(annQuery);
 
   const todayTasks = useMemo(() => {
     if (!plansData || plansData.length === 0) return [];
@@ -193,7 +181,6 @@ export default function Dashboard() {
 
   const currentScore = profile?.currentScore || 0;
   const rating = profile?.rating || 0;
-  const targetScore = profile?.targetScore || 140;
   const todayStudyMinutes = profile?.todayStudyTimeMinutes || 0;
 
   const getRankInfo = (pts: number) => {
@@ -213,57 +200,6 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
-        {/* Announcements Section (Dynamic) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold font-headline flex items-center gap-2">
-              <Megaphone className="size-5 text-primary" />
-              Хабарландырулар
-            </h2>
-            <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1" asChild>
-              <Link href="/announcements">
-                Барлығы <ChevronRight className="size-3" />
-              </Link>
-            </Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {dbAnnouncements && dbAnnouncements.length > 0 ? (
-              dbAnnouncements.map((ann) => (
-                <Card key={ann.id} className={`border-none shadow-sm overflow-hidden relative group transition-all hover:shadow-md ${
-                  ann.type === 'urgent' ? 'bg-red-50 border-l-4 border-l-red-500' : 
-                  ann.type === 'success' ? 'bg-green-50 border-l-4 border-l-green-500' : 
-                  'bg-blue-50 border-l-4 border-l-blue-500'
-                }`}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <Badge variant="outline" className={`text-[9px] uppercase font-black tracking-widest ${
-                        ann.type === 'urgent' ? 'text-red-600 bg-red-100/50 border-red-200' : 
-                        ann.type === 'success' ? 'text-green-600 bg-green-100/50 border-green-200' : 
-                        'text-blue-600 bg-blue-100/50 border-blue-200'
-                      }`}>
-                        {ann.type === 'urgent' ? 'Шұғыл' : ann.type === 'success' ? 'Жаңалық' : 'Ақпарат'}
-                      </Badge>
-                      <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
-                    </div>
-                    <CardTitle className="text-sm font-black mt-2 leading-tight group-hover:text-primary transition-colors">
-                      {ann.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                      {ann.content}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))
-            ) : (
-              <div className="col-span-3 p-8 text-center bg-muted/5 border-2 border-dashed rounded-2xl text-xs text-muted-foreground">
-                Жаңа хабарландырулар жоқ.
-              </div>
-            )}
-          </div>
-        </section>
-
         {todayTasks.length === 0 && (
           <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
@@ -344,7 +280,7 @@ export default function Dashboard() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>Ағымдағы баллды жаңарту</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
-                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(e.target.value))} />
+                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(newScore))} />
                 <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>Сақтау</Button>
               </div>
             </DialogContent>

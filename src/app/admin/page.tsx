@@ -8,9 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Database, 
   Upload, 
@@ -21,13 +18,10 @@ import {
   Code,
   ShieldAlert,
   Users,
-  Megaphone,
-  Plus,
-  Trash2,
   Star,
   ExternalLink
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
@@ -44,12 +38,6 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Announcement state
-  const [annTitle, setAnnTitle] = useState("");
-  const [annContent, setAnnContent] = useState("");
-  const [annType, setAnnType] = useState<"info" | "urgent" | "success">("info");
-  const [isAnnouncing, setIsAnnouncing] = useState(false);
-
   useEffect(() => {
     if (!loading && !isAdmin) {
       router.push("/dashboard");
@@ -62,13 +50,6 @@ export default function AdminPage() {
     return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
   }, [firestore]);
   const { data: students, isLoading: loadingUsers } = useCollection(usersQuery);
-
-  // Fetch announcements for management
-  const annQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, "announcements"), orderBy("createdAt", "desc"));
-  }, [firestore]);
-  const { data: announcements, isLoading: loadingAnn } = useCollection(annQuery);
 
   const handleBulkUpload = async () => {
     if (!jsonInput.trim() || !firestore) return;
@@ -139,8 +120,8 @@ export default function AdminPage() {
         }
       }
       toast({ 
-        title: "Деректерді жүктеу басталды", 
-        description: "Деректер базаға қосылуда..." 
+        title: "Деректерді жүктеу аяқталды", 
+        description: "Барлық пәндер мен сұрақтар базаға сәтті қосылды." 
       });
       setJsonInput("");
     } catch (err: any) {
@@ -148,56 +129,6 @@ export default function AdminPage() {
     } finally {
       setIsUploading(false);
     }
-  };
-
-  const handleAddAnnouncement = () => {
-    if (!annTitle || !annContent || !firestore) return;
-    setIsAnnouncing(true);
-    const id = Math.random().toString(36).substring(7);
-    const annRef = doc(firestore, "announcements", id);
-    const annData = {
-      id,
-      title: annTitle,
-      content: annContent,
-      type: annType,
-      createdAt: serverTimestamp(),
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    setDoc(annRef, annData)
-      .then(() => {
-        toast({ title: "Хабарландыру жарияланды!" });
-        setAnnTitle("");
-        setAnnContent("");
-      })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: annRef.path,
-          operation: 'create',
-          requestResourceData: annData
-        }));
-      })
-      .finally(() => {
-        setIsAnnouncing(false);
-      });
-  };
-
-  const handleDeleteAnnouncement = (id: string) => {
-    if (!firestore) return;
-    if (!confirm("Бұл хабарландыруды өшіруді растайсыз ба?")) return;
-    
-    const annRef = doc(firestore, "announcements", id);
-    
-    deleteDoc(annRef)
-      .then(() => {
-        toast({ title: "Хабарландыру сәтті өшірілді" });
-      })
-      .catch((err) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: annRef.path,
-          operation: 'delete'
-        }));
-      });
   };
 
   if (loading || !isAdmin) {
@@ -220,16 +151,13 @@ export default function AdminPage() {
               Админ: {profile?.fullName || "Белгісіз"}
             </Badge>
           </div>
-          <p className="text-muted-foreground font-medium">Жүйелік баптаулар, пайдаланушылар және контент орталығы.</p>
+          <p className="text-muted-foreground font-medium">Пайдаланушылар мен оқу контентін басқару орталығы.</p>
         </div>
 
         <Tabs defaultValue="users" className="w-full">
           <TabsList className="bg-white border p-1.5 h-14 rounded-2xl shadow-sm mb-8">
             <TabsTrigger value="users" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Users className="size-4" /> Пайдаланушылар
-            </TabsTrigger>
-            <TabsTrigger value="announcements" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
-              <Megaphone className="size-4" /> Хабарландырулар
             </TabsTrigger>
             <TabsTrigger value="import" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Database className="size-4" /> Контент импорт
@@ -285,87 +213,6 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="announcements" className="space-y-8">
-            <div className="grid lg:grid-cols-3 gap-8">
-              <Card className="lg:col-span-1 border-none shadow-xl bg-white rounded-3xl">
-                <CardHeader>
-                  <CardTitle className="text-xl font-black">Жаңа хабарландыру</CardTitle>
-                  <CardDescription>Платформадағы барлық оқушыларға көрінеді.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="space-y-2">
-                    <Label className="font-bold">Тақырыбы</Label>
-                    <Input value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} placeholder="М: Жаңа пән қосылды!" className="h-12 rounded-xl bg-accent/5 border-none shadow-inner" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Түрі</Label>
-                    <Select value={annType} onValueChange={(v: any) => setAnnType(v)}>
-                      <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="info">Ақпарат (Көк)</SelectItem>
-                        <SelectItem value="urgent">Шұғыл (Қызыл)</SelectItem>
-                        <SelectItem value="success">Жаңалық (Жасыл)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="font-bold">Мазмұны</Label>
-                    <Textarea value={annContent} onChange={(e) => setAnnContent(e.target.value)} placeholder="Хабарлама мәтінін жазыңыз..." className="min-h-[150px] rounded-xl bg-accent/5 border-none shadow-inner" />
-                  </div>
-                  <Button className="w-full h-14 rounded-2xl font-black text-lg gap-2 shadow-xl shadow-primary/20" onClick={handleAddAnnouncement} disabled={isAnnouncing || !annTitle}>
-                    {isAnnouncing ? <Loader2 className="size-5 animate-spin" /> : <Plus className="size-5" />}
-                    Жариялау
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-3xl overflow-hidden">
-                <CardHeader className="bg-accent/5 border-b">
-                  <CardTitle className="text-xl font-black">Жарияланғандар</CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  {loadingAnn ? (
-                    <div className="p-20 flex justify-center"><Loader2 className="size-8 animate-spin text-primary" /></div>
-                  ) : (
-                    <div className="divide-y">
-                      {announcements?.map((ann) => (
-                        <div key={ann.id} className="p-6 flex items-center justify-between bg-white hover:bg-accent/5 transition-colors">
-                          <div className="space-y-2 flex-1 pr-4">
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline" className={`uppercase font-black text-[9px] ${
-                                ann.type === 'urgent' ? 'bg-red-50 text-red-600 border-red-200' :
-                                ann.type === 'success' ? 'bg-green-50 text-green-600 border-green-200' :
-                                'bg-blue-50 text-blue-600 border-blue-200'
-                              }`}>
-                                {ann.type}
-                              </Badge>
-                              <span className="text-[10px] font-bold text-muted-foreground">{ann.date}</span>
-                            </div>
-                            <h4 className="font-bold text-lg leading-tight">{ann.title}</h4>
-                            <p className="text-sm text-muted-foreground line-clamp-2">{ann.content}</p>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 self-center" 
-                            onClick={() => handleDeleteAnnouncement(ann.id)}
-                          >
-                            <Trash2 className="size-5" />
-                          </Button>
-                        </div>
-                      ))}
-                      {announcements?.length === 0 && (
-                        <div className="p-20 text-center text-muted-foreground font-medium italic">Хабарландырулар тізімі бос.</div>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
           </TabsContent>
 
           <TabsContent value="import" className="space-y-6">

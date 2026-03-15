@@ -44,17 +44,6 @@
         "targetScore",
         "createdAt"
       ]
-    },
-    "Announcement": {
-      "title": "Announcement",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "content": { "type": "string" },
-        "type": { "type": "string", "enum": ["urgent", "info", "success"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
     }
   },
   "auth": {
@@ -73,16 +62,6 @@
             "$ref": "#/backend/entities/StudentProfile"
           },
           "description": "Stores a student's personal learning profile."
-        }
-      },
-      {
-        "path": "/announcements/{announcementId}",
-        "definition": {
-          "entityName": "Announcement",
-          "schema": {
-            "$ref": "#/backend/entities/Announcement"
-          },
-          "description": "Global platform announcements."
         }
       }
     ]

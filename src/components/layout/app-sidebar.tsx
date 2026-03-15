@@ -18,7 +18,6 @@ import {
   LogOut,
   Trophy,
   Compass,
-  BookMarked,
 } from "lucide-react";
 import { auth } from "@/lib/firebase/config";
 import { signOut } from "firebase/auth";
@@ -48,7 +47,6 @@ const mainNavItems = [
 
 const secondaryNavItems = [
   { title: "Оқу жоспары", icon: CalendarDays, url: "/plan" },
-  { title: "Кітаптар", icon: BookMarked, url: "/books" },
   { title: "Профориентолог", icon: Compass, url: "/proforientologist" },
   { title: "Прогресс", icon: BarChart3, url: "/progress" },
   { title: "Рейтинг", icon: Trophy, url: "/leaderboard" },

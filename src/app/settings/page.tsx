@@ -21,10 +21,24 @@ import {
   Mail, 
   Save, 
   Loader2,
-  ShieldCheck
+  ShieldCheck,
+  BookOpen
 } from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+
+const SUBJECT_COMBINATIONS = [
+  { label: "Математика + Физика", subjects: ["Математика", "Физика"] },
+  { label: "Математика + Информатика", subjects: ["Математика", "Информатика"] },
+  { label: "Биология + Химия", subjects: ["Биология", "Химия"] },
+  { label: "Биология + География", subjects: ["Биология", "География"] },
+  { label: "География + Математика", subjects: ["География", "Математика"] },
+  { label: "Дүниежүзі тарихы + География", subjects: ["Дүниежүзі тарихы", "География"] },
+  { label: "Дүниежүзі тарихы + Адам. Қоғам. Құқық", subjects: ["Дүниежүзі тарихы", "Құқық негіздері"] },
+  { label: "Қазақ әдебиеті + Қазақ тілі", subjects: ["Қазақ әдебиеті", "Қазақ тілі"] },
+  { label: "Орыс тілі + Орыс әдебиеті", subjects: ["Орыс тілі", "Орыс әдебиеті"] },
+  { label: "Ағылшын тілі + Дүниежүзі тарихы", subjects: ["Ағылшын тілі", "Дүниежүзі тарихы"] },
+];
 
 export default function SettingsPage() {
   const { user, profile, isAdmin } = useAuth();
@@ -36,17 +50,22 @@ export default function SettingsPage() {
     grade: "",
     targetScore: 120,
     targetCareer: "",
-    untDate: "2025-06-20"
+    untDate: "2025-06-20",
+    subjectComboIndex: ""
   });
 
   useEffect(() => {
     if (profile) {
+      // Find current combination index
+      const comboIndex = SUBJECT_COMBINATIONS.findIndex(c => c.label === profile.subjectCombination).toString();
+      
       setFormData({
         fullName: profile.fullName || "",
         grade: profile.grade || "",
         targetScore: profile.targetScore || 120,
         targetCareer: profile.targetCareer || "",
-        untDate: profile.untDate || "2025-06-20"
+        untDate: profile.untDate || "2025-06-20",
+        subjectComboIndex: comboIndex !== "-1" ? comboIndex : ""
       });
     }
   }, [profile]);
@@ -55,12 +74,22 @@ export default function SettingsPage() {
     if (!user) return;
     setIsSaving(true);
 
+    const combo = formData.subjectComboIndex !== "" ? SUBJECT_COMBINATIONS[parseInt(formData.subjectComboIndex)] : null;
+    
     const userRef = doc(db, "studentProfiles", user.uid);
-    const updateData = {
-      ...formData,
+    const updateData: any = {
+      fullName: formData.fullName,
+      grade: formData.grade,
       targetScore: Number(formData.targetScore),
+      targetCareer: formData.targetCareer,
+      untDate: formData.untDate,
       updatedAt: serverTimestamp()
     };
+
+    if (combo) {
+      updateData.subjectCombination = combo.label;
+      updateData.selectedSubjects = ["Оқу сауаттылығы", "Қазақстан тарихы", "Математикалық сауаттылық", ...combo.subjects];
+    }
 
     updateDoc(userRef, updateData)
       .then(() => {
@@ -98,7 +127,7 @@ export default function SettingsPage() {
           {/* Personal Information */}
           <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
             <CardHeader className="bg-accent/5 border-b">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2">
                 <User className="size-5 text-primary" />
                 Жеке мәліметтер
               </CardTitle>
@@ -173,7 +202,7 @@ export default function SettingsPage() {
               <CardDescription>AI стратегиясы мен жоспарлау осы деректерге негізделеді.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <Label className="font-bold">Мақсатты балл (0-140)</Label>
                   <div className="relative">
@@ -211,6 +240,33 @@ export default function SettingsPage() {
                       className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner"
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-1 gap-6 pt-4 border-t border-dashed">
+                <div className="space-y-2">
+                  <Label className="font-bold flex items-center gap-2">
+                    <BookOpen className="size-4 text-primary" />
+                    Таңдау пәндері (Комбинация)
+                  </Label>
+                  <Select 
+                    value={formData.subjectComboIndex} 
+                    onValueChange={(v) => setFormData({...formData, subjectComboIndex: v})}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none shadow-inner">
+                      <SelectValue placeholder="Комбинацияны таңдаңыз" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUBJECT_COMBINATIONS.map((combo, index) => (
+                        <SelectItem key={index} value={index.toString()}>
+                          {combo.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[10px] text-muted-foreground font-medium italic">
+                    Ескерту: Пән комбинациясын өзгертсеңіз, оқу жоспары мен практикалық база жаңа пәндерге сай қайта бейімделеді.
+                  </p>
                 </div>
               </div>
             </CardContent>

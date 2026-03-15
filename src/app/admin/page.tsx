@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -34,6 +34,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function AdminPage() {
   const { isAdmin, loading, profile } = useAuth();
@@ -72,10 +74,6 @@ export default function AdminPage() {
       const data = JSON.parse(jsonInput);
       if (!data.subjects) throw new Error("JSON файлында 'subjects' массиві болуы керек.");
       
-      let subjectCount = 0;
-      let topicCount = 0;
-      let questionCount = 0;
-
       for (const subject of data.subjects) {
         const subjectId = subject.id || subject.name.toLowerCase().replace(/\s+/g, '-');
         const subjectRef = doc(db, "subjects", subjectId);
@@ -85,8 +83,13 @@ export default function AdminPage() {
           updatedAt: serverTimestamp()
         };
 
-        await setDoc(subjectRef, subjectData, { merge: true });
-        subjectCount++;
+        setDoc(subjectRef, subjectData, { merge: true }).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: subjectRef.path,
+            operation: 'write',
+            requestResourceData: subjectData
+          }));
+        });
 
         if (subject.topics) {
           for (const topic of subject.topics) {
@@ -99,8 +102,13 @@ export default function AdminPage() {
               updatedAt: serverTimestamp()
             };
 
-            await setDoc(topicRef, topicData, { merge: true });
-            topicCount++;
+            setDoc(topicRef, topicData, { merge: true }).catch(err => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: topicRef.path,
+                operation: 'write',
+                requestResourceData: topicData
+              }));
+            });
 
             if (topic.questions && Array.isArray(topic.questions)) {
               for (const q of topic.questions) {
@@ -114,16 +122,21 @@ export default function AdminPage() {
                   points: q.points || 1,
                   updatedAt: serverTimestamp()
                 };
-                await setDoc(qRef, qData, { merge: true });
-                questionCount++;
+                setDoc(qRef, qData, { merge: true }).catch(err => {
+                  errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: qRef.path,
+                    operation: 'write',
+                    requestResourceData: qData
+                  }));
+                });
               }
             }
           }
         }
       }
       toast({ 
-        title: "Деректер жүктелді", 
-        description: `${subjectCount} пән, ${topicCount} тақырып және ${questionCount} сұрақ қосылды.` 
+        title: "Деректерді жүктеу басталды", 
+        description: "Деректер базаға қосылуда..." 
       });
       setJsonInput("");
     } catch (err: any) {
@@ -133,43 +146,48 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddAnnouncement = async () => {
+  const handleAddAnnouncement = () => {
     if (!annTitle || !annContent) return;
     setIsAnnouncing(true);
-    try {
-      const id = Math.random().toString(36).substring(7);
-      const annRef = doc(db, "announcements", id);
-      const annData = {
-        id,
-        title: annTitle,
-        content: annContent,
-        type: annType,
-        createdAt: serverTimestamp(),
-        date: new Date().toISOString().split('T')[0]
-      };
+    const id = Math.random().toString(36).substring(7);
+    const annRef = doc(db, "announcements", id);
+    const annData = {
+      id,
+      title: annTitle,
+      content: annContent,
+      type: annType,
+      createdAt: serverTimestamp(),
+      date: new Date().toISOString().split('T')[0]
+    };
 
-      await setDoc(annRef, annData);
-      toast({ title: "Хабарландыру жарияланды!" });
-      setAnnTitle("");
-      setAnnContent("");
-    } catch (error) {
-      console.error(error);
-      toast({ title: "Қате орын алды", variant: "destructive" });
-    } finally {
-      setIsAnnouncing(false);
-    }
+    setDoc(annRef, annData)
+      .then(() => {
+        toast({ title: "Хабарландыру жарияланды!" });
+        setAnnTitle("");
+        setAnnContent("");
+      })
+      .catch((err) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: annRef.path,
+          operation: 'create',
+          requestResourceData: annData
+        }));
+      })
+      .finally(() => {
+        setIsAnnouncing(false);
+      });
   };
 
-  const deleteAnnouncement = async (id: string) => {
+  const deleteAnnouncement = (id: string) => {
     if (!confirm("Өшіруді растайсыз ба?")) return;
-    try {
-      const annRef = doc(db, "announcements", id);
-      await deleteDoc(annRef);
-      toast({ title: "Сәтті өшірілді" });
-    } catch (error) {
-      console.error("Delete error:", error);
-      toast({ title: "Өшіру мүмкін болмады", variant: "destructive" });
-    }
+    const annRef = doc(db, "announcements", id);
+    deleteDoc(annRef).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: annRef.path,
+        operation: 'delete',
+      }));
+    });
+    toast({ title: "Өшірілуде..." });
   };
 
   if (loading || !isAdmin) {
@@ -323,7 +341,7 @@ export default function AdminPage() {
                           <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                            className="text-muted-foreground hover:text-destructive transition-opacity" 
                             onClick={() => deleteAnnouncement(ann.id)}
                           >
                             <Trash2 className="size-4" />

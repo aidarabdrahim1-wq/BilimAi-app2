@@ -10,11 +10,16 @@
           "type": "string",
           "description": "Unique identifier for the StudentProfile entity."
         },
-        "name": {
+        "fullName": {
           "type": "string",
           "description": "The full name of the student."
         },
-        "className": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The student's email address."
+        },
+        "grade": {
           "type": "string",
           "description": "The student's current academic class or grade level."
         },
@@ -30,6 +35,29 @@
           "type": "number",
           "description": "The student's gamification points."
         },
+        "subjectCombination": {
+          "type": "string",
+          "description": "The selected UNT subject combination."
+        },
+        "selectedSubjects": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of all subjects currently being studied."
+        },
+        "targetCareer": {
+          "type": "string",
+          "description": "The student's target career path."
+        },
+        "untDate": {
+          "type": "string",
+          "format": "date",
+          "description": "Target UNT examination date."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["student", "admin"],
+          "description": "User access level."
+        },
         "createdAt": {
           "type": "string",
           "description": "Timestamp when the student profile was created.",
@@ -38,11 +66,22 @@
       },
       "required": [
         "id",
-        "name",
-        "currentScore",
-        "targetScore",
+        "fullName",
+        "email",
         "createdAt"
       ]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["urgent", "success", "info"] },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "type", "date"]
     }
   },
   "auth": {
@@ -55,6 +94,10 @@
     "/studentProfiles/{studentId}": {
       "schema": "StudentProfile",
       "description": "Stores a student's personal learning profile."
+    },
+    "/announcements/{annId}": {
+      "schema": "Announcement",
+      "description": "Platform-wide announcements."
     }
   }
 }

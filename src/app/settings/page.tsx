@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -70,8 +69,8 @@ export default function SettingsPage() {
     }
   }, [profile]);
 
-  const handleSave = async () => {
-    if (!user) return;
+  const handleSave = () => {
+    if (!user || !db) return;
     setIsSaving(true);
 
     const combo = formData.subjectComboIndex !== "" ? SUBJECT_COMBINATIONS[parseInt(formData.subjectComboIndex)] : null;
@@ -98,7 +97,7 @@ export default function SettingsPage() {
           description: "Сіздің профиліңіз сәтті жаңартылды.",
         });
       })
-      .catch((error) => {
+      .catch(async (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userRef.path,
           operation: 'update',

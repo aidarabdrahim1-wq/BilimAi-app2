@@ -37,6 +37,8 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function AdminPage() {
   const { isAdmin, loading } = useAuth();
@@ -81,21 +83,39 @@ export default function AdminPage() {
 
       for (const subject of data.subjects) {
         const subjectId = subject.id || subject.name.toLowerCase().replace(/\s+/g, '-');
-        await setDoc(doc(db, "subjects", subjectId), {
+        const subjectRef = doc(db, "subjects", subjectId);
+        const subjectData = {
           name: subject.name,
           description: subject.description || "",
           updatedAt: serverTimestamp()
+        };
+
+        setDoc(subjectRef, subjectData).catch((err) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: subjectRef.path,
+            operation: 'write',
+            requestResourceData: subjectData
+          }));
         });
         subjectCount++;
 
         if (subject.topics) {
           for (const topic of subject.topics) {
             const topicId = topic.id || topic.title.toLowerCase().replace(/\s+/g, '-');
-            await setDoc(doc(db, "subjects", subjectId, "topics", topicId), {
+            const topicRef = doc(db, "subjects", subjectId, "topics", topicId);
+            const topicData = {
               title: topic.title,
               content: topic.content || "",
               subjectId: subjectId,
               updatedAt: serverTimestamp()
+            };
+
+            setDoc(topicRef, topicData).catch((err) => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: topicRef.path,
+                operation: 'write',
+                requestResourceData: topicData
+              }));
             });
             topicCount++;
 
@@ -103,13 +123,22 @@ export default function AdminPage() {
             if (topic.questions && Array.isArray(topic.questions)) {
               for (const q of topic.questions) {
                 const qId = q.id || Math.random().toString(36).substring(7);
-                await setDoc(doc(db, "subjects", subjectId, "topics", topicId, "questions", qId), {
+                const qRef = doc(db, "subjects", subjectId, "topics", topicId, "questions", qId);
+                const qData = {
                   text: q.text,
                   options: q.options,
                   correctAnswer: q.correctAnswer,
                   explanation: q.explanation || "",
                   points: q.points || 1,
                   updatedAt: serverTimestamp()
+                };
+
+                setDoc(qRef, qData).catch((err) => {
+                  errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: qRef.path,
+                    operation: 'write',
+                    requestResourceData: qData
+                  }));
                 });
                 questionCount++;
               }
@@ -129,37 +158,51 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddAnnouncement = async () => {
+  const handleAddAnnouncement = () => {
     if (!annTitle || !annContent) return;
     setIsAnnouncing(true);
-    try {
-      const id = Math.random().toString(36).substring(7);
-      await setDoc(doc(db, "announcements", id), {
-        id,
-        title: annTitle,
-        content: annContent,
-        type: annType,
-        createdAt: serverTimestamp(),
-        date: new Date().toISOString().split('T')[0]
+    const id = Math.random().toString(36).substring(7);
+    const annRef = doc(db, "announcements", id);
+    const annData = {
+      id,
+      title: annTitle,
+      content: annContent,
+      type: annType,
+      createdAt: serverTimestamp(),
+      date: new Date().toISOString().split('T')[0]
+    };
+
+    setDoc(annRef, annData)
+      .then(() => {
+        toast({ title: "Хабарландыру жарияланды!" });
+        setAnnTitle("");
+        setAnnContent("");
+      })
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: annRef.path,
+          operation: 'create',
+          requestResourceData: annData
+        }));
+      })
+      .finally(() => {
+        setIsAnnouncing(false);
       });
-      toast({ title: "Хабарландыру жарияланды!" });
-      setAnnTitle("");
-      setAnnContent("");
-    } catch (e) {
-      toast({ title: "Қате", variant: "destructive" });
-    } finally {
-      setIsAnnouncing(false);
-    }
   };
 
-  const deleteAnnouncement = async (id: string) => {
+  const deleteAnnouncement = (id: string) => {
     if (!confirm("Өшіруді растайсыз ба?")) return;
-    try {
-      await deleteDoc(doc(db, "announcements", id));
-      toast({ title: "Өшірілді" });
-    } catch (e) {
-      toast({ title: "Қате", variant: "destructive" });
-    }
+    const annRef = doc(db, "announcements", id);
+    deleteDoc(annRef)
+      .then(() => {
+        toast({ title: "Өшірілді" });
+      })
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: annRef.path,
+          operation: 'delete',
+        }));
+      });
   };
 
   if (loading || !isAdmin) {

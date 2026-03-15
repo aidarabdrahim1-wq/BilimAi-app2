@@ -28,11 +28,11 @@ import {
   ExternalLink
 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
-import { doc, setDoc, collection, query, orderBy, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase } from "@/firebase";
+import { useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
@@ -178,19 +178,12 @@ export default function AdminPage() {
       });
   };
 
-  const deleteAnnouncement = (id: string) => {
-    if (!confirm("Өшіруді растайсыз ба?")) return;
+  const handleDeleteAnnouncement = (id: string) => {
+    if (!confirm("Бұл хабарландыруды өшіруді растайсыз ба?")) return;
+    
     const annRef = doc(db, "announcements", id);
-    deleteDoc(annRef)
-      .then(() => {
-        toast({ title: "Сәтті өшірілді" });
-      })
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: annRef.path,
-          operation: 'delete',
-        }));
-      });
+    deleteDocumentNonBlocking(annRef);
+    toast({ title: "Хабарландыру өшірілді" });
   };
 
   if (loading || !isAdmin) {
@@ -345,7 +338,7 @@ export default function AdminPage() {
                             variant="ghost" 
                             size="icon" 
                             className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 self-center" 
-                            onClick={() => deleteAnnouncement(ann.id)}
+                            onClick={() => handleDeleteAnnouncement(ann.id)}
                           >
                             <Trash2 className="size-5" />
                           </Button>

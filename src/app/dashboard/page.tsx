@@ -30,14 +30,15 @@ import {
   Star,
   Medal,
   GraduationCap,
-  Flame
+  Flame,
+  Megaphone
 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { Badge } from "@/components/ui/badge";
 import { differenceInDays, parseISO, format } from "date-fns";
 import { db } from "@/lib/firebase/config";
-import { doc, updateDoc, serverTimestamp, collection, query, where } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp, collection, query, where, limit, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -92,6 +93,12 @@ export default function Dashboard() {
     if (!plan.tasks) return [];
     return plan.tasks.map((t: any) => ({ ...t, planId: plan.id, fullPlan: plan }));
   }, [plansData]);
+
+  // Fetch latest announcement
+  const annQuery = useMemoFirebase(() => {
+    return query(collection(db, "announcements"), orderBy("createdAt", "desc"), limit(1));
+  }, []);
+  const { data: latestAnn } = useCollection(annQuery);
 
   useEffect(() => {
     const calculateDiff = () => {
@@ -200,6 +207,36 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
+        {/* Latest Announcement */}
+        {latestAnn && latestAnn.length > 0 && (
+          <Card className={`border-none shadow-md overflow-hidden animate-in fade-in slide-in-from-top-2 duration-500 ${
+            latestAnn[0].type === 'urgent' ? 'bg-red-50 ring-1 ring-red-200' : 
+            latestAnn[0].type === 'success' ? 'bg-green-50 ring-1 ring-green-200' : 
+            'bg-blue-50 ring-1 ring-blue-200'
+          }`}>
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`size-10 rounded-full flex items-center justify-center shrink-0 ${
+                  latestAnn[0].type === 'urgent' ? 'bg-red-500 text-white' : 
+                  latestAnn[0].type === 'success' ? 'bg-green-500 text-white' : 
+                  'bg-blue-500 text-white'
+                }`}>
+                  <Megaphone className="size-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Жаңа хабарландыру</p>
+                  <h4 className="font-bold text-sm leading-tight line-clamp-1">{latestAnn[0].title}</h4>
+                </div>
+              </div>
+              <Button size="sm" variant="ghost" asChild className="shrink-0 hover:bg-white/50">
+                <Link href="/announcements" className="gap-1.5 font-bold text-xs uppercase tracking-wider">
+                  Оқу <ArrowRight className="size-3" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {todayTasks.length === 0 && (
           <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
@@ -280,7 +317,7 @@ export default function Dashboard() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>Ағымдағы баллды жаңарту</DialogTitle></DialogHeader>
               <div className="space-y-4 py-4">
-                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(newScore))} />
+                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(e.target.value))} />
                 <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>Сақтау</Button>
               </div>
             </DialogContent>

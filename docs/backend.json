@@ -44,6 +44,20 @@
         "targetScore",
         "createdAt"
       ]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "type": "object",
+      "description": "A global announcement for all students.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["urgent", "success", "info"] },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "content", "type", "date"]
     }
   },
   "auth": {
@@ -62,6 +76,16 @@
             "$ref": "#/backend/entities/StudentProfile"
           },
           "description": "Stores a student's personal learning profile."
+        }
+      },
+      {
+        "path": "/announcements/{announcementId}",
+        "definition": {
+          "entityName": "Announcement",
+          "schema": {
+            "$ref": "#/backend/entities/Announcement"
+          },
+          "description": "Stores global announcements."
         }
       }
     ]

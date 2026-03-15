@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -21,16 +22,14 @@ service cloud.firestore {
     }
 
     match /studentProfiles/{studentId} {
-      // Кез келген жүйеге кірген оқушы басқалардың профилін көре алады (рейтинг үшін)
       allow read: if isSignedIn();
-      
-      // Тек иесі ғана өз профилін жасай алады
       allow create: if isOwner(studentId);
       
-      // Иесі немесе Админ профильді жаңарта алады
-      allow update: if isOwner(studentId) || isAdmin();
+      // Пайдаланушы тек өзінің активтілік тарихын немесе стримін жаңарта алады (автоматты жүйе үшін)
+      // Бірақ профильдік негізгі мәліметтерді (fullName, grade т.б.) өзгерту тек Админге рұқсат
+      allow update: if isAdmin() || (isOwner(studentId) && 
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['fullName', 'grade', 'targetScore', 'subjectCombination', 'selectedSubjects', 'role']));
       
-      // Тек Админ ғана профильді өшіре алады
       allow delete: if isAdmin();
 
       match /{allSubcollections=**} {

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -21,10 +22,13 @@ import {
   Save, 
   Loader2,
   ShieldCheck,
-  BookOpen
+  BookOpen,
+  Lock,
+  AlertCircle
 } from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"] },
@@ -55,7 +59,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (profile) {
-      // Find current combination index
       const comboIndex = SUBJECT_COMBINATIONS.findIndex(c => c.label === profile.subjectCombination).toString();
       
       setFormData({
@@ -70,7 +73,7 @@ export default function SettingsPage() {
   }, [profile]);
 
   const handleSave = () => {
-    if (!user || !db) return;
+    if (!user || !db || !isAdmin) return;
     setIsSaving(true);
 
     const combo = formData.subjectComboIndex !== "" ? SUBJECT_COMBINATIONS[parseInt(formData.subjectComboIndex)] : null;
@@ -94,7 +97,7 @@ export default function SettingsPage() {
       .then(() => {
         toast({
           title: "Мәліметтер сақталды",
-          description: "Сіздің профиліңіз сәтті жаңартылды.",
+          description: "Профиль сәтті жаңартылды.",
         });
       })
       .catch(async (error) => {
@@ -109,6 +112,8 @@ export default function SettingsPage() {
       });
   };
 
+  const isLocked = !isAdmin;
+
   return (
     <AppShell>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -117,20 +122,29 @@ export default function SettingsPage() {
             <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
               <SettingsIcon className="size-8" />
             </div>
-            Баптаулар
+            Профиль мәліметтері
           </h1>
-          <p className="text-muted-foreground font-medium">Жеке профильді және мақсаттарды реттеу.</p>
+          <p className="text-muted-foreground font-medium">Жеке ақпарат пен ҰБТ мақсаттарын шолу.</p>
         </div>
 
+        {isLocked && (
+          <Alert className="bg-blue-50 border-blue-200 border-l-4 border-l-blue-500 rounded-2xl">
+            <Lock className="h-5 w-5 text-blue-600" />
+            <AlertTitle className="text-blue-800 font-bold">Мәліметтерді өзгерту шектелген</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              Профиль мәліметтерін өзгерту үшін платформа әкімшілігіне немесе кураторға хабарласыңыз.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div className="grid gap-8">
-          {/* Personal Information */}
           <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
             <CardHeader className="bg-accent/5 border-b">
               <CardTitle className="text-lg flex items-center gap-2">
                 <User className="size-5 text-primary" />
                 Жеке мәліметтер
               </CardTitle>
-              <CardDescription>Басқа оқушылар мен кураторға көрінетін ақпарат.</CardDescription>
+              <CardDescription>Жүйедегі негізгі ақпаратыңыз.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -141,13 +155,14 @@ export default function SettingsPage() {
                     <Input 
                       id="fullName"
                       value={formData.fullName}
+                      disabled={isLocked}
                       onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner"
+                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100 disabled:cursor-default"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="font-bold text-muted-foreground">Email (Өзгертуге болмайды)</Label>
+                  <Label htmlFor="email" className="font-bold text-muted-foreground">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input 
@@ -164,10 +179,11 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   <Label className="font-bold">Сынып</Label>
                   <Select 
+                    disabled={isLocked}
                     value={formData.grade} 
                     onValueChange={(v) => setFormData({...formData, grade: v})}
                   >
-                    <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none shadow-inner">
+                    <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100">
                       <SelectValue placeholder="Таңдаңыз" />
                     </SelectTrigger>
                     <SelectContent>
@@ -179,11 +195,11 @@ export default function SettingsPage() {
                   </Select>
                 </div>
                 {isAdmin && (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10 mt-6">
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/10">
                     <ShieldCheck className="size-6 text-primary" />
                     <div>
                       <p className="text-sm font-black">Админ статусы</p>
-                      <p className="text-xs text-muted-foreground">Сізде платформаны басқару құқығы бар.</p>
+                      <p className="text-xs text-muted-foreground">Сізде мәліметтерді өңдеу құқығы бар.</p>
                     </div>
                   </div>
                 )}
@@ -191,14 +207,13 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* UNT Goals */}
           <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
             <CardHeader className="bg-accent/5 border-b">
               <CardTitle className="flex items-center gap-2">
                 <Target className="size-5 text-primary" />
                 ҰБТ мақсаттары
               </CardTitle>
-              <CardDescription>AI стратегиясы мен жоспарлау осы деректерге негізделеді.</CardDescription>
+              <CardDescription>Сіздің академиялық жоспарыңыз.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-6">
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -208,11 +223,10 @@ export default function SettingsPage() {
                     <Target className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input 
                       type="number"
-                      min="0"
-                      max="140"
+                      disabled={isLocked}
                       value={formData.targetScore}
                       onChange={(e) => setFormData({...formData, targetScore: parseInt(e.target.value) || 0})}
-                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner"
+                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100"
                     />
                   </div>
                 </div>
@@ -221,10 +235,10 @@ export default function SettingsPage() {
                   <div className="relative">
                     <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input 
+                      disabled={isLocked}
                       value={formData.targetCareer}
                       onChange={(e) => setFormData({...formData, targetCareer: e.target.value})}
-                      placeholder="М: IT Маман"
-                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner"
+                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100"
                     />
                   </div>
                 </div>
@@ -234,9 +248,10 @@ export default function SettingsPage() {
                     <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                     <Input 
                       type="date"
+                      disabled={isLocked}
                       value={formData.untDate}
                       onChange={(e) => setFormData({...formData, untDate: e.target.value})}
-                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner"
+                      className="pl-10 h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100"
                     />
                   </div>
                 </div>
@@ -249,10 +264,11 @@ export default function SettingsPage() {
                     Таңдау пәндері (Комбинация)
                   </Label>
                   <Select 
+                    disabled={isLocked}
                     value={formData.subjectComboIndex} 
                     onValueChange={(v) => setFormData({...formData, subjectComboIndex: v})}
                   >
-                    <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none shadow-inner">
+                    <SelectTrigger className="h-12 rounded-xl bg-accent/5 border-none shadow-inner disabled:opacity-100">
                       <SelectValue placeholder="Комбинацияны таңдаңыз" />
                     </SelectTrigger>
                     <SelectContent>
@@ -263,22 +279,21 @@ export default function SettingsPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-[10px] text-muted-foreground font-medium italic">
-                    Ескерту: Пән комбинациясын өзгертсеңіз, оқу жоспары мен практикалық база жаңа пәндерге сай қайта бейімделеді.
-                  </p>
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="bg-accent/5 p-8 flex justify-end">
-              <Button 
-                onClick={handleSave} 
-                disabled={isSaving}
-                className="gap-2 h-12 px-10 rounded-xl font-bold shadow-lg shadow-primary/20"
-              >
-                {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Өзгерістерді сақтау
-              </Button>
-            </CardFooter>
+            {isAdmin && (
+              <CardFooter className="bg-accent/5 p-8 flex justify-end">
+                <Button 
+                  onClick={handleSave} 
+                  disabled={isSaving}
+                  className="gap-2 h-12 px-10 rounded-xl font-bold shadow-lg shadow-primary/20"
+                >
+                  {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  Өзгерістерді сақтау
+                </Button>
+              </CardFooter>
+            )}
           </Card>
         </div>
       </div>

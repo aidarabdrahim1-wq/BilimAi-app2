@@ -16,14 +16,21 @@ service cloud.firestore {
         request.auth.token.email == 'aaidarabdrahim1@gmail.com' ||
         request.auth.token.email == 'aidarabdrahim1@gmail.com' ||
         (exists(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.role == 'admin')
+         get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.get('role', 'student') == 'admin')
       );
     }
 
     match /studentProfiles/{studentId} {
+      // Кез келген жүйеге кірген оқушы басқалардың профилін көре алады (рейтинг үшін)
       allow read: if isSignedIn();
+      
+      // Тек иесі ғана өз профилін жасай алады
       allow create: if isOwner(studentId);
+      
+      // Иесі немесе Админ профильді жаңарта алады
       allow update: if isOwner(studentId) || isAdmin();
+      
+      // Тек Админ ғана профильді өшіре алады
       allow delete: if isAdmin();
 
       match /{allSubcollections=**} {

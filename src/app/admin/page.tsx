@@ -12,10 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Folder, 
   Database, 
   Upload, 
-  AlertCircle, 
   Loader2,
   FileJson,
   XCircle,
@@ -27,21 +25,18 @@ import {
   Plus,
   Trash2,
   Star,
-  User,
   ExternalLink
 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
-import { doc, setDoc, collection, query, orderBy, deleteDoc, serverTimestamp, getDocs } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { errorEmitter } from "@/firebase/error-emitter";
-import { FirestorePermissionError } from "@/firebase/errors";
 
 export default function AdminPage() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, profile } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -90,13 +85,7 @@ export default function AdminPage() {
           updatedAt: serverTimestamp()
         };
 
-        setDoc(subjectRef, subjectData).catch((err) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: subjectRef.path,
-            operation: 'write',
-            requestResourceData: subjectData
-          }));
-        });
+        await setDoc(subjectRef, subjectData, { merge: true });
         subjectCount++;
 
         if (subject.topics) {
@@ -110,16 +99,9 @@ export default function AdminPage() {
               updatedAt: serverTimestamp()
             };
 
-            setDoc(topicRef, topicData).catch((err) => {
-              errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: topicRef.path,
-                operation: 'write',
-                requestResourceData: topicData
-              }));
-            });
+            await setDoc(topicRef, topicData, { merge: true });
             topicCount++;
 
-            // Сұрақтарды жүктеу логикасы
             if (topic.questions && Array.isArray(topic.questions)) {
               for (const q of topic.questions) {
                 const qId = q.id || Math.random().toString(36).substring(7);
@@ -132,14 +114,7 @@ export default function AdminPage() {
                   points: q.points || 1,
                   updatedAt: serverTimestamp()
                 };
-
-                setDoc(qRef, qData).catch((err) => {
-                  errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: qRef.path,
-                    operation: 'write',
-                    requestResourceData: qData
-                  }));
-                });
+                await setDoc(qRef, qData, { merge: true });
                 questionCount++;
               }
             }
@@ -158,51 +133,43 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddAnnouncement = () => {
+  const handleAddAnnouncement = async () => {
     if (!annTitle || !annContent) return;
     setIsAnnouncing(true);
-    const id = Math.random().toString(36).substring(7);
-    const annRef = doc(db, "announcements", id);
-    const annData = {
-      id,
-      title: annTitle,
-      content: annContent,
-      type: annType,
-      createdAt: serverTimestamp(),
-      date: new Date().toISOString().split('T')[0]
-    };
+    try {
+      const id = Math.random().toString(36).substring(7);
+      const annRef = doc(db, "announcements", id);
+      const annData = {
+        id,
+        title: annTitle,
+        content: annContent,
+        type: annType,
+        createdAt: serverTimestamp(),
+        date: new Date().toISOString().split('T')[0]
+      };
 
-    setDoc(annRef, annData)
-      .then(() => {
-        toast({ title: "Хабарландыру жарияланды!" });
-        setAnnTitle("");
-        setAnnContent("");
-      })
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: annRef.path,
-          operation: 'create',
-          requestResourceData: annData
-        }));
-      })
-      .finally(() => {
-        setIsAnnouncing(false);
-      });
+      await setDoc(annRef, annData);
+      toast({ title: "Хабарландыру жарияланды!" });
+      setAnnTitle("");
+      setAnnContent("");
+    } catch (error) {
+      console.error(error);
+      toast({ title: "Қате орын алды", variant: "destructive" });
+    } finally {
+      setIsAnnouncing(false);
+    }
   };
 
-  const deleteAnnouncement = (id: string) => {
+  const deleteAnnouncement = async (id: string) => {
     if (!confirm("Өшіруді растайсыз ба?")) return;
-    const annRef = doc(db, "announcements", id);
-    deleteDoc(annRef)
-      .then(() => {
-        toast({ title: "Өшірілді" });
-      })
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: annRef.path,
-          operation: 'delete',
-        }));
-      });
+    try {
+      const annRef = doc(db, "announcements", id);
+      await deleteDoc(annRef);
+      toast({ title: "Сәтті өшірілді" });
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({ title: "Өшіру мүмкін болмады", variant: "destructive" });
+    }
   };
 
   if (loading || !isAdmin) {
@@ -222,7 +189,7 @@ export default function AdminPage() {
             <h1 className="text-4xl font-black tracking-tight font-headline">Платформаны басқару</h1>
             <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1.5 py-1 px-3">
               <ShieldAlert className="size-4" />
-              Админ: {isAdmin ? "Абдрахым Айдар" : "Белгісіз"}
+              Админ: {profile?.fullName || "Белгісіз"}
             </Badge>
           </div>
           <p className="text-muted-foreground font-medium">Жүйелік баптаулар, пайдаланушылар және контент орталығы.</p>
@@ -353,7 +320,12 @@ export default function AdminPage() {
                             <h4 className="font-bold text-lg">{ann.title}</h4>
                             <p className="text-sm text-muted-foreground line-clamp-2">{ann.content}</p>
                           </div>
-                          <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => deleteAnnouncement(ann.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                            onClick={() => deleteAnnouncement(ann.id)}
+                          >
                             <Trash2 className="size-4" />
                           </Button>
                         </div>

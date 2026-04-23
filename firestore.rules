@@ -25,10 +25,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isOwner(studentId);
       
-      // Пайдаланушы тек өзінің активтілік тарихын немесе стримін жаңарта алады (автоматты жүйе үшін)
-      // Бірақ профильдік негізгі мәліметтерді (fullName, grade т.б.) өзгерту тек Админге рұқсат
+      // Allow update ONLY for tracking fields for owners. Profile fields are Admin-only.
       allow update: if isAdmin() || (isOwner(studentId) && 
-        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['fullName', 'grade', 'targetScore', 'subjectCombination', 'selectedSubjects', 'role']));
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'fullName', 'grade', 'targetScore', 'subjectCombination', 'selectedSubjects', 'role', 'email', 'targetCareer', 'untDate'
+        ]));
       
       allow delete: if isAdmin();
 

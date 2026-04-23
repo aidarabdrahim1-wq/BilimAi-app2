@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -53,14 +54,15 @@ const MOTIVATION_QUOTES = [
 ];
 
 export default function Dashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
-  const [newDate, setNewDate] = useState(profile?.untDate || "2025-06-20");
-  const [newScore, setNewScore] = useState(profile?.currentScore || 0);
+  const [newDate, setNewDate] = useState("");
+  const [newScore, setNewScore] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
   const [randomQuote, setRandomQuote] = useState(MOTIVATION_QUOTES[0]);
+  const [todayStr, setTodayStr] = useState("");
   
   // Timer states
   const [activeTimerTask, setActiveTimerTask] = useState<any>(null);
@@ -72,12 +74,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     setRandomQuote(MOTIVATION_QUOTES[Math.floor(Math.random() * MOTIVATION_QUOTES.length)]);
+    setTodayStr(format(new Date(), 'yyyy-MM-dd'));
   }, []);
 
+  useEffect(() => {
+    if (profile) {
+      setNewDate(profile.untDate || "2025-06-20");
+      setNewScore(profile.currentScore || 0);
+    }
+  }, [profile]);
+
   // Fetch only TODAY's plan
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const plansQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !todayStr) return null;
     return query(
       collection(db, "studentProfiles", user.uid, "studyPlans"),
       where("planDate", "==", todayStr)
@@ -101,12 +110,6 @@ export default function Dashboard() {
     };
     calculateDiff();
   }, [profile?.untDate]);
-
-  useEffect(() => {
-    if (profile?.currentScore !== undefined) {
-      setNewScore(profile.currentScore);
-    }
-  }, [profile?.currentScore]);
 
   // Timer logic
   useEffect(() => {
@@ -161,7 +164,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateDate = async () => {
-    if (!user) return;
+    if (!user || !isAdmin) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
     updateDoc(userRef, { untDate: newDate, updatedAt: serverTimestamp() })
@@ -170,7 +173,7 @@ export default function Dashboard() {
   };
 
   const handleUpdateScore = async () => {
-    if (!user) return;
+    if (!user || !isAdmin) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
     updateDoc(userRef, { currentScore: Number(newScore), updatedAt: serverTimestamp() })
@@ -236,7 +239,7 @@ export default function Dashboard() {
                   <div>
                     <div className="flex items-center gap-1">
                       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">ҰБТ-ға:</p>
-                      <Edit2 className="size-2 text-muted-foreground opacity-50 group-hover:opacity-100" />
+                      {isAdmin && <Edit2 className="size-2 text-muted-foreground opacity-50 group-hover:opacity-100" />}
                     </div>
                     <div className="flex items-baseline gap-1 leading-none">
                       <span className="text-xl font-black text-orange-600">{daysLeft !== null ? daysLeft : "..."}</span>
@@ -247,10 +250,14 @@ export default function Dashboard() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader><DialogTitle>ҰБТ күнін таңдау</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
-                  <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
-                  <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>Сақтау</Button>
-                </div>
+                {isAdmin ? (
+                  <div className="space-y-4 py-4">
+                    <Input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} />
+                    <Button className="w-full" onClick={handleUpdateDate} disabled={isUpdating}>Сақтау</Button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-4">Мәліметті өзгерту үшін админге хабарласыңыз.</p>
+                )}
               </DialogContent>
             </Dialog>
             <Badge variant="secondary" className="px-3 py-1 gap-1.5 bg-yellow-100 text-yellow-700 border-yellow-200">
@@ -270,7 +277,7 @@ export default function Dashboard() {
                 <CardContent>
                   <div className="flex items-baseline gap-2">
                     <div className="text-3xl font-bold">{currentScore}</div>
-                    <Edit2 className="size-3 opacity-0 group-hover:opacity-70" />
+                    {isAdmin && <Edit2 className="size-3 opacity-0 group-hover:opacity-70" />}
                   </div>
                   <p className="text-xs opacity-70 mt-1">ҰБТ потенциалы: {Math.round(currentScore)} / 140</p>
                 </CardContent>
@@ -278,10 +285,14 @@ export default function Dashboard() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader><DialogTitle>Ағымдағы баллды жаңарту</DialogTitle></DialogHeader>
-              <div className="space-y-4 py-4">
-                <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(e.target.value))} />
-                <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>Сақтау</Button>
-              </div>
+              {isAdmin ? (
+                <div className="space-y-4 py-4">
+                  <Input type="number" min="0" max="140" value={newScore} onChange={(e) => setNewScore(Number(e.target.value))} />
+                  <Button className="w-full" onClick={handleUpdateScore} disabled={isUpdating}>Сақтау</Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground py-4">Мәліметті өзгерту үшін админге хабарласыңыз.</p>
+              )}
             </DialogContent>
           </Dialog>
 

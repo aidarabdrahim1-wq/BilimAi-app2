@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -63,6 +64,11 @@ export default function PracticePage() {
   const [results, setResults] = useState<SubjectResult[]>([]);
   const [recentSessions, setRecentSessions] = useState<TestSession[]>([]);
   const [allTestAnswers, setAllTestAnswers] = useState<any[]>([]);
+  const [clientDate, setClientDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setClientDate(new Date());
+  }, []);
   
   const getSubjectConfigs = (): SubjectConfig[] => {
     const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
@@ -101,14 +107,13 @@ export default function PracticePage() {
   }, [user]);
 
   const hasTakenTestThisWeek = useMemo(() => {
-    if (!recentSessions || recentSessions.length === 0) return false;
-    const now = new Date();
+    if (!recentSessions || recentSessions.length === 0 || !clientDate) return false;
     return recentSessions.some(session => {
       if (!session.createdAt) return false;
       const sessionDate = session.createdAt.toDate ? session.createdAt.toDate() : new Date(session.createdAt.seconds * 1000);
-      return isSameWeek(sessionDate, now, { weekStartsOn: 1 });
+      return isSameWeek(sessionDate, clientDate, { weekStartsOn: 1 });
     });
-  }, [recentSessions]);
+  }, [recentSessions, clientDate]);
 
   const initiateTest = async () => {
     if (hasTakenTestThisWeek) {
@@ -298,7 +303,7 @@ export default function PracticePage() {
 
   if (testState === "testing") {
     const q = questions[currentQuestionIndex];
-    const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+    const progress = ((currentQuestionIndex + 1) / (questions.length || 1)) * 100;
     return (
       <AppShell>
         <div className="max-w-3xl mx-auto space-y-6">
@@ -339,7 +344,7 @@ export default function PracticePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-8 max-w-6xl mx-auto">
+      <div className="flex flex-col gap-8 max-6xl mx-auto">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-black tracking-tight font-headline flex items-center gap-3">
             <ClipboardCheck className="size-10 text-primary" />
@@ -348,14 +353,14 @@ export default function PracticePage() {
           <p className="text-muted-foreground font-medium">Өз біліміңді жаңа форматтағы 140 балдық шкаламен тексер.</p>
         </div>
 
-        {hasTakenTestThisWeek && (
+        {hasTakenTestThisWeek && clientDate && (
           <Alert className="bg-orange-50 border-orange-200 text-orange-800 rounded-3xl p-6">
             <Calendar className="h-5 w-5 text-orange-600" />
             <AlertTitle className="font-black text-lg">Апталық лимит орындалды</AlertTitle>
             <AlertDescription className="text-sm font-medium mt-1">
               Сіз осы аптада тест тапсырып қойдыңыз. Келесі мүмкіндік дүйсенбі күні ашылады.
               <br />
-              <span className="font-bold text-orange-700">Келесі тестке: {format(addWeeks(startOfWeek(new Date(), { weekStartsOn: 1 }), 1), "d MMMM", { locale: kk })}</span>
+              <span className="font-bold text-orange-700">Келесі тестке: {format(addWeeks(startOfWeek(clientDate, { weekStartsOn: 1 }), 1), "d MMMM", { locale: kk })}</span>
             </AlertDescription>
           </Alert>
         )}
@@ -381,7 +386,7 @@ export default function PracticePage() {
                 size="lg" 
                 className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl shadow-primary/20"
                 onClick={initiateTest}
-                disabled={hasTakenTestThisWeek}
+                disabled={hasTakenTestThisWeek || !clientDate}
               >
                 {hasTakenTestThisWeek ? (
                   <>

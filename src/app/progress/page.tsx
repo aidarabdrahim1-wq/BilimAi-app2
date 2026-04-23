@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -248,131 +249,49 @@ export default function ProgressPage() {
           </div>
         </div>
 
-        {/* Lower Section: Calendar and AI Forecast */}
-        <div className="grid gap-8 lg:grid-cols-12">
-          {/* Activity Calendar */}
-          <Card className="lg:col-span-8 border-none shadow-sm bg-white overflow-hidden">
-            <CardHeader className="border-b bg-accent/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-xl font-headline flex items-center gap-2">
-                    <Calendar className="size-6 text-primary" />
-                    Белсенділік күнтізбесі
-                  </CardTitle>
-                  <CardDescription>Соңғы 7 күндегі оқу жүйелілігі</CardDescription>
-                </div>
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-bold">
-                  <Sparkles className="size-3" />
-                  Керемет қарқын!
-                </div>
+        {/* Activity Calendar */}
+        <Card className="border-none shadow-sm bg-white overflow-hidden">
+          <CardHeader className="border-b bg-accent/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-headline flex items-center gap-2">
+                  <Calendar className="size-6 text-primary" />
+                  Белсенділік күнтізбесі
+                </CardTitle>
+                <CardDescription>Соңғы 7 күндегі оқу жүйелілігі</CardDescription>
               </div>
-            </CardHeader>
-            <CardContent className="p-8">
-              <div className="flex justify-between items-center gap-2 md:gap-4">
-                {last7Days.map((day, i) => (
-                  <div key={i} className="flex flex-col items-center gap-4 flex-1">
-                    <div 
-                      className={`w-full aspect-square max-w-[70px] rounded-[24px] flex items-center justify-center transition-all duration-500 shadow-sm relative group/day ${
-                        day.active 
-                          ? "bg-primary text-white scale-105 shadow-xl shadow-primary/20" 
-                          : "bg-accent/30 text-muted-foreground/30 border border-dashed border-muted-foreground/20"
-                      }`}
-                    >
-                      {day.active ? (
-                        <Zap className="size-8 fill-current drop-shadow-md animate-in zoom-in duration-500" />
-                      ) : (
-                        <div className="size-2 rounded-full bg-muted-foreground/20" />
-                      )}
-                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-                        {day.fullDate}
-                      </div>
-                    </div>
-                    <div className="text-center">
-                      <p className={`text-[11px] font-black uppercase tracking-wider ${day.active ? "text-primary" : "text-muted-foreground/50"}`}>
-                        {day.label}
-                      </p>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8">
+            <div className="flex justify-between items-center gap-2 md:gap-4">
+              {last7Days.map((day, i) => (
+                <div key={i} className="flex flex-col items-center gap-4 flex-1">
+                  <div 
+                    className={`w-full aspect-square max-w-[70px] rounded-[24px] flex items-center justify-center transition-all duration-500 shadow-sm relative group/day ${
+                      day.active 
+                        ? "bg-primary text-white scale-105 shadow-xl shadow-primary/20" 
+                        : "bg-accent/30 text-muted-foreground/30 border border-dashed border-muted-foreground/20"
+                    }`}
+                  >
+                    {day.active ? (
+                      <Zap className="size-8 fill-current drop-shadow-md animate-in zoom-in duration-500" />
+                    ) : (
+                      <div className="size-2 rounded-full bg-muted-foreground/20" />
+                    )}
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-bold px-2 py-1 rounded opacity-0 group-hover/day:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      {day.fullDate}
                     </div>
                   </div>
-                ))}
-              </div>
-              
-              <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-5 rounded-3xl bg-indigo-50 border border-indigo-100 flex items-center gap-4">
-                  <div className="size-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-indigo-200">
-                    <TrendingUp className="size-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-indigo-900">Дайындық деңгейі</h4>
-                    <p className="text-[10px] text-indigo-700/70 font-medium">Өткен аптамен салыстырғанда <span className="font-black text-indigo-600">+12% өсті</span></p>
+                  <div className="text-center">
+                    <p className={`text-[11px] font-black uppercase tracking-wider ${day.active ? "text-primary" : "text-muted-foreground/50"}`}>
+                      {day.label}
+                    </p>
                   </div>
                 </div>
-                <div className="p-5 rounded-3xl bg-orange-50 border border-orange-100 flex items-center gap-4">
-                  <div className="size-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-orange-200">
-                    <PieChart className="size-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-orange-900">Уақытты үлестіру</h4>
-                    <p className="text-[10px] text-orange-700/70 font-medium">Көбіне кешкі уақытта өнімдісіз</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* AI Forecast Card */}
-          <Card className="lg:col-span-4 border-none shadow-xl bg-primary text-primary-foreground relative overflow-hidden flex flex-col">
-            <CardHeader className="relative z-10">
-              <CardTitle className="text-xl font-headline flex items-center gap-2">
-                <Sparkles className="size-5" />
-                AI Болжам
-              </CardTitle>
-              <CardDescription className="text-primary-foreground/70">Қазіргі нәтижелер негізінде</CardDescription>
-            </CardHeader>
-            <CardContent className="relative z-10 flex-1 flex flex-col justify-center items-center py-10 gap-8">
-              <div className="relative size-48">
-                <svg className="size-full -rotate-90">
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="transparent"
-                    className="text-white/10"
-                  />
-                  <circle
-                    cx="96"
-                    cy="96"
-                    r="88"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="transparent"
-                    strokeDasharray={552}
-                    strokeDashoffset={552 - (552 * (profile?.currentScore || 0)) / 140}
-                    className="text-white drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-all duration-1000"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-6xl font-black tracking-tighter">{profile?.currentScore || 0}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">балдың ішінен</span>
-                </div>
-              </div>
-
-              <div className="text-center space-y-2">
-                <p className="text-sm font-bold leading-tight px-4 italic">
-                  "Сіздің қазіргі қарқыныңызбен грантқа түсу мүмкіндігіңіз жоғары"
-                </p>
-                <div className="flex items-center justify-center gap-1.5 pt-2">
-                  <div className="size-1.5 rounded-full bg-green-400 animate-pulse" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">AI талдау сәтті аяқталды</span>
-                </div>
-              </div>
-            </CardContent>
-            <div className="absolute top-0 right-0 size-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
-            <div className="absolute bottom-0 left-0 size-64 bg-indigo-500/30 rounded-full translate-y-1/2 -translate-x-1/2 blur-3xl" />
-          </Card>
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );

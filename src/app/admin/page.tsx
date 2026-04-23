@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,13 +19,14 @@ import {
   ShieldAlert,
   Users,
   Star,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from "lucide-react";
 import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError, deleteDocumentNonBlocking } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function AdminPage() {

@@ -324,6 +324,10 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     else finishPractice();
   };
 
+  const prevQuestion = () => {
+    if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
+  };
+
   const finishPractice = async () => {
     let correct = 0;
     questions.forEach((q, idx) => {
@@ -472,3 +476,4 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     </Dialog>
   );
 }
+

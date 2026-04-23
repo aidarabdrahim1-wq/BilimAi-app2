@@ -111,32 +111,32 @@ export default function TheoryPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-8 max-w-6xl mx-auto h-full">
+      <div className="flex flex-col gap-6 max-w-6xl mx-auto h-full">
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
-              <h1 className="text-4xl font-black tracking-tight font-headline flex items-center gap-3">
-                <BookOpen className="size-10 text-primary" />
+              <h1 className="text-3xl font-black tracking-tight font-headline flex items-center gap-3">
+                <BookOpen className="size-8 text-primary" />
                 Практикалық база
               </h1>
-              <p className="text-muted-foreground font-medium">Кәсіби деңгейдегі ҰБТ сұрақтарымен біліміңді бекіт.</p>
+              <p className="text-muted-foreground text-sm font-medium">Кәсіби деңгейдегі ҰБТ сұрақтарымен біліміңді бекіт.</p>
             </div>
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input 
                 placeholder="Пәнді немесе тақырыпты іздеу..." 
-                className="pl-12 h-14 bg-white border-none shadow-md rounded-2xl text-base focus-visible:ring-primary" 
+                className="pl-10 h-12 bg-white border-none shadow-sm rounded-xl text-sm focus-visible:ring-primary" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="bg-white p-1 rounded-xl shadow-sm border shrink-0">
               <TabsList className="bg-transparent border-none">
-                <TabsTrigger value="my" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Менің пәндерім</TabsTrigger>
-                <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white">Барлық база</TabsTrigger>
+                <TabsTrigger value="my" className="rounded-lg text-xs h-8 data-[state=active]:bg-primary data-[state=active]:text-white">Менің пәндерім</TabsTrigger>
+                <TabsTrigger value="all" className="rounded-lg text-xs h-8 data-[state=active]:bg-primary data-[state=active]:text-white">Барлық база</TabsTrigger>
               </TabsList>
             </Tabs>
           </div>
@@ -145,7 +145,7 @@ export default function TheoryPage() {
         <section className="space-y-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="size-10 animate-spin text-primary opacity-20" />
+              <Loader2 className="size-8 animate-spin text-primary opacity-20" />
               <p className="text-sm font-bold text-muted-foreground animate-pulse">База жүктелуде...</p>
             </div>
           ) : displayedSubjects.length > 0 ? (
@@ -155,12 +155,12 @@ export default function TheoryPage() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-20 bg-white/50 rounded-[40px] border-4 border-dashed border-white flex flex-col items-center gap-4">
+            <div className="text-center py-20 bg-white/50 rounded-[32px] border-4 border-dashed border-white flex flex-col items-center gap-4">
               <div className="size-16 rounded-full bg-primary/5 flex items-center justify-center text-primary/20">
                 <XCircle className="size-8" />
               </div>
               <div className="space-y-1">
-                <p className="font-black text-xl">Пәндер табылмады</p>
+                <p className="font-black text-lg">Пәндер табылмады</p>
                 <p className="text-sm text-muted-foreground">Іздеу сұранысын немесе таңдалған табты тексеріңіз.</p>
               </div>
             </div>
@@ -199,60 +199,60 @@ function SubjectCard({ subject }: { subject: string }) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Card className="hover:shadow-2xl hover:-translate-y-1 cursor-pointer transition-all group bg-white border-none shadow-sm rounded-[32px] overflow-hidden flex flex-col h-full">
-          <div className="h-2 bg-gradient-to-r from-primary/30 to-transparent group-hover:from-primary transition-all" />
-          <CardHeader className="p-8">
-            <div className="size-14 rounded-2xl bg-primary/5 text-primary flex items-center justify-center mb-6 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
-              <Icon className="size-7" />
+        <Card className="hover:shadow-lg hover:-translate-y-1 cursor-pointer transition-all group bg-white border-none shadow-sm rounded-[24px] overflow-hidden flex flex-col h-full">
+          <div className="h-1.5 bg-gradient-to-r from-primary/30 to-transparent group-hover:from-primary transition-all" />
+          <CardHeader className="p-6">
+            <div className="size-12 rounded-xl bg-primary/5 text-primary flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+              <Icon className="size-6" />
             </div>
-            <CardTitle className="text-2xl font-black">{subject}</CardTitle>
-            <CardDescription className="text-sm font-medium leading-relaxed mt-3 text-muted-foreground line-clamp-2">
+            <CardTitle className="text-xl font-black">{subject}</CardTitle>
+            <CardDescription className="text-xs font-medium leading-relaxed mt-2 text-muted-foreground line-clamp-2">
               {ubtInfo.description}
             </CardDescription>
           </CardHeader>
-          <CardContent className="mt-auto p-8 pt-0">
-            <div className="flex items-center justify-between mt-4">
+          <CardContent className="mt-auto p-6 pt-0">
+            <div className="flex items-center justify-between mt-2">
               <div className="flex flex-col">
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Мазмұны</span>
-                <span className="text-lg font-black text-primary">{allTopics.length} бөлім</span>
+                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Мазмұны</span>
+                <span className="text-base font-black text-primary">{allTopics.length} бөлім</span>
               </div>
-              <div className="size-12 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                <ChevronRight className="size-6" />
+              <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                <ChevronRight className="size-5" />
               </div>
             </div>
           </CardContent>
         </Card>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[90vh] bg-white border-none shadow-2xl p-0 rounded-[40px] overflow-hidden flex flex-col">
-        <div className="bg-primary/5 p-10 pb-6 border-b border-primary/10 shrink-0">
+      <DialogContent className="max-w-3xl h-[85vh] bg-white border-none shadow-2xl p-0 rounded-[32px] overflow-hidden flex flex-col">
+        <div className="bg-primary/5 p-8 pb-4 border-b border-primary/10 shrink-0">
           <DialogHeader>
-            <div className="flex items-center gap-5 mb-4">
-              <div className="size-16 rounded-[24px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/20">
-                <Icon className="size-8" />
+            <div className="flex items-center gap-4 mb-2">
+              <div className="size-12 rounded-xl bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/20">
+                <Icon className="size-6" />
               </div>
               <div>
-                <Badge variant="outline" className="mb-2 bg-white/80 text-primary border-primary/20 font-black tracking-widest text-[9px]">ҰБТ СПЕЦИФИКАЦИЯСЫ</Badge>
-                <DialogTitle className="text-4xl font-black font-headline tracking-tight">{subject}</DialogTitle>
+                <Badge variant="outline" className="mb-1 bg-white/80 text-primary border-primary/20 font-black tracking-widest text-[8px]">ҰБТ СПЕЦИФИКАЦИЯСЫ</Badge>
+                <DialogTitle className="text-2xl font-black font-headline tracking-tight">{subject}</DialogTitle>
               </div>
             </div>
           </DialogHeader>
         </div>
-        <ScrollArea className="flex-1 px-10 py-6">
+        <ScrollArea className="flex-1 px-8 py-4">
           {loadingTopics ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="size-10 animate-spin text-primary" />
-              <p className="text-sm font-bold text-muted-foreground">Тақырыптар жүктелуде...</p>
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="size-8 animate-spin text-primary" />
+              <p className="text-xs font-bold text-muted-foreground">Тақырыптар жүктелуде...</p>
             </div>
           ) : (
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-3 py-4">
               {allTopics.map((topic, idx) => (
                 <TopicItem key={idx} index={idx} topic={topic} subject={subject} />
               ))}
             </div>
           )}
         </ScrollArea>
-        <div className="p-6 bg-muted/20 border-t flex justify-center shrink-0">
-          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+        <div className="p-4 bg-muted/20 border-t flex justify-center shrink-0">
+          <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <Sparkles className="size-3 text-primary animate-pulse" /> Барлық сұрақтар ҰБТ-2025 форматына сай
           </p>
         </div>
@@ -314,7 +314,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   };
 
   const handleAnswer = (option: string) => {
-    // Егер бұл сұраққа әлі жауап берілмесе ғана қабылдаймыз
     if (answers[currentIndex]) return;
     setAnswers(prev => ({ ...prev, [currentIndex]: option }));
   };
@@ -351,74 +350,74 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       }
     }}>
       <DialogTrigger asChild>
-        <div className="flex items-center justify-between p-6 rounded-3xl border-2 border-transparent bg-accent/5 hover:bg-white hover:border-primary/20 hover:shadow-xl transition-all group/item cursor-pointer">
-          <div className="flex items-center gap-5">
-            <div className="size-12 rounded-2xl bg-white flex items-center justify-center text-xs font-black text-muted-foreground group-hover/item:bg-primary group-hover/item:text-white transition-all shadow-sm">
+        <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-transparent bg-accent/5 hover:bg-white hover:border-primary/20 hover:shadow-md transition-all group/item cursor-pointer">
+          <div className="flex items-center gap-4">
+            <div className="size-10 rounded-xl bg-white flex items-center justify-center text-[10px] font-black text-muted-foreground group-hover/item:bg-primary group-hover/item:text-white transition-all shadow-sm">
               {index + 1}
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-black group-hover/item:text-primary transition-colors">{topic}</span>
-              <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-1.5">
-                <Clock className="size-3" /> 15 минут практика
+              <span className="text-sm font-black group-hover/item:text-primary transition-colors">{topic}</span>
+              <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-1">
+                <Clock className="size-2.5" /> 15 минут практика
               </span>
             </div>
           </div>
-          <Button variant="ghost" className="rounded-full size-12 p-0 text-primary group-hover/item:bg-primary group-hover/item:text-white">
-            <ChevronRight className="size-6" />
+          <Button variant="ghost" className="rounded-full size-10 p-0 text-primary group-hover/item:bg-primary group-hover/item:text-white">
+            <ChevronRight className="size-5" />
           </Button>
         </div>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl h-[95vh] flex flex-col p-0 rounded-[40px] border-none shadow-2xl bg-white overflow-hidden">
-        <div className="p-10 pb-6 border-b shrink-0 bg-accent/5">
+      <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 rounded-[24px] border-none shadow-2xl bg-white overflow-hidden">
+        <div className="p-8 pb-4 border-b shrink-0 bg-accent/5">
           <DialogHeader>
-            <Badge variant="outline" className="w-fit mb-3 bg-white text-primary border-primary/20 font-black">{subject}</Badge>
-            <DialogTitle className="text-4xl font-black font-headline">{topic}</DialogTitle>
+            <Badge variant="outline" className="w-fit mb-2 bg-white text-primary border-primary/20 font-black text-[9px]">{subject}</Badge>
+            <DialogTitle className="text-xl font-black font-headline">{topic}</DialogTitle>
           </DialogHeader>
         </div>
         
-        <ScrollArea ref={scrollAreaRef} className="flex-1 px-10 py-10">
+        <ScrollArea ref={scrollAreaRef} className="flex-1 px-8 py-6">
           {practiceMode === "reading" && (
-            <div className="flex flex-col items-center text-center gap-8 py-10 animate-in fade-in zoom-in duration-500">
-              <div className="size-32 rounded-full bg-primary/5 flex items-center justify-center text-primary/20">
-                <BookOpen className="size-16" />
+            <div className="flex flex-col items-center text-center gap-6 py-8 animate-in fade-in zoom-in duration-500">
+              <div className="size-24 rounded-full bg-primary/5 flex items-center justify-center text-primary/20">
+                <BookOpen className="size-12" />
               </div>
-              <div className="space-y-3 max-w-sm">
-                <h4 className="text-2xl font-black tracking-tight">Дайындыққа кірісу</h4>
-                <p className="text-muted-foreground font-medium leading-relaxed">
-                  Бұл бөлімде сіз «{topic}» тақырыбы бойынша ҰБТ деңгейіндегі кәсіби сұрақтарға жауап бересіз.
+              <div className="space-y-2 max-w-xs">
+                <h4 className="text-lg font-black tracking-tight">Дайындыққа кірісу</h4>
+                <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                  Бұл бөлімде сіз «{topic}» тақырыбы бойынша ҰБТ деңгейіндегі сұрақтарға жауап бересіз.
                 </p>
               </div>
-              <div className="w-full max-w-md pt-8 border-t-2 border-dashed">
-                <Button className="w-full h-20 text-2xl font-black rounded-3xl shadow-2xl shadow-primary/20 gap-3" onClick={startPractice}>
-                  <Sparkles className="size-7" /> Практиканы бастау
+              <div className="w-full max-w-xs pt-6 border-t border-dashed">
+                <Button className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/10 gap-2" onClick={startPractice}>
+                  <Sparkles className="size-5" /> Бастау
                 </Button>
-                {errorMessage && <p className="mt-6 text-sm font-bold text-destructive flex items-center justify-center gap-2"><AlertCircle className="size-4" /> {errorMessage}</p>}
+                {errorMessage && <p className="mt-4 text-[10px] font-bold text-destructive flex items-center justify-center gap-1"><AlertCircle className="size-3" /> {errorMessage}</p>}
               </div>
             </div>
           )}
 
           {practiceMode === "loading" && (
-            <div className="py-32 flex flex-col items-center justify-center gap-6">
-              <Loader2 className="size-16 animate-spin text-primary opacity-20" />
-              <p className="font-black text-2xl animate-pulse">Сұрақтар жүктелуде...</p>
+            <div className="py-24 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="size-12 animate-spin text-primary opacity-20" />
+              <p className="font-black text-lg animate-pulse">Сұрақтар жүктелуде...</p>
             </div>
           )}
 
           {practiceMode === "testing" && questions.length > 0 && (
-            <div key={currentIndex} className="space-y-10 animate-in slide-in-from-right-10 duration-500 pb-20">
-              <div className="space-y-4">
+            <div key={currentIndex} className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-12">
+              <div className="space-y-3">
                 <div className="flex justify-between items-end">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Прогресс</span>
-                    <span className="text-3xl font-black font-headline">Сұрақ {currentIndex + 1} / {questions.length}</span>
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Прогресс</span>
+                    <span className="text-xl font-black font-headline">Сұрақ {currentIndex + 1} / {questions.length}</span>
                   </div>
                 </div>
-                <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-3 rounded-full" />
+                <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2 rounded-full" />
               </div>
 
-              <Card className="border-none shadow-2xl bg-white p-12 rounded-[40px] ring-1 ring-border/50">
-                <h3 className="text-2xl md:text-3xl font-black leading-tight mb-12">{questions[currentIndex].text}</h3>
-                <div className="grid gap-5">
+              <Card className="border-none shadow-lg bg-white p-8 rounded-[24px] ring-1 ring-border/50">
+                <h3 className="text-lg md:text-xl font-black leading-tight mb-8">{questions[currentIndex].text}</h3>
+                <div className="grid gap-3">
                   {questions[currentIndex].options.map((opt: string, i: number) => {
                     const letter = String.fromCharCode(65 + i);
                     const isSelected = currentAnswer === letter;
@@ -429,16 +428,16 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
 
                     if (currentAnswer) {
                       if (isCorrectOption) {
-                        variantClass = "border-green-500 bg-green-50 ring-8 ring-green-500/5";
+                        variantClass = "border-green-500 bg-green-50 ring-4 ring-green-500/5";
                         iconClass = "bg-green-500 text-white border-green-500";
                       } else if (isSelected) {
-                        variantClass = "border-destructive bg-destructive/5 ring-8 ring-destructive/5";
+                        variantClass = "border-destructive bg-destructive/5 ring-4 ring-destructive/5";
                         iconClass = "bg-destructive text-white border-destructive";
                       } else {
                         variantClass = "border-border opacity-50";
                       }
                     } else if (isSelected) {
-                      variantClass = "border-primary bg-primary/5 ring-8 ring-primary/5";
+                      variantClass = "border-primary bg-primary/5 ring-4 ring-primary/5";
                       iconClass = "bg-primary text-white border-primary";
                     }
 
@@ -447,19 +446,19 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                         key={i} 
                         onClick={() => handleAnswer(letter)} 
                         disabled={!!currentAnswer}
-                        className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-6 group active:scale-[0.98] ${variantClass}`}
+                        className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center gap-4 group active:scale-[0.98] ${variantClass}`}
                       >
-                        <span className={`size-12 rounded-2xl border-2 flex items-center justify-center font-black text-lg transition-all ${iconClass}`}>
+                        <span className={`size-8 rounded-lg border-2 flex items-center justify-center font-black text-sm transition-all ${iconClass}`}>
                           {letter}
                         </span>
-                        <span className={`font-bold text-lg ${isSelected ? (isCorrect ? 'text-green-700' : 'text-destructive') : 'text-foreground'}`}>
+                        <span className={`font-bold text-sm ${isSelected ? (isCorrect ? 'text-green-700' : 'text-destructive') : 'text-foreground'}`}>
                           {opt}
                         </span>
                         {currentAnswer && isCorrectOption && (
-                          <CheckCircle2 className="size-6 text-green-500 ml-auto" />
+                          <CheckCircle2 className="size-4 text-green-500 ml-auto" />
                         )}
                         {currentAnswer && isSelected && !isCorrectOption && (
-                          <XCircle className="size-6 text-destructive ml-auto" />
+                          <XCircle className="size-4 text-destructive ml-auto" />
                         )}
                       </button>
                     );
@@ -467,24 +466,24 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 </div>
 
                 {currentAnswer && (
-                  <div className="mt-12 p-8 rounded-[32px] bg-accent/10 border-2 border-accent/20 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <div className="flex items-center gap-3 mb-4">
+                  <div className="mt-8 p-6 rounded-2xl bg-accent/10 border-2 border-accent/20 animate-in fade-in slide-in-from-top-2 duration-500">
+                    <div className="flex items-center gap-2 mb-3">
                       {isCorrect ? (
-                        <Badge className="bg-green-500 hover:bg-green-600 text-white border-none px-4 py-1.5 rounded-xl font-black gap-2">
-                          <CheckCircle2 className="size-4" /> ДҰРЫС!
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white border-none px-3 py-1 rounded-lg font-black text-[10px] gap-1.5">
+                          <CheckCircle2 className="size-3" /> ДҰРЫС!
                         </Badge>
                       ) : (
-                        <Badge className="bg-destructive hover:bg-destructive text-white border-none px-4 py-1.5 rounded-xl font-black gap-2">
-                          <XCircle className="size-4" /> ҚАТЕ!
+                        <Badge className="bg-destructive hover:bg-destructive text-white border-none px-3 py-1 rounded-lg font-black text-[10px] gap-1.5">
+                          <XCircle className="size-3" /> ҚАТЕ!
                         </Badge>
                       )}
                     </div>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Info className="size-5 text-primary shrink-0 mt-1" />
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <Info className="size-4 text-primary shrink-0 mt-0.5" />
                         <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Түсіндірме</p>
-                          <p className="text-lg font-medium leading-relaxed text-foreground/90 italic">
+                          <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest">Түсіндірме</p>
+                          <p className="text-sm font-medium leading-relaxed text-foreground/90 italic">
                             {questions[currentIndex].explanation}
                           </p>
                         </div>
@@ -494,50 +493,50 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 )}
               </Card>
 
-              <div className="flex gap-6">
-                <Button variant="outline" className="flex-1 h-20 text-xl font-black rounded-[24px] border-2" onClick={prevQuestion} disabled={currentIndex === 0}>Артқа</Button>
+              <div className="flex gap-4">
+                <Button variant="outline" className="flex-1 h-14 text-sm font-black rounded-xl border-2" onClick={prevQuestion} disabled={currentIndex === 0}>Артқа</Button>
                 <Button 
-                  className="flex-[2] h-20 text-xl font-black rounded-[24px] shadow-2xl shadow-primary/20 gap-3" 
+                  className="flex-[2] h-14 text-sm font-black rounded-xl shadow-lg shadow-primary/10 gap-2" 
                   disabled={!currentAnswer} 
                   onClick={nextQuestion}
                 >
-                  {currentIndex === questions.length - 1 ? "Аяқтау" : "Келесі сұрақ"} <ArrowRight className="size-6" />
+                  {currentIndex === questions.length - 1 ? "Аяқтау" : "Келесі"} <ArrowRight className="size-4" />
                 </Button>
               </div>
             </div>
           )}
 
           {practiceMode === "results" && (
-            <div className="py-10 space-y-12 animate-in zoom-in-95 duration-500 pb-20">
-              <div className="text-center space-y-6">
-                <div className="inline-flex size-32 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner relative">
-                  <Trophy className="size-16" />
+            <div className="py-8 space-y-8 animate-in zoom-in-95 duration-500 pb-12">
+              <div className="text-center space-y-4">
+                <div className="inline-flex size-20 rounded-full bg-yellow-100 text-yellow-600 items-center justify-center shadow-inner relative">
+                  <Trophy className="size-10" />
                 </div>
-                <h3 className="text-5xl font-black font-headline tracking-tighter">Нәтиже: {testResult.score} / {testResult.total}</h3>
+                <h3 className="text-3xl font-black font-headline tracking-tighter">Нәтиже: {testResult.score} / {testResult.total}</h3>
               </div>
 
-              <div className="grid gap-6">
+              <div className="grid gap-4">
                 {questions.map((q, i) => (
-                  <div key={i} className={`p-8 rounded-[32px] border ${answers[i] === q.correctAnswer ? 'bg-green-50/50 border-green-200' : 'bg-destructive/5 border-destructive-200'}`}>
-                    <div className="flex items-start gap-5">
-                      <div className={`size-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${answers[i] === q.correctAnswer ? 'bg-green-500 text-white' : 'bg-destructive text-white'}`}>
-                        {answers[i] === q.correctAnswer ? <CheckCircle2 className="size-7" /> : <XCircle className="size-7" />}
+                  <div key={i} className={`p-6 rounded-2xl border ${answers[i] === q.correctAnswer ? 'bg-green-50/50 border-green-200' : 'bg-destructive/5 border-destructive-200'}`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`size-8 rounded-xl flex items-center justify-center shrink-0 shadow-md ${answers[i] === q.correctAnswer ? 'bg-green-500 text-white' : 'bg-destructive text-white'}`}>
+                        {answers[i] === q.correctAnswer ? <CheckCircle2 className="size-5" /> : <XCircle className="size-5" />}
                       </div>
-                      <div className="space-y-4">
-                        <p className="text-xl font-bold leading-tight">{q.text}</p>
-                        <div className="flex flex-wrap gap-6 text-xs font-black uppercase tracking-widest">
+                      <div className="space-y-3">
+                        <p className="text-base font-bold leading-tight">{q.text}</p>
+                        <div className="flex flex-wrap gap-4 text-[9px] font-black uppercase tracking-widest">
                           <span className={answers[i] === q.correctAnswer ? 'text-green-700' : 'text-destructive'}>Сенің жауабың: {answers[i] || "—"}</span>
-                          <span className="text-green-700">Дұрыс жауап: {q.correctAnswer}</span>
+                          <span className="text-green-700">Дұрыс: {q.correctAnswer}</span>
                         </div>
-                        <div className="p-6 rounded-2xl bg-white/80 border border-border shadow-inner">
-                          <p className="text-sm font-medium italic leading-relaxed text-muted-foreground"><span className="font-black text-primary not-italic mr-2">ТҮСІНДІРМЕ:</span> {q.explanation}</p>
+                        <div className="p-4 rounded-xl bg-white/80 border border-border shadow-inner">
+                          <p className="text-xs font-medium italic leading-relaxed text-muted-foreground"><span className="font-black text-primary not-italic mr-1">ТҮСІНДІРМЕ:</span> {q.explanation}</p>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <Button variant="outline" className="w-full h-20 text-xl font-black rounded-3xl border-2" onClick={() => setPracticeMode("reading")}>Бөлімге қайту</Button>
+              <Button variant="outline" className="w-full h-14 text-base font-black rounded-2xl border-2" onClick={() => setPracticeMode("reading")}>Бөлімге қайту</Button>
             </div>
           )}
         </ScrollArea>

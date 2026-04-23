@@ -29,7 +29,8 @@ import {
   ArrowLeft,
   XCircle,
   Clock,
-  LayoutGrid
+  LayoutGrid,
+  Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -286,7 +287,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     setAnswers({});
     
     try {
-      // 1. Алдымен Firestore-дан іздейміз
       const subjectId = subject.toLowerCase().replace(/\s+/g, '-');
       const topicId = topic.toLowerCase().replace(/\s+/g, '-');
       const qRef = collection(db, "subjects", subjectId, "topics", topicId, "questions");
@@ -298,14 +298,12 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
         return;
       }
 
-      // 2. Егер базада жоқ болса, статикалық базадан іздейміз
       if (STATIC_TESTS[subject] && STATIC_TESTS[subject][topic]) {
         setQuestions(STATIC_TESTS[subject][topic]);
         setPracticeMode("testing");
         return;
       }
 
-      // 3. AI генерациясы (соңғы нұсқа)
       const { questions: newQuestions } = await generateUntQuestions({ subject, topic, count: 5 });
       setQuestions(newQuestions || []);
       setPracticeMode("testing");
@@ -316,6 +314,8 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
   };
 
   const handleAnswer = (option: string) => {
+    // Егер бұл сұраққа әлі жауап берілмесе ғана қабылдаймыз
+    if (answers[currentIndex]) return;
     setAnswers(prev => ({ ...prev, [currentIndex]: option }));
   };
 
@@ -337,6 +337,9 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     setPracticeMode("results");
     if (user && correct > 0) updateUserRating(user.uid, 'CORRECT_ANSWER');
   };
+
+  const currentAnswer = answers[currentIndex];
+  const isCorrect = currentAnswer === questions[currentIndex]?.correctAnswer;
 
   return (
     <Dialog open={isDetailOpen} onOpenChange={(open) => {
@@ -418,20 +421,86 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                 <div className="grid gap-5">
                   {questions[currentIndex].options.map((opt: string, i: number) => {
                     const letter = String.fromCharCode(65 + i);
-                    const isSelected = answers[currentIndex] === letter;
+                    const isSelected = currentAnswer === letter;
+                    const isCorrectOption = questions[currentIndex].correctAnswer === letter;
+                    
+                    let variantClass = "border-border hover:border-primary/30";
+                    let iconClass = "text-muted-foreground";
+
+                    if (currentAnswer) {
+                      if (isCorrectOption) {
+                        variantClass = "border-green-500 bg-green-50 ring-8 ring-green-500/5";
+                        iconClass = "bg-green-500 text-white border-green-500";
+                      } else if (isSelected) {
+                        variantClass = "border-destructive bg-destructive/5 ring-8 ring-destructive/5";
+                        iconClass = "bg-destructive text-white border-destructive";
+                      } else {
+                        variantClass = "border-border opacity-50";
+                      }
+                    } else if (isSelected) {
+                      variantClass = "border-primary bg-primary/5 ring-8 ring-primary/5";
+                      iconClass = "bg-primary text-white border-primary";
+                    }
+
                     return (
-                      <button key={i} onClick={() => handleAnswer(letter)} className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-6 group active:scale-[0.98] ${isSelected ? "border-primary bg-primary/5 ring-8 ring-primary/5" : "border-border hover:border-primary/30"}`}>
-                        <span className={`size-12 rounded-2xl border-2 flex items-center justify-center font-black text-lg transition-all ${isSelected ? "bg-primary text-white border-primary" : "text-muted-foreground"}`}>{letter}</span>
-                        <span className={`font-bold text-lg ${isSelected ? "text-primary" : "text-foreground"}`}>{opt}</span>
+                      <button 
+                        key={i} 
+                        onClick={() => handleAnswer(letter)} 
+                        disabled={!!currentAnswer}
+                        className={`w-full text-left p-6 rounded-[24px] border-2 transition-all flex items-center gap-6 group active:scale-[0.98] ${variantClass}`}
+                      >
+                        <span className={`size-12 rounded-2xl border-2 flex items-center justify-center font-black text-lg transition-all ${iconClass}`}>
+                          {letter}
+                        </span>
+                        <span className={`font-bold text-lg ${isSelected ? (isCorrect ? 'text-green-700' : 'text-destructive') : 'text-foreground'}`}>
+                          {opt}
+                        </span>
+                        {currentAnswer && isCorrectOption && (
+                          <CheckCircle2 className="size-6 text-green-500 ml-auto" />
+                        )}
+                        {currentAnswer && isSelected && !isCorrectOption && (
+                          <XCircle className="size-6 text-destructive ml-auto" />
+                        )}
                       </button>
                     );
                   })}
                 </div>
+
+                {currentAnswer && (
+                  <div className="mt-12 p-8 rounded-[32px] bg-accent/10 border-2 border-accent/20 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-3 mb-4">
+                      {isCorrect ? (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white border-none px-4 py-1.5 rounded-xl font-black gap-2">
+                          <CheckCircle2 className="size-4" /> ДҰРЫС!
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-destructive hover:bg-destructive text-white border-none px-4 py-1.5 rounded-xl font-black gap-2">
+                          <XCircle className="size-4" /> ҚАТЕ!
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Info className="size-5 text-primary shrink-0 mt-1" />
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Түсіндірме</p>
+                          <p className="text-lg font-medium leading-relaxed text-foreground/90 italic">
+                            {questions[currentIndex].explanation}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Card>
 
               <div className="flex gap-6">
                 <Button variant="outline" className="flex-1 h-20 text-xl font-black rounded-[24px] border-2" onClick={prevQuestion} disabled={currentIndex === 0}>Артқа</Button>
-                <Button className="flex-[2] h-20 text-xl font-black rounded-[24px] shadow-2xl shadow-primary/20 gap-3" disabled={!answers[currentIndex]} onClick={nextQuestion}>
+                <Button 
+                  className="flex-[2] h-20 text-xl font-black rounded-[24px] shadow-2xl shadow-primary/20 gap-3" 
+                  disabled={!currentAnswer} 
+                  onClick={nextQuestion}
+                >
                   {currentIndex === questions.length - 1 ? "Аяқтау" : "Келесі сұрақ"} <ArrowRight className="size-6" />
                 </Button>
               </div>
@@ -476,4 +545,3 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
     </Dialog>
   );
 }
-

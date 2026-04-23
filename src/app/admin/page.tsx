@@ -142,14 +142,25 @@ export default function AdminPage() {
           name: rawData.subject,
           topics: [{
             title: rawData.topic || "Жалпы",
-            questions: rawData.questions.map((q: any) => ({
-              text: q.question || q.text,
-              options: typeof q.options === 'object' && !Array.isArray(q.options) 
-                ? [q.options.A, q.options.B, q.options.C, q.options.D].filter(Boolean)
-                : q.options,
-              correctAnswer: q.correct || q.correctAnswer,
-              explanation: q.explanation
-            }))
+            questions: rawData.questions.map((q: any) => {
+              // Normalize options if it's an object {A: "...", B: "..."}
+              let finalOptions = q.options;
+              if (typeof q.options === 'object' && !Array.isArray(q.options)) {
+                finalOptions = [
+                  q.options.A || q.options.a,
+                  q.options.B || q.options.b,
+                  q.options.C || q.options.c,
+                  q.options.D || q.options.d
+                ].filter(val => val !== undefined && val !== null);
+              }
+
+              return {
+                text: q.question || q.text,
+                options: finalOptions,
+                correctAnswer: q.correct || q.correctAnswer,
+                explanation: q.explanation || ""
+              };
+            })
           }]
         }];
       } else if (rawData.subjects) {
@@ -179,15 +190,9 @@ export default function AdminPage() {
                 const qId = Math.random().toString(36).substring(7);
                 const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
                 
-                // Normalize options if they are still an object
-                let finalOptions = q.options;
-                if (typeof q.options === 'object' && !Array.isArray(q.options)) {
-                   finalOptions = [q.options.A, q.options.B, q.options.C, q.options.D].filter(Boolean);
-                }
-
                 await setDoc(qRef, { 
                   text: q.text,
-                  options: finalOptions,
+                  options: q.options,
                   correctAnswer: q.correctAnswer,
                   explanation: q.explanation || "",
                   updatedAt: serverTimestamp() 

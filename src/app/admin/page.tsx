@@ -1,12 +1,14 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/layout/shell";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Database, 
@@ -20,14 +22,31 @@ import {
   Users,
   Star,
   ExternalLink,
-  Trash2
+  Trash2,
+  UserPlus,
+  AlertTriangle
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, getDocs, writeBatch } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signOut } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
 import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError, deleteDocumentNonBlocking } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { auth as firebaseAuth } from "@/lib/firebase/config";
+
+const SUBJECT_COMBINATIONS = [
+  { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура", "Авиация", "Техника"] },
+  { label: "Математика + Информатика", subjects: ["Математика", "Информатика"], careers: ["IT", "Программалау", "Киберқауіпсіздік"] },
+  { label: "Биология + Химия", subjects: ["Биология", "Химия"], careers: ["Медицина", "Стоматология", "Фармация", "Биотехнология"] },
+  { label: "Биология + География", subjects: ["Биология", "География"], careers: ["Агрономия", "Экология", "География", "Туризм"] },
+  { label: "География + Математика", subjects: ["География", "Математика"], careers: ["Экономика", "Бизнес", "Менеджмент", "Логистика", "Маркетинг"] },
+  { label: "Дүниежүзі тарихы + География", subjects: ["Дүниежүзі тарихы", "География"], careers: ["Халықаралық қатынастар", "Мұғалімдік", "Саясаттану", "Аймақтану"] },
+  { label: "Дүниежүзі тарихы + Адам. Қоғам. Құқық", subjects: ["Дүниежүзі тарихы", "Құқық негіздері"], careers: ["Заң", "Халықаралық құқық", "Қоғамдық ғылымдар"] },
+  { label: "Қазақ әдебиеті + Қазақ тілі", subjects: ["Қазақ әдебиеті", "Қазақ тілі"], careers: ["Филология", "Мұғалімдік", "Журналистика"] },
+  { label: "Орыс тілі + Орыс әдебиеті", subjects: ["Орыс тілі", "Орыс әдебиеті"], careers: ["Орыс филологиясы", "Аударма", "Мұғалімдік"] },
+  { label: "Ағылшын тілі + Дүниежүзі тарихы", subjects: ["Ағылшын тілі", "Дүниежүзі тарихы"], careers: ["Дипломатия", "Халықаралық бизнес", "Шетелмен жұмыс", "Аударма", "Туризм"] },
+];
 
 export default function AdminPage() {
   const { isAdmin, loading, profile } = useAuth();
@@ -39,18 +58,81 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Registration State
+  const [regForm, setRegForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    grade: "11",
+    comboIndex: "",
+    targetCareer: "",
+    targetScore: 120
+  });
+  const [isRegistering, setIsRegistering] = useState(false);
+
   useEffect(() => {
     if (!loading && !isAdmin) {
       router.push("/dashboard");
     }
   }, [isAdmin, loading, router]);
 
-  // Fetch users
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
   }, [firestore]);
   const { data: students, isLoading: loadingUsers } = useCollection(usersQuery);
+
+  const handleRegisterStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regForm.fullName || !regForm.email || !regForm.password || !regForm.comboIndex) {
+      toast({ title: "Барлық өрістерді толтырыңыз", variant: "destructive" });
+      return;
+    }
+
+    if (!confirm("Назар аударыңыз! Жаңа оқушыны тіркеген кезде сіздің админ сессияңыз аяқталып, жаңа оқушы ретінде кіресіз. Жалғастырасыз ба?")) {
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const combo = SUBJECT_COMBINATIONS[parseInt(regForm.comboIndex)];
+      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, regForm.email, regForm.password);
+      const user = userCredential.user;
+
+      const profileData = {
+        id: user.uid,
+        fullName: regForm.fullName,
+        email: regForm.email,
+        grade: regForm.grade,
+        targetScore: Number(regForm.targetScore),
+        currentScore: 0,
+        rating: 0,
+        solvedQuestions: 0,
+        correctAnswers: 0,
+        completedPlans: 0,
+        streakDays: 0,
+        selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Математикалық сауаттылық", ...combo.subjects],
+        subjectCombination: combo.label,
+        targetCareer: regForm.targetCareer,
+        weakTopics: [],
+        untDate: "2025-06-20",
+        totalStudyTimeMinutes: 0,
+        todayStudyTimeMinutes: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        role: 'student'
+      };
+
+      await setDoc(doc(firestore, "studentProfiles", user.uid), profileData);
+
+      toast({ title: "Оқушы сәтті тіркелді!", description: "Жүйе автоматты түрде оқушы профиліне ауысты." });
+      router.push("/dashboard");
+    } catch (err: any) {
+      toast({ title: "Тіркеу қатесі", description: err.message, variant: "destructive" });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
 
   const handleBulkUpload = async () => {
     if (!jsonInput.trim() || !firestore) return;
@@ -141,6 +223,8 @@ export default function AdminPage() {
     );
   }
 
+  const selectedCombo = regForm.comboIndex !== "" ? SUBJECT_COMBINATIONS[parseInt(regForm.comboIndex)] : null;
+
   return (
     <AppShell>
       <div className="flex flex-col gap-8 max-w-7xl mx-auto">
@@ -159,6 +243,9 @@ export default function AdminPage() {
           <TabsList className="bg-white border p-1.5 h-14 rounded-2xl shadow-sm mb-8 overflow-x-auto">
             <TabsTrigger value="users" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Users className="size-4" /> Пайдаланушылар
+            </TabsTrigger>
+            <TabsTrigger value="register" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
+              <UserPlus className="size-4" /> Оқушыны тіркеу
             </TabsTrigger>
             <TabsTrigger value="import" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Database className="size-4" /> Контент импорт
@@ -212,6 +299,102 @@ export default function AdminPage() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="register" className="space-y-6">
+            <Card className="max-w-2xl mx-auto border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
+              <CardHeader className="bg-primary/5 pb-6 border-b">
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="size-5 text-primary" />
+                  Жаңа оқушыны тіркеу
+                </CardTitle>
+                <CardDescription>Оқушы үшін жаңа аккаунт жасау.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-8">
+                <AlertTriangle className="size-5 text-orange-500 mb-2" />
+                <p className="text-xs text-orange-600 mb-6 font-medium">
+                  Маңызды: Тіркеуден кейін сіз админ панелінен шығып, жаңа оқушының профиліне кіресіз. 
+                  Қайтадан админ болу үшін қайта кіру қажет.
+                </p>
+
+                <form onSubmit={handleRegisterStudent} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Аты-жөні</Label>
+                      <Input 
+                        placeholder="Арман Серік" 
+                        value={regForm.fullName}
+                        onChange={(e) => setRegForm({...regForm, fullName: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Email</Label>
+                      <Input 
+                        type="email" 
+                        placeholder="student@mail.kz" 
+                        value={regForm.email}
+                        onChange={(e) => setRegForm({...regForm, email: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Құпия сөз</Label>
+                      <Input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        value={regForm.password}
+                        onChange={(e) => setRegForm({...regForm, password: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Сынып</Label>
+                      <Select onValueChange={(v) => setRegForm({...regForm, grade: v})} value={regForm.grade}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10-сынып</SelectItem>
+                          <SelectItem value="11">11-сынып</SelectItem>
+                          <SelectItem value="college">Колледж</SelectItem>
+                          <SelectItem value="graduated">Түлек</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Пән комбинациясы</Label>
+                    <Select onValueChange={(v) => setRegForm({...regForm, comboIndex: v, targetCareer: ""})} value={regForm.comboIndex}>
+                      <SelectTrigger><SelectValue placeholder="Таңдаңыз" /></SelectTrigger>
+                      <SelectContent>
+                        {SUBJECT_COMBINATIONS.map((c, i) => (
+                          <SelectItem key={i} value={i.toString()}>{c.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedCombo && (
+                    <div className="space-y-2">
+                      <Label>Мамандық</Label>
+                      <Select onValueChange={(v) => setRegForm({...regForm, targetCareer: v})} value={regForm.targetCareer}>
+                        <SelectTrigger><SelectValue placeholder="Таңдаңыз" /></SelectTrigger>
+                        <SelectContent>
+                          {selectedCombo.careers.map((c, i) => (
+                            <SelectItem key={i} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <Button className="w-full h-12 rounded-xl font-bold" type="submit" disabled={isRegistering}>
+                    {isRegistering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                    Оқушыны тіркеу
+                  </Button>
+                </form>
               </CardContent>
             </Card>
           </TabsContent>

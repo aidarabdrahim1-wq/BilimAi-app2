@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -88,12 +87,6 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <div className="text-sm text-center text-muted-foreground">
-            Тіркелмегенсіз бе?{" "}
-            <Link href="/signup" className="text-primary font-semibold hover:underline">
-              Тіркелу
-            </Link>
-          </div>
           <Link href="/" className="text-xs text-center text-muted-foreground hover:underline">
             Басты бетке қайту
           </Link>

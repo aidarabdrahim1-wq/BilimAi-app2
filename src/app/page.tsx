@@ -30,9 +30,8 @@ export default function LandingPage() {
             <Link href="#motivation" className="text-sm font-medium hover:text-primary transition-colors">Мотивация</Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm font-medium hover:text-primary transition-colors">Кіру</Link>
-            <Button asChild>
-              <Link href="/signup">Тіркелу</Link>
+            <Button asChild variant="default">
+              <Link href="/login">Кіру</Link>
             </Button>
           </div>
         </div>
@@ -52,7 +51,7 @@ export default function LandingPage() {
               </p>
               <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
                 <Button size="lg" className="h-12 px-8 text-base font-semibold" asChild>
-                  <Link href="/signup">Тегін тіркелу</Link>
+                  <Link href="/login">Дайындықты бастау</Link>
                 </Button>
               </div>
             </div>
@@ -69,7 +68,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { icon: Target, title: "Әлсіз тұсты анықтау", desc: "AI диагностика арқылы нақты қай тақырыптарды қайталау керек екенін білесіз." },
-              { icon: Calendar, title: "Жеке оқу жоспары", desc: "Сіздің деңгейіңізге және мақсатты балыңызға сай құрастырылған апталық жоспар." },
+              { icon: Calendar, title: "Жеке оқу жоспары", desc: "Сіздің деңгейіңе және мақсатты балыңызға сай құрастырылған апталық жоспар." },
               { icon: MessageSquare, title: "AI куратор", desc: "Кез келген уақытта сұрақ қойып, қолдау мен мотивация алыңыз." },
               { icon: ChartNoAxesColumnIncreasing, title: "Прогресс бақылауы", desc: "Әр күн сайын өсуіңізді бақылап, қателермен жұмыс жасаңыз." },
               { icon: ShieldCheck, title: "Теория + Практика", desc: "Барлық тақырып бойынша құрылымдалған конспектілер мен ҰБТ форматындағы тесттер." },
@@ -180,7 +179,7 @@ export default function LandingPage() {
                 Мақсатыңызға бір қадам жақындаңыз!
               </p>
               <Button size="lg" variant="secondary" className="h-12 px-10 text-base font-bold shadow-lg" asChild>
-                <Link href="/signup">Қазір тіркелу</Link>
+                <Link href="/login">Кіру</Link>
               </Button>
             </div>
             <div className="absolute top-0 right-0 size-64 bg-white/5 rounded-full blur-3xl" />
@@ -205,7 +204,6 @@ export default function LandingPage() {
               <h4 className="font-bold mb-4">Платформа</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><Link href="/" className="hover:text-primary">Басты бет</Link></li>
-                <li><Link href="/signup" className="hover:text-primary">Тіркелу</Link></li>
                 <li><Link href="/login" className="hover:text-primary">Кіру</Link></li>
               </ul>
             </div>

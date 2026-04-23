@@ -48,7 +48,7 @@ import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query } from "firebase/firestore";
 
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
@@ -70,13 +70,36 @@ const getSubjectIcon = (name: string) => {
 export default function TheoryPage() {
   const { profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [firestoreSubjects, setFirestoreSubjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Real-time listener for custom subjects uploaded via Admin
+  useEffect(() => {
+    const q = query(collection(db, "subjects"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const subjects = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setFirestoreSubjects(subjects);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   if (!profile) return null;
 
   const userSubjects = profile.selectedSubjects || [];
   const normalizedUserSubjects = userSubjects.map(s => s === "Мат. сауаттылық" ? "Математикалық сауаттылық" : s);
 
-  const mySubjects = Object.keys(UBT_TOPICS).filter(s => {
+  // Merge static topics with Firestore subjects
+  const allAvailableSubjectNames = Array.from(new Set([
+    ...Object.keys(UBT_TOPICS),
+    ...firestoreSubjects.map(s => s.name)
+  ]));
+
+  const mySubjects = allAvailableSubjectNames.filter(s => {
     const isSelected = normalizedUserSubjects.includes(s);
     return isSelected && s.toLowerCase().includes(searchQuery.toLowerCase());
   });
@@ -118,7 +141,9 @@ export default function TheoryPage() {
             <div className="h-8 w-1.5 rounded-full bg-primary" />
             <h2 className="text-2xl font-black font-headline tracking-tight">Менің пәндерім</h2>
           </div>
-          {mySubjects.length > 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-20"><Loader2 className="size-8 animate-spin text-primary" /></div>
+          ) : mySubjects.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {mySubjects.map((subject, i) => (
                 <SubjectCard key={i} subject={subject} />
@@ -137,8 +162,29 @@ export default function TheoryPage() {
 
 function SubjectCard({ subject }: { subject: string }) {
   const Icon = getSubjectIcon(subject);
-  const ubtInfo = UBT_TOPICS[subject];
+  const ubtInfo = UBT_TOPICS[subject] || { topics: [], description: "Арнайы жүктелген пән." };
   const [isOpen, setIsOpen] = useState(false);
+  const [firestoreTopics, setFirestoreTopics] = useState<string[]>([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+
+  // Fetch custom topics from Firestore when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingTopics(true);
+      const subjectId = subject.toLowerCase().replace(/\s+/g, '-');
+      const topicsRef = collection(db, "subjects", subjectId, "topics");
+      
+      const unsubscribe = onSnapshot(topicsRef, (snapshot) => {
+        const topics = snapshot.docs.map(doc => doc.data().title || doc.id);
+        setFirestoreTopics(topics);
+        setLoadingTopics(false);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, subject]);
+
+  const allTopics = Array.from(new Set([...ubtInfo.topics, ...firestoreTopics]));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -158,7 +204,7 @@ function SubjectCard({ subject }: { subject: string }) {
             <div className="flex items-center justify-between mt-2">
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Тақырыптар</span>
-                <span className="text-sm font-black text-primary">{ubtInfo.topics.length} бөлім</span>
+                <span className="text-sm font-black text-primary">{allTopics.length} бөлім</span>
               </div>
               <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
                 <ChevronRight className="size-5" />
@@ -185,11 +231,15 @@ function SubjectCard({ subject }: { subject: string }) {
           </DialogHeader>
         </div>
         <ScrollArea className="flex-1 px-8 py-4">
-          <div className="grid gap-4 py-4">
-            {ubtInfo.topics.map((topic, idx) => (
-              <TopicItem key={idx} index={idx} topic={topic} subject={subject} />
-            ))}
-          </div>
+          {loadingTopics ? (
+            <div className="flex justify-center py-10"><Loader2 className="size-6 animate-spin text-primary" /></div>
+          ) : (
+            <div className="grid gap-4 py-4">
+              {allTopics.map((topic, idx) => (
+                <TopicItem key={idx} index={idx} topic={topic} subject={subject} />
+              ))}
+            </div>
+          )}
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex items-center justify-center gap-2 shrink-0">
           <Sparkles className="size-4 text-primary animate-pulse" />
@@ -300,8 +350,6 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       updateUserRating(user.uid, 'CORRECT_ANSWER');
     }
   };
-
-  const isStatic = (STATIC_TESTS[subject] && STATIC_TESTS[subject][topic]) || questions.length > 0;
 
   return (
     <Dialog open={isDetailOpen} onOpenChange={(open) => {

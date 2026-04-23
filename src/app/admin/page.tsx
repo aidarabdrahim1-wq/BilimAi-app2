@@ -132,11 +132,35 @@ export default function AdminPage() {
     setUploadProgress("Деректер талдануда...");
 
     try {
-      const data = JSON.parse(jsonInput);
-      if (!data.subjects) throw new Error("JSON файлында 'subjects' массиві болуы керек.");
+      let rawData = JSON.parse(jsonInput);
+      let subjectsToProcess = [];
+
+      // Detect and normalize input format
+      if (rawData.subject && rawData.questions) {
+        // User's flat format for single subject/topic
+        subjectsToProcess = [{
+          name: rawData.subject,
+          topics: [{
+            title: rawData.topic || "Жалпы",
+            questions: rawData.questions.map((q: any) => ({
+              text: q.question || q.text,
+              options: typeof q.options === 'object' && !Array.isArray(q.options) 
+                ? [q.options.A, q.options.B, q.options.C, q.options.D].filter(Boolean)
+                : q.options,
+              correctAnswer: q.correct || q.correctAnswer,
+              explanation: q.explanation
+            }))
+          }]
+        }];
+      } else if (rawData.subjects) {
+        // Standard nested format
+        subjectsToProcess = rawData.subjects;
+      } else {
+        throw new Error("JSON форматы танылмады. 'subject' немесе 'subjects' өрісін тексеріңіз.");
+      }
       
       let count = 0;
-      for (const subject of data.subjects) {
+      for (const subject of subjectsToProcess) {
         setUploadProgress(`${subject.name} пәні жүктелуде...`);
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
         const subjectRef = doc(firestore, "subjects", subjectId);
@@ -154,7 +178,20 @@ export default function AdminPage() {
               for (const q of topic.questions) {
                 const qId = Math.random().toString(36).substring(7);
                 const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
-                await setDoc(qRef, { ...q, updatedAt: serverTimestamp() });
+                
+                // Normalize options if they are still an object
+                let finalOptions = q.options;
+                if (typeof q.options === 'object' && !Array.isArray(q.options)) {
+                   finalOptions = [q.options.A, q.options.B, q.options.C, q.options.D].filter(Boolean);
+                }
+
+                await setDoc(qRef, { 
+                  text: q.text,
+                  options: finalOptions,
+                  correctAnswer: q.correctAnswer,
+                  explanation: q.explanation || "",
+                  updatedAt: serverTimestamp() 
+                });
                 count++;
               }
             }
@@ -294,7 +331,7 @@ export default function AdminPage() {
                   <h3 className="font-bold flex items-center gap-2 mb-4"><CheckCircle2 className="size-5" /> Тез толтыру жолы:</h3>
                   <div className="text-xs space-y-4 opacity-90 leading-relaxed">
                     <p>1. AI-дан (ChatGPT) сұрақтарды біздің форматқа келтіріп беруді сұраңыз.</p>
-                    <p>2. Оң жақтағы "Үлгіні көшіру" батырмасын басып, форматты AI-ға көрсетіңіз.</p>
+                    <p>2. Төмендегі "Импорт Үлгісін" AI-ға көрсетіңіз.</p>
                     <p>3. Дайын JSON кодын сол жақтағы терезеге қойып, "Жүктеу" батырмасын басыңыз.</p>
                   </div>
                 </Card>
@@ -303,29 +340,26 @@ export default function AdminPage() {
                   <CardHeader className="pb-2 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold">Импорт Үлгісі</CardTitle>
                     <Button variant="ghost" size="sm" onClick={() => {
-                      navigator.clipboard.writeText(`{ "subjects": [ { "name": "Математика", "topics": [ { "title": "Логарифм", "questions": [ { "text": "log2(8)?", "options": ["1","2","3","4"], "correctAnswer": "C", "explanation": "2^3=8" } ] } ] } ] }`);
+                      navigator.clipboard.writeText(`{ "subject": "Қазақстан тарихы", "topic": "Ежелгі Қазақстан", "questions": [ { "question": "Тас дәуірі қанша кезеңге бөлінеді?", "options": {"A": "2", "B": "3", "C": "4", "D": "5"}, "correct": "B", "explanation": "Палеолит, мезолит, неолит." } ] }`);
                       toast({ title: "Көшірілді!" });
                     }}><ClipboardCopy className="size-4" /></Button>
                   </CardHeader>
                   <CardContent>
                     <pre className="p-4 rounded-xl bg-black text-[10px] text-green-400 overflow-x-auto">
 {`{
-  "subjects": [
+  "subject": "Пән атауы",
+  "topic": "Тақырып",
+  "questions": [
     {
-      "name": "Пән атауы",
-      "topics": [
-        { 
-          "title": "Тақырып", 
-          "questions": [
-            {
-              "text": "Сұрақ?",
-              "options": ["A", "B", "C", "D"],
-              "correctAnswer": "A",
-              "explanation": "Түсініктеме"
-            }
-          ]
-        }
-      ]
+      "question": "Сұрақ?",
+      "options": {
+        "A": "Нұсқа 1",
+        "B": "Нұсқа 2",
+        "C": "Нұсқа 3",
+        "D": "Нұсқа 4"
+      },
+      "correct": "A",
+      "explanation": "Түсініктеме"
     }
   ]
 }`}

@@ -25,7 +25,7 @@ import {
   BookOpen,
   Lock,
   AlertCircle
-} from "lucide-center";
+} from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";

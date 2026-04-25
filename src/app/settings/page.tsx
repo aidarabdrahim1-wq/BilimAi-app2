@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -22,13 +21,10 @@ import {
   Save, 
   Loader2,
   ShieldCheck,
-  BookOpen,
-  Lock,
-  AlertCircle
+  BookOpen
 } from "lucide-react";
 import { errorEmitter } from "@/firebase/error-emitter";
 import { FirestorePermissionError } from "@/firebase/errors";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const SUBJECT_COMBINATIONS = [
   { label: "Математика + Физика", subjects: ["Математика", "Физика"] },

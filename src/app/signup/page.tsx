@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -76,6 +75,7 @@ export default function SignupPage() {
         untDate: "2025-06-20", 
         totalStudyTimeMinutes: 0,
         todayStudyTimeMinutes: 0,
+        role: 'student',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

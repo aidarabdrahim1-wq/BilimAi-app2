@@ -24,10 +24,10 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isAdmin() || isOwner(studentId);
       
-      // Allow update ONLY for tracking fields for owners. Profile fields are Admin-only.
+      // Allow owners to update their profile information, but protect role and email.
       allow update: if isAdmin() || (isOwner(studentId) && 
         !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-          'fullName', 'grade', 'targetScore', 'subjectCombination', 'selectedSubjects', 'role', 'email', 'targetCareer', 'untDate'
+          'role', 'email'
         ]));
       
       allow delete: if isAdmin();

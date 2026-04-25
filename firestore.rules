@@ -11,11 +11,14 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      let adminEmails = [
+        'admin@bilimai.kz',
+        'aaidarabdrahim1@gmail.com',
+        'aidarabdrahim1@gmail.com',
+        'abdrahimaidar1@gmail.com'
+      ];
       return isSignedIn() && (
-        request.auth.token.email == 'admin@bilimai.kz' ||
-        request.auth.token.email == 'aaidarabdrahim1@gmail.com' ||
-        request.auth.token.email == 'aidarabdrahim1@gmail.com' ||
-        request.auth.token.email == 'abdrahimaidar1@gmail.com' ||
+        request.auth.token.email in adminEmails ||
         (exists(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.get('role', 'student') == 'admin')
       );
@@ -23,11 +26,14 @@ service cloud.firestore {
 
     match /studentProfiles/{studentId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin() || isOwner(studentId);
+      allow create: if isSignedIn() && (request.auth.uid == studentId || isAdmin());
       
       // Allow owners to update their profile information, but protect role and email.
-      allow update: if isAdmin() || (isOwner(studentId) && 
-        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'email'])));
+      allow update: if isSignedIn() && (request.auth.uid == studentId || isAdmin()) && 
+        (isAdmin() || (
+          request.resource.data.get('role', resource.data.get('role', 'student')) == resource.data.get('role', 'student') &&
+          request.resource.data.get('email', resource.data.get('email', '')) == resource.data.get('email', '')
+        ));
       
       allow delete: if isAdmin();
 

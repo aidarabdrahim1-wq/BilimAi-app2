@@ -26,10 +26,8 @@ import {
   AlertCircle,
   Trophy,
   ArrowRight,
-  ArrowLeft,
   XCircle,
   Clock,
-  LayoutGrid,
   Info
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -38,7 +36,6 @@ import { useAuth } from "@/components/auth/auth-provider";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -46,12 +43,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs, onSnapshot, query } from "firebase/firestore";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { collection, onSnapshot, query, getDocs } from "firebase/firestore";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
@@ -173,28 +176,8 @@ export default function TheoryPage() {
 
 function SubjectCard({ subject }: { subject: string }) {
   const Icon = getSubjectIcon(subject);
-  const ubtInfo = UBT_TOPICS[subject] || { topics: [], description: "Кәсіби дайындалған базалық пән." };
+  const ubtInfo = UBT_TOPICS[subject] || { description: "Кәсіби дайындалған базалық пән.", sections: [] };
   const [isOpen, setIsOpen] = useState(false);
-  const [firestoreTopics, setFirestoreTopics] = useState<string[]>([]);
-  const [loadingTopics, setLoadingTopics] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      setLoadingTopics(true);
-      const subjectId = subject.toLowerCase().replace(/\s+/g, '-');
-      const topicsRef = collection(db, "subjects", subjectId, "topics");
-      
-      const unsubscribe = onSnapshot(topicsRef, (snapshot) => {
-        const topics = snapshot.docs.map(doc => doc.data().title || doc.id);
-        setFirestoreTopics(topics);
-        setLoadingTopics(false);
-      });
-
-      return () => unsubscribe();
-    }
-  }, [isOpen, subject]);
-
-  const allTopics = Array.from(new Set([...ubtInfo.topics, ...firestoreTopics]));
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -213,8 +196,8 @@ function SubjectCard({ subject }: { subject: string }) {
           <CardContent className="mt-auto p-6 pt-0">
             <div className="flex items-center justify-between mt-2">
               <div className="flex flex-col">
-                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Мазмұны</span>
-                <span className="text-base font-black text-primary">{allTopics.length} бөлім</span>
+                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Құрылымы</span>
+                <span className="text-base font-black text-primary">{ubtInfo.sections.length} бөлім</span>
               </div>
               <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                 <ChevronRight className="size-5" />
@@ -231,29 +214,40 @@ function SubjectCard({ subject }: { subject: string }) {
                 <Icon className="size-6" />
               </div>
               <div>
-                <Badge variant="outline" className="mb-1 bg-white/80 text-primary border-primary/20 font-black tracking-widest text-[8px]">ҰБТ СПЕЦИФИКАЦИЯСЫ</Badge>
+                <Badge variant="outline" className="mb-1 bg-white/80 text-primary border-primary/20 font-black tracking-widest text-[8px]">ҰБТ СПЕЦИФИКАЦИЯСЫ 2026</Badge>
                 <DialogTitle className="text-2xl font-black font-headline tracking-tight">{subject}</DialogTitle>
               </div>
             </div>
           </DialogHeader>
         </div>
         <ScrollArea className="flex-1 px-8 py-4">
-          {loadingTopics ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <Loader2 className="size-8 animate-spin text-primary" />
-              <p className="text-xs font-bold text-muted-foreground">Тақырыптар жүктелуде...</p>
-            </div>
-          ) : (
-            <div className="grid gap-3 py-4">
-              {allTopics.map((topic, idx) => (
-                <TopicItem key={idx} index={idx} topic={topic} subject={subject} />
+          <div className="py-4">
+            <Accordion type="single" collapsible className="w-full space-y-4">
+              {ubtInfo.sections.map((section, sIdx) => (
+                <AccordionItem key={sIdx} value={`section-${sIdx}`} className="border-2 rounded-2xl bg-accent/5 px-6 border-transparent data-[state=open]:border-primary/20 data-[state=open]:bg-white transition-all">
+                  <AccordionTrigger className="hover:no-underline py-6">
+                    <div className="flex items-center gap-4 text-left">
+                      <div className="size-10 rounded-xl bg-white flex items-center justify-center text-xs font-black text-primary shadow-sm border">
+                        {sIdx + 1}
+                      </div>
+                      <span className="font-black text-lg">{section.title}</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-6">
+                    <div className="grid gap-3 pt-2">
+                      {section.topics.map((topic, tIdx) => (
+                        <TopicItem key={tIdx} topic={topic} subject={subject} />
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
-          )}
+            </Accordion>
+          </div>
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex justify-center shrink-0">
           <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-            <Sparkles className="size-3 text-primary animate-pulse" /> Барлық сұрақтар ҰБТ-2025 форматына сай
+            <Sparkles className="size-3 text-primary animate-pulse" /> Барлық сұрақтар ресми бағдарламаға сай
           </p>
         </div>
       </DialogContent>
@@ -261,7 +255,7 @@ function SubjectCard({ subject }: { subject: string }) {
   );
 }
 
-function TopicItem({ index, topic, subject }: { index: number, topic: string, subject: string }) {
+function TopicItem({ topic, subject }: { topic: string, subject: string }) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const { user } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -350,21 +344,14 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
       }
     }}>
       <DialogTrigger asChild>
-        <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-transparent bg-accent/5 hover:bg-white hover:border-primary/20 hover:shadow-md transition-all group/item cursor-pointer">
-          <div className="flex items-center gap-4">
-            <div className="size-10 rounded-xl bg-white flex items-center justify-center text-[10px] font-black text-muted-foreground group-hover/item:bg-primary group-hover/item:text-white transition-all shadow-sm">
-              {index + 1}
+        <div className="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-white hover:border-primary/20 hover:shadow-md transition-all group/item cursor-pointer">
+          <div className="flex items-center gap-3">
+            <div className="size-8 rounded-lg bg-accent/50 flex items-center justify-center">
+              <ChevronRight className="size-4 text-primary group-hover/item:translate-x-0.5 transition-transform" />
             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black group-hover/item:text-primary transition-colors">{topic}</span>
-              <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-1">
-                <Clock className="size-2.5" /> 15 минут практика
-              </span>
-            </div>
+            <span className="text-sm font-bold text-slate-700 group-hover/item:text-primary transition-colors">{topic}</span>
           </div>
-          <Button variant="ghost" className="rounded-full size-10 p-0 text-primary group-hover/item:bg-primary group-hover/item:text-white">
-            <ChevronRight className="size-5" />
-          </Button>
+          <Badge variant="secondary" className="bg-primary/5 text-primary text-[10px] font-black uppercase">Тест</Badge>
         </div>
       </DialogTrigger>
       <DialogContent className="max-w-2xl h-[90vh] flex flex-col p-0 rounded-[24px] border-none shadow-2xl bg-white overflow-hidden">
@@ -384,7 +371,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
               <div className="space-y-2 max-w-xs">
                 <h4 className="text-lg font-black tracking-tight">Дайындыққа кірісу</h4>
                 <p className="text-xs text-muted-foreground font-medium leading-relaxed">
-                  Бұл бөлімде сіз «{topic}» тақырыбы бойынша ҰБТ деңгейіндегі сұрақтарға жауап бересіз.
+                  «{topic}» тақырыбы бойынша біліміңізді тест арқылы тексеріңіз.
                 </p>
               </div>
               <div className="w-full max-w-xs pt-6 border-t border-dashed">
@@ -412,7 +399,7 @@ function TopicItem({ index, topic, subject }: { index: number, topic: string, su
                     <span className="text-xl font-black font-headline">Сұрақ {currentIndex + 1} / {questions.length}</span>
                   </div>
                 </div>
-                <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-2 rounded-full" />
+                <Progress value={((currentIndex + 1) / questions.length) * 100} className="h-1.5 rounded-full" />
               </div>
 
               <Card className="border-none shadow-lg bg-white p-8 rounded-[24px] ring-1 ring-border/50">

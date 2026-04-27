@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useMemo } from "react";
@@ -6,8 +5,8 @@ import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Trophy, Medal, User, Crown, Star, Loader2, Users2 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
-import { collection, query, orderBy, limit, where } from "firebase/firestore";
-import { useAuth } from "@/components/auth/auth-provider";
+import { collection, query, orderBy, limit } from "firebase/firestore";
+import { useAuth } from "@/components/auth/provider";
 import { useMemoFirebase, useCollection } from "@/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,11 +14,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function LeaderboardPage() {
   const { user } = useAuth();
 
-  // Оқушыларды ғана шығару үшін 'role == student' фильтрі қосылды
+  // Фильтрсіз барлық профильдерді рейтинг бойынша шығару
   const leaderboardQuery = useMemoFirebase(() => {
     return query(
       collection(db, "studentProfiles"),
-      where("role", "==", "student"),
       orderBy("rating", "desc"),
       limit(10)
     );

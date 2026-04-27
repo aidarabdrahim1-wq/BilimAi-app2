@@ -25,9 +25,9 @@ service cloud.firestore {
     }
 
     match /studentProfiles/{studentId} {
-      // Тізімдеуге және жеке оқуға рұқсат (Рейтинг үшін керек)
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      // Тізімдеуге және жеке оқуға рұқсат (Рейтинг және Админ панель үшін)
+      // Барлық кірген пайдаланушыларға профильдерді көруге рұқсат береміз
+      allow read: if isSignedIn();
       
       allow create: if isSignedIn() && (request.auth.uid == studentId || isAdmin());
       

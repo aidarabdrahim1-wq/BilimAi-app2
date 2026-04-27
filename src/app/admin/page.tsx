@@ -27,12 +27,12 @@ import {
   ClipboardCopy,
   LayoutGrid
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp, getDocs, deleteDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, getDocs, deleteDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, useFirebase } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth as firebaseAuth } from "@/lib/firebase/config";
 import { UBT_TOPICS } from "@/lib/ubt-data";
@@ -114,38 +114,44 @@ export default function AdminPage() {
     return info.sections.flatMap(s => s.topics);
   }, [selectedViewSubject]);
 
-  const handleManualSave = async () => {
+  const handleManualSave = () => {
     if (!manualQ.subject || !manualQ.text || !manualQ.optionA || !manualQ.optionB) {
       toast({ title: "Өрістерді толтырыңыз", variant: "destructive" });
       return;
     }
 
     setIsSavingQ(true);
-    try {
-      const subjectId = manualQ.subject.toLowerCase().replace(/\s+/g, '-');
-      const topicId = (manualQ.topic || "жалпы").toLowerCase().replace(/\s+/g, '-');
-      const qId = Math.random().toString(36).substring(7);
+    const subjectId = manualQ.subject.toLowerCase().replace(/\s+/g, '-');
+    const topicId = (manualQ.topic || "жалпы").toLowerCase().replace(/\s+/g, '-');
+    const qId = Math.random().toString(36).substring(7);
 
-      const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
-      await setDoc(qRef, {
-        text: manualQ.text,
-        options: [manualQ.optionA, manualQ.optionB, manualQ.optionC, manualQ.optionD],
-        correctAnswer: manualQ.correctAnswer,
-        explanation: manualQ.explanation,
-        updatedAt: serverTimestamp()
+    const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
+    const qData = {
+      text: manualQ.text,
+      options: [manualQ.optionA, manualQ.optionB, manualQ.optionC, manualQ.optionD],
+      correctAnswer: manualQ.correctAnswer,
+      explanation: manualQ.explanation,
+      updatedAt: serverTimestamp()
+    };
+
+    setDoc(qRef, qData)
+      .then(() => {
+        toast({ title: "Сұрақ сақталды!" });
+        setManualQ({ ...manualQ, text: "", optionA: "", optionB: "", optionC: "", optionD: "", explanation: "" });
+        setIsSavingQ(false);
+      })
+      .catch(async (err) => {
+        setIsSavingQ(false);
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: qRef.path,
+          operation: 'create',
+          requestResourceData: qData
+        }));
       });
 
-      // Ensure subject and topic docs exist
-      await setDoc(doc(firestore, "subjects", subjectId), { name: manualQ.subject, updatedAt: serverTimestamp() }, { merge: true });
-      await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: manualQ.topic || "Жалпы", updatedAt: serverTimestamp() }, { merge: true });
-
-      toast({ title: "Сұрақ сақталды!" });
-      setManualQ({ ...manualQ, text: "", optionA: "", optionB: "", optionC: "", optionD: "", explanation: "" });
-    } catch (err: any) {
-      toast({ title: "Қате", description: err.message, variant: "destructive" });
-    } finally {
-      setIsSavingQ(false);
-    }
+    // Ensure subject and topic docs exist
+    setDoc(doc(firestore, "subjects", subjectId), { name: manualQ.subject, updatedAt: serverTimestamp() }, { merge: true });
+    setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: manualQ.topic || "Жалпы", updatedAt: serverTimestamp() }, { merge: true });
   };
 
   const fetchQuestionsForView = async () => {
@@ -164,20 +170,28 @@ export default function AdminPage() {
     }
   };
 
-  const deleteQuestion = async (id: string) => {
+  const deleteQuestion = (id: string) => {
     if (!confirm("Өшіргіңіз келе ме?")) return;
-    try {
-      const subjectId = selectedViewSubject.toLowerCase().replace(/\s+/g, '-');
-      const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
-      await deleteDoc(doc(firestore, "subjects", subjectId, "topics", topicId, "questions", id));
-      setFetchedQuestions(prev => prev.filter(q => q.id !== id));
-      toast({ title: "Өшірілді" });
-    } catch (err) {
-      toast({ title: "Қате", variant: "destructive" });
-    }
+    
+    const subjectId = selectedViewSubject.toLowerCase().replace(/\s+/g, '-');
+    const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
+    const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", id);
+
+    // Optimistic UI update
+    setFetchedQuestions(prev => prev.filter(q => q.id !== id));
+    toast({ title: "Өшірілді" });
+
+    deleteDoc(qRef).catch(async (err) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: qRef.path,
+        operation: 'delete'
+      }));
+      // If error occurs, we might want to refetch to restore the item
+      fetchQuestionsForView();
+    });
   };
 
-  const handleRegisterStudent = async (e: React.FormEvent) => {
+  const handleRegisterStudent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!regForm.fullName || !regForm.email || !regForm.password || !regForm.comboIndex) {
       toast({ title: "Барлық өрістерді толтырыңыз", variant: "destructive" });
@@ -185,47 +199,59 @@ export default function AdminPage() {
     }
 
     setIsRegistering(true);
-    try {
-      const combo = SUBJECT_COMBINATIONS[parseInt(regForm.comboIndex)];
-      const userCredential = await createUserWithEmailAndPassword(firebaseAuth, regForm.email, regForm.password);
-      const user = userCredential.user;
+    const combo = SUBJECT_COMBINATIONS[parseInt(regForm.comboIndex)];
+    
+    createUserWithEmailAndPassword(firebaseAuth, regForm.email, regForm.password)
+      .then((userCredential) => {
+        const user = userCredential.user;
+        const profileData = {
+          id: user.uid,
+          fullName: regForm.fullName,
+          email: regForm.email,
+          grade: regForm.grade,
+          targetScore: Number(regForm.targetScore),
+          currentScore: 0,
+          rating: 0,
+          solvedQuestions: 0,
+          correctAnswers: 0,
+          completedPlans: 0,
+          streakDays: 0,
+          selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Математикалық сауаттылық", ...combo.subjects],
+          subjectCombination: combo.label,
+          targetCareer: "",
+          weakTopics: [],
+          untDate: "2025-06-20",
+          totalStudyTimeMinutes: 0,
+          todayStudyTimeMinutes: 0,
+          activityHistory: [],
+          role: 'student',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
 
-      const profileData = {
-        id: user.uid,
-        fullName: regForm.fullName,
-        email: regForm.email,
-        grade: regForm.grade,
-        targetScore: Number(regForm.targetScore),
-        currentScore: 0,
-        rating: 0,
-        solvedQuestions: 0,
-        correctAnswers: 0,
-        completedPlans: 0,
-        streakDays: 0,
-        selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Математикалық сауаттылық", ...combo.subjects],
-        subjectCombination: combo.label,
-        targetCareer: "",
-        weakTopics: [],
-        untDate: "2025-06-20",
-        totalStudyTimeMinutes: 0,
-        todayStudyTimeMinutes: 0,
-        activityHistory: [],
-        role: 'student',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      await setDoc(doc(firestore, "studentProfiles", user.uid), profileData);
-      toast({ title: "Оқушы сәтті тіркелді!" });
-      setRegForm({ fullName: "", email: "", password: "", grade: "11", comboIndex: "", targetScore: 120 });
-    } catch (err: any) {
-      toast({ title: "Тіркеу қатесі", description: err.message, variant: "destructive" });
-    } finally {
-      setIsRegistering(false);
-    }
+        const userRef = doc(firestore, "studentProfiles", user.uid);
+        setDoc(userRef, profileData)
+          .then(() => {
+            toast({ title: "Оқушы сәтті тіркелді!" });
+            setRegForm({ fullName: "", email: "", password: "", grade: "11", comboIndex: "", targetScore: 120 });
+            setIsRegistering(false);
+          })
+          .catch(async (err) => {
+            setIsRegistering(false);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: userRef.path,
+              operation: 'create',
+              requestResourceData: profileData
+            }));
+          });
+      })
+      .catch((err: any) => {
+        setIsRegistering(false);
+        toast({ title: "Тіркеу қатесі", description: err.message, variant: "destructive" });
+      });
   };
 
-  const handleBulkUpload = async () => {
+  const handleBulkUpload = () => {
     if (!jsonInput.trim() || !firestore) return;
     setIsUploading(true);
     setError(null);
@@ -254,36 +280,41 @@ export default function AdminPage() {
         throw new Error("JSON форматы танылмады.");
       }
       
-      let count = 0;
-      for (const subject of subjectsToProcess) {
-        setUploadProgress(`${subject.name} жүктелуде...`);
+      subjectsToProcess.forEach((subject) => {
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
-        await setDoc(doc(firestore, "subjects", subjectId), { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
+        setDoc(doc(firestore, "subjects", subjectId), { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
 
-        for (const topic of subject.topics) {
+        subject.topics.forEach((topic) => {
           const topicId = topic.title.toLowerCase().replace(/\s+/g, '-');
-          await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
+          setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
 
-          for (const q of topic.questions) {
+          topic.questions.forEach((q: any) => {
             const qId = Math.random().toString(36).substring(7);
-            await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId), { 
+            const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
+            const qData = { 
               text: q.text,
               options: q.options,
               correctAnswer: q.correctAnswer,
               explanation: q.explanation || "",
               updatedAt: serverTimestamp() 
+            };
+            setDoc(qRef, qData).catch(async (err) => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: qRef.path,
+                operation: 'create',
+                requestResourceData: qData
+              }));
             });
-            count++;
-          }
-        }
-      }
-      toast({ title: "Сәтті!", description: `${count} сұрақ базаға қосылды.` });
+          });
+        });
+      });
+      
+      toast({ title: "Жүктеу басталды!", description: "Сұрақтар базаға қосылуда." });
       setJsonInput("");
+      setIsUploading(false);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setIsUploading(false);
-      setUploadProgress("");
     }
   };
 
@@ -443,18 +474,23 @@ export default function AdminPage() {
                     ) : fetchedQuestions.length > 0 ? (
                       <div className="space-y-4">
                         {fetchedQuestions.map((q) => (
-                          <div key={q.id} className="p-4 rounded-2xl bg-accent/5 border flex justify-between gap-4 group">
+                          <div key={q.id} className="p-4 rounded-2xl bg-accent/5 border border-border/50 flex justify-between gap-4 group hover:bg-accent/10 transition-all">
                             <div className="space-y-2 flex-1">
                               <p className="font-bold text-sm leading-relaxed">{q.text}</p>
                               <div className="flex flex-wrap gap-2">
                                 {q.options.map((opt: string, i: number) => (
-                                  <Badge key={i} variant="outline" className={`text-[9px] ${String.fromCharCode(65+i) === q.correctAnswer ? 'border-green-500 text-green-600 bg-green-50' : ''}`}>
+                                  <Badge key={i} variant="outline" className={`text-[9px] ${String.fromCharCode(65+i) === q.correctAnswer ? 'border-green-500 text-green-600 bg-green-50' : 'bg-white'}`}>
                                     {String.fromCharCode(65+i)}: {opt}
                                   </Badge>
                                 ))}
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100" onClick={() => deleteQuestion(q.id)}>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                              onClick={() => deleteQuestion(q.id)}
+                            >
                               <Trash2 className="size-4" />
                             </Button>
                           </div>

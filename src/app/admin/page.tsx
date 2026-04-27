@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -94,9 +93,11 @@ export default function AdminPage() {
   }, [isAdmin, loading, router]);
 
   const usersQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
+    // Рұқсат қателігін болдырмау үшін тек админ болса ғана сұраныс жасау
+    if (!firestore || !isAdmin) return null;
     return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
-  }, [firestore]);
+  }, [firestore, isAdmin]);
+  
   const { data: students, isLoading: loadingUsers } = useCollection(usersQuery);
 
   const availableSubjects = useMemo(() => Object.keys(UBT_TOPICS), []);

@@ -25,10 +25,13 @@ service cloud.firestore {
     }
 
     match /studentProfiles/{studentId} {
-      allow read: if isSignedIn();
+      // Тізімдеуге және жеке оқуға рұқсат (Рейтинг үшін керек)
+      allow get: if isSignedIn();
+      allow list: if isSignedIn();
+      
       allow create: if isSignedIn() && (request.auth.uid == studentId || isAdmin());
       
-      // Allow owners to update their profile information, but protect role and email.
+      // Иесіне профилін жаңартуға рұқсат, бірақ рөл мен email-ді қорғау.
       allow update: if isSignedIn() && (request.auth.uid == studentId || isAdmin()) && 
         (isAdmin() || (
           request.resource.data.get('role', resource.data.get('role', 'student')) == resource.data.get('role', 'student') &&

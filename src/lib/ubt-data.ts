@@ -36,7 +36,7 @@ export const UBT_TOPICS: Record<string, UBTSubjectInfo> = {
       { title: "2. Қола дәуірі", topics: ["Андронов мәдениеті (б.з.б. XVIII–IX ғғ)", "Беғазы-Дәндібай мәдениеті", "Мал шаруашылығы мен металлургия"] },
       { title: "3. Сақ тайпалары", topics: ["Сақ одағы (б.з.б. VIII–III ғғ)", "Тиграхауда, хаомаварга, парадарайа", "Томирис, Ширак", "Алтын адам (Есік)", "«Аң стилі» өнері"] },
       { title: "4. Үйсін мемлекеті", topics: ["Орналасуы (Жетісу)", "Астанасы Чигучен", "Гуньмо билеушілері", "Қытаймен қарым-қатынас"] },
-      { title: "5. Қаңлы мемлекеті", topics: ["Сырдария мен Талас бойы", "Астанасы Битянь", "Ұлы Жібек жолындағы рөлі"] },
+      { title: "5. Қаңлы мемлекеті", topics: ["Сырдария мен Талас бойы", "Астанасы Битянь", "Ұлы Жібек жолығындағы рөлі"] },
       { title: "6. Ғұндар", topics: ["Мөде шаньюй (б.з.б. 209–174)", "Қытаймен соғыстар", "Халықтардың ұлы қоныс аударуы", "Аттила (434–453)"] },
       { title: "7. Орта ғасырлардағы Қазақстан (VI–XII ғғ)", topics: ["Түркі қағанаты", "Батыс Түркі қағанаты", "Түргеш қағанаты", "Қарлұқ қағанаты", "Оғыз мемлекеті", "Қимақ қағанаты", "Қарахан мемлекеті", "Ұлы Жібек жолы"] },
       { title: "8. Моңғол шапқыншылығы және Алтын Орда", topics: ["Моңғол шапқыншылығы (1219–1224)", "Алтын Орда (1243–1446)", "Ақ Орда", "Моғолстан", "Әбілхайыр хандығы"] },
@@ -72,6 +72,20 @@ export const UBT_TOPICS: Record<string, UBTSubjectInfo> = {
       { title: "7. Жануарлар", topics: ["Омыртқасыздар", "Омыртқалылар", "Балықтар, қосмекенділер", "Бауырмен жорғалаушылар, құстар", "Сүтқоректілер"] },
       { title: "8. Адам анатомиясы мен физиологиясы", topics: ["Тірек-қимыл жүйесі", "Қан және қан айналымы", "Тыныс алу", "Ас қорыту", "Зәр шығару", "Нерв жүйесі", "Эндокриндік жүйе", "Сезім мүшелері"] },
       { title: "9. Экология", topics: ["Биосфера", "Экожүйелер", "Қоректік тізбектер", "Қоршаған ортаны қорғау"] }
+    ]
+  },
+  "Ағылшын тілі": {
+    description: "English language grammar, vocabulary and reading comprehension for UBT 2026.",
+    sections: [
+      { title: "1. Tenses", topics: ["Present Simple/Continuous/Perfect", "Past Simple/Continuous/Perfect", "Future Simple/Continuous/Perfect", "Used to / Would"] },
+      { title: "2. Modal verbs", topics: ["Can/Could", "Must/Have to", "Should/Ought to", "May/Might", "Modals of deduction"] },
+      { title: "3. Passive voice", topics: ["Present/Past/Future passive", "Perfect passive", "Passive with modals"] },
+      { title: "4. Conditionals", topics: ["Zero conditional", "First conditional", "Second conditional", "Third conditional", "Mixed conditionals"] },
+      { title: "5. Reported speech", topics: ["Statements", "Questions", "Commands and requests", "Tense changes"] },
+      { title: "6. Articles and nouns", topics: ["A/An/The", "Countable/Uncountable", "Plural forms"] },
+      { title: "7. Adjectives and adverbs", topics: ["Comparative/Superlative", "Adjective order", "Adverbs of frequency"] },
+      { title: "8. Vocabulary and topics", topics: ["Family and friends", "Education", "Travel", "Technology", "Environment", "Health"] },
+      { title: "9. Reading comprehension", topics: ["Main idea", "Specific details", "Inference", "Vocabulary in context"] }
     ]
   },
   "Оқу сауаттылығы": {

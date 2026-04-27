@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Trophy, Medal, User, Crown, Star, Loader2, Users2 } from "lucide-react";
 import { db } from "@/lib/firebase/config";
 import { collection, query, orderBy, limit } from "firebase/firestore";
-import { useAuth } from "@/components/auth/provider";
+import { useAuth } from "@/components/auth/auth-provider";
 import { useMemoFirebase, useCollection } from "@/firebase";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,8 +14,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 export default function LeaderboardPage() {
   const { user } = useAuth();
 
-  // Фильтрсіз барлық профильдерді рейтинг бойынша шығару
+  // Барлық профильдерді рейтинг бойынша шығару (фильтрсіз)
   const leaderboardQuery = useMemoFirebase(() => {
+    if (!db) return null;
     return query(
       collection(db, "studentProfiles"),
       orderBy("rating", "desc"),

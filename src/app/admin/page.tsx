@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,33 +16,33 @@ import {
   Upload, 
   Loader2,
   FileJson,
-  XCircle,
-  Info,
-  Code,
-  ShieldAlert,
+  PlusCircle,
   Users,
-  Star,
-  ExternalLink,
-  UserPlus,
-  AlertTriangle,
+  ShieldAlert,
+  Trash2,
+  Search,
+  BookOpen,
+  Plus,
+  CheckCircle2,
   ClipboardCopy,
-  CheckCircle2
+  LayoutGrid
 } from "lucide-react";
-import { doc, setDoc, collection, query, orderBy, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, collection, query, orderBy, serverTimestamp, getDocs, deleteDoc, getDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useRouter } from "next/navigation";
-import { useCollection, useMemoFirebase, useFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useCollection, useMemoFirebase, useFirebase } from "@/firebase";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { auth as firebaseAuth } from "@/lib/firebase/config";
+import { UBT_TOPICS } from "@/lib/ubt-data";
 
 const SUBJECT_COMBINATIONS = [
-  { label: "Математика + Физика", subjects: ["Математика", "Физика"], careers: ["IT", "Инженерия", "Архитектура"] },
-  { label: "Математика + Информатика", subjects: ["Математика", "Информатика"], careers: ["IT", "Программалау"] },
-  { label: "Биология + Химия", subjects: ["Биология", "Химия"], careers: ["Медицина", "Стоматология"] },
-  { label: "Биология + География", subjects: ["Биология", "География"], careers: ["Агрономия", "Экология"] },
-  { label: "География + Математика", subjects: ["География", "Математика"], careers: ["Экономика", "Бизнес"] },
+  { label: "Математика + Физика", subjects: ["Математика", "Физика"] },
+  { label: "Математика + Информатика", subjects: ["Математика", "Информатика"] },
+  { label: "Биология + Химия", subjects: ["Биология", "Химия"] },
+  { label: "Биология + География", subjects: ["Биология", "География"] },
+  { label: "География + Математика", subjects: ["География", "Математика"] },
 ];
 
 export default function AdminPage() {
@@ -56,6 +56,26 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  // Manual Question State
+  const [manualQ, setManualQ] = useState({
+    subject: "",
+    topic: "",
+    text: "",
+    optionA: "",
+    optionB: "",
+    optionC: "",
+    optionD: "",
+    correctAnswer: "A",
+    explanation: ""
+  });
+  const [isSavingQ, setIsSavingQ] = useState(false);
+
+  // View Questions State
+  const [selectedViewSubject, setSelectedViewSubject] = useState("");
+  const [selectedViewTopic, setSelectedViewTopic] = useState("");
+  const [fetchedQuestions, setFetchedQuestions] = useState<any[]>([]);
+  const [isFetchingQ, setIsFetchingQ] = useState(false);
+
   // Registration State
   const [regForm, setRegForm] = useState({
     fullName: "",
@@ -63,7 +83,6 @@ export default function AdminPage() {
     password: "",
     grade: "11",
     comboIndex: "",
-    targetCareer: "",
     targetScore: 120
   });
   const [isRegistering, setIsRegistering] = useState(false);
@@ -79,6 +98,84 @@ export default function AdminPage() {
     return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
   }, [firestore]);
   const { data: students, isLoading: loadingUsers } = useCollection(usersQuery);
+
+  const availableSubjects = useMemo(() => Object.keys(UBT_TOPICS), []);
+  const availableTopics = useMemo(() => {
+    if (!manualQ.subject) return [];
+    const info = UBT_TOPICS[manualQ.subject];
+    if (!info) return [];
+    return info.sections.flatMap(s => s.topics);
+  }, [manualQ.subject]);
+
+  const viewTopics = useMemo(() => {
+    if (!selectedViewSubject) return [];
+    const info = UBT_TOPICS[selectedViewSubject];
+    if (!info) return [];
+    return info.sections.flatMap(s => s.topics);
+  }, [selectedViewSubject]);
+
+  const handleManualSave = async () => {
+    if (!manualQ.subject || !manualQ.text || !manualQ.optionA || !manualQ.optionB) {
+      toast({ title: "Өрістерді толтырыңыз", variant: "destructive" });
+      return;
+    }
+
+    setIsSavingQ(true);
+    try {
+      const subjectId = manualQ.subject.toLowerCase().replace(/\s+/g, '-');
+      const topicId = (manualQ.topic || "жалпы").toLowerCase().replace(/\s+/g, '-');
+      const qId = Math.random().toString(36).substring(7);
+
+      const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
+      await setDoc(qRef, {
+        text: manualQ.text,
+        options: [manualQ.optionA, manualQ.optionB, manualQ.optionC, manualQ.optionD],
+        correctAnswer: manualQ.correctAnswer,
+        explanation: manualQ.explanation,
+        updatedAt: serverTimestamp()
+      });
+
+      // Ensure subject and topic docs exist
+      await setDoc(doc(firestore, "subjects", subjectId), { name: manualQ.subject, updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: manualQ.topic || "Жалпы", updatedAt: serverTimestamp() }, { merge: true });
+
+      toast({ title: "Сұрақ сақталды!" });
+      setManualQ({ ...manualQ, text: "", optionA: "", optionB: "", optionC: "", optionD: "", explanation: "" });
+    } catch (err: any) {
+      toast({ title: "Қате", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSavingQ(false);
+    }
+  };
+
+  const fetchQuestionsForView = async () => {
+    if (!selectedViewSubject || !selectedViewTopic) return;
+    setIsFetchingQ(true);
+    try {
+      const subjectId = selectedViewSubject.toLowerCase().replace(/\s+/g, '-');
+      const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
+      const qRef = collection(firestore, "subjects", subjectId, "topics", topicId, "questions");
+      const snap = await getDocs(qRef);
+      setFetchedQuestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      toast({ title: "Жүктеу қатесі", variant: "destructive" });
+    } finally {
+      setIsFetchingQ(false);
+    }
+  };
+
+  const deleteQuestion = async (id: string) => {
+    if (!confirm("Өшіргіңіз келе ме?")) return;
+    try {
+      const subjectId = selectedViewSubject.toLowerCase().replace(/\s+/g, '-');
+      const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
+      await deleteDoc(doc(firestore, "subjects", subjectId, "topics", topicId, "questions", id));
+      setFetchedQuestions(prev => prev.filter(q => q.id !== id));
+      toast({ title: "Өшірілді" });
+    } catch (err) {
+      toast({ title: "Қате", variant: "destructive" });
+    }
+  };
 
   const handleRegisterStudent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,17 +204,20 @@ export default function AdminPage() {
         streakDays: 0,
         selectedSubjects: ["Оқу сауаттылығы", "Қазақстан тарихы", "Математикалық сауаттылық", ...combo.subjects],
         subjectCombination: combo.label,
-        targetCareer: regForm.targetCareer,
+        targetCareer: "",
         weakTopics: [],
         untDate: "2025-06-20",
+        totalStudyTimeMinutes: 0,
+        todayStudyTimeMinutes: 0,
+        activityHistory: [],
+        role: 'student',
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        role: 'student'
+        updatedAt: serverTimestamp()
       };
 
       await setDoc(doc(firestore, "studentProfiles", user.uid), profileData);
       toast({ title: "Оқушы сәтті тіркелді!" });
-      setRegForm({ fullName: "", email: "", password: "", grade: "11", comboIndex: "", targetCareer: "", targetScore: 120 });
+      setRegForm({ fullName: "", email: "", password: "", grade: "11", comboIndex: "", targetScore: 120 });
     } catch (err: any) {
       toast({ title: "Тіркеу қатесі", description: err.message, variant: "destructive" });
     } finally {
@@ -135,71 +235,45 @@ export default function AdminPage() {
       let rawData = JSON.parse(jsonInput);
       let subjectsToProcess = [];
 
-      // Detect and normalize input format
       if (rawData.subject && rawData.questions) {
-        // User's flat format for single subject/topic
         subjectsToProcess = [{
           name: rawData.subject,
           topics: [{
             title: rawData.topic || "Жалпы",
-            questions: rawData.questions.map((q: any) => {
-              // Normalize options if it's an object {A: "...", B: "..."}
-              let finalOptions = q.options;
-              if (typeof q.options === 'object' && !Array.isArray(q.options)) {
-                finalOptions = [
-                  q.options.A || q.options.a,
-                  q.options.B || q.options.b,
-                  q.options.C || q.options.c,
-                  q.options.D || q.options.d
-                ].filter(val => val !== undefined && val !== null);
-              }
-
-              return {
-                text: q.question || q.text,
-                options: finalOptions,
-                correctAnswer: q.correct || q.correctAnswer,
-                explanation: q.explanation || ""
-              };
-            })
+            questions: rawData.questions.map((q: any) => ({
+              text: q.question || q.text,
+              options: Array.isArray(q.options) ? q.options : [q.options.A, q.options.B, q.options.C, q.options.D],
+              correctAnswer: q.correct || q.correctAnswer,
+              explanation: q.explanation || ""
+            }))
           }]
         }];
       } else if (rawData.subjects) {
-        // Standard nested format
         subjectsToProcess = rawData.subjects;
       } else {
-        throw new Error("JSON форматы танылмады. 'subject' немесе 'subjects' өрісін тексеріңіз.");
+        throw new Error("JSON форматы танылмады.");
       }
       
       let count = 0;
       for (const subject of subjectsToProcess) {
-        setUploadProgress(`${subject.name} пәні жүктелуде...`);
+        setUploadProgress(`${subject.name} жүктелуде...`);
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
-        const subjectRef = doc(firestore, "subjects", subjectId);
-        
-        await setDoc(subjectRef, { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(doc(firestore, "subjects", subjectId), { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
 
-        if (subject.topics) {
-          for (const topic of subject.topics) {
-            const topicId = topic.title.toLowerCase().replace(/\s+/g, '-');
-            const topicRef = doc(firestore, "subjects", subjectId, "topics", topicId);
-            
-            await setDoc(topicRef, { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
+        for (const topic of subject.topics) {
+          const topicId = topic.title.toLowerCase().replace(/\s+/g, '-');
+          await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
 
-            if (topic.questions) {
-              for (const q of topic.questions) {
-                const qId = Math.random().toString(36).substring(7);
-                const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
-                
-                await setDoc(qRef, { 
-                  text: q.text,
-                  options: q.options,
-                  correctAnswer: q.correctAnswer,
-                  explanation: q.explanation || "",
-                  updatedAt: serverTimestamp() 
-                });
-                count++;
-              }
-            }
+          for (const q of topic.questions) {
+            const qId = Math.random().toString(36).substring(7);
+            await setDoc(doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId), { 
+              text: q.text,
+              options: q.options,
+              correctAnswer: q.correctAnswer,
+              explanation: q.explanation || "",
+              updatedAt: serverTimestamp() 
+            });
+            count++;
           }
         }
       }
@@ -215,7 +289,7 @@ export default function AdminPage() {
 
   if (loading || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="size-8 animate-spin text-primary" />
       </div>
     );
@@ -236,11 +310,14 @@ export default function AdminPage() {
             <TabsTrigger value="users" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
               <Users className="size-4" /> Пайдаланушылар
             </TabsTrigger>
-            <TabsTrigger value="register" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
-              <UserPlus className="size-4" /> Оқушыны тіркеу
+            <TabsTrigger value="questions" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
+              <BookOpen className="size-4" /> Сұрақтар базасы
             </TabsTrigger>
             <TabsTrigger value="import" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
-              <Database className="size-4" /> Контент импорт
+              <Database className="size-4" /> Импорт
+            </TabsTrigger>
+            <TabsTrigger value="register" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-white px-8 h-full gap-2">
+              <PlusCircle className="size-4" /> Тіркеу
             </TabsTrigger>
           </TabsList>
 
@@ -257,7 +334,7 @@ export default function AdminPage() {
                     {students?.map((s) => (
                       <div key={s.id} className="flex items-center justify-between p-6 hover:bg-accent/5 transition-all">
                         <div className="flex items-center gap-4">
-                          <Avatar className="size-12 shadow-sm">
+                          <Avatar className="size-12 shadow-sm border-2 border-background">
                             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${s.fullName}`} />
                             <AvatarFallback>{s.fullName?.[0]}</AvatarFallback>
                           </Avatar>
@@ -267,10 +344,14 @@ export default function AdminPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-8">
-                          <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-100 border-none font-black px-3 py-1">
-                            <Star className="size-3 mr-1 fill-current" /> {s.rating || 0}
-                          </Badge>
-                          <span className="text-xl font-black text-primary">{s.currentScore || 0} балл</span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xl font-black text-primary">{s.rating || 0}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Рейтинг</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-xl font-black text-foreground">{s.currentScore || 0}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground uppercase">Орта балл</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -280,10 +361,175 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="questions">
+            <div className="grid lg:grid-cols-12 gap-8">
+              <Card className="lg:col-span-4 border-none shadow-xl bg-white rounded-[32px]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Plus className="size-5 text-primary" /> Жаңа сұрақ қосу</CardTitle>
+                  <CardDescription>Сұрақты қолмен базаға енгізу.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Пән</Label>
+                    <Select onValueChange={(v) => setManualQ({...manualQ, subject: v, topic: ""})} value={manualQ.subject}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Таңдаңыз" /></SelectTrigger>
+                      <SelectContent>
+                        {availableSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Тақырып</Label>
+                    <Select onValueChange={(v) => setManualQ({...manualQ, topic: v})} value={manualQ.topic} disabled={!manualQ.subject}>
+                      <SelectTrigger className="rounded-xl"><SelectValue placeholder="Таңдаңыз" /></SelectTrigger>
+                      <SelectContent>
+                        {availableTopics.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Сұрақ мәтіні</Label>
+                    <Textarea value={manualQ.text} onChange={(e) => setManualQ({...manualQ, text: e.target.value})} className="rounded-xl min-h-[100px]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1"><Label className="text-[10px]">A нұсқасы</Label><Input value={manualQ.optionA} onChange={(e) => setManualQ({...manualQ, optionA: e.target.value})} className="rounded-lg h-9" /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">B нұсқасы</Label><Input value={manualQ.optionB} onChange={(e) => setManualQ({...manualQ, optionB: e.target.value})} className="rounded-lg h-9" /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">C нұсқасы</Label><Input value={manualQ.optionC} onChange={(e) => setManualQ({...manualQ, optionC: e.target.value})} className="rounded-lg h-9" /></div>
+                    <div className="space-y-1"><Label className="text-[10px]">D нұсқасы</Label><Input value={manualQ.optionD} onChange={(e) => setManualQ({...manualQ, optionD: e.target.value})} className="rounded-lg h-9" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Дұрыс жауап</Label>
+                      <Select onValueChange={(v) => setManualQ({...manualQ, correctAnswer: v})} value={manualQ.correctAnswer}>
+                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="A">A</SelectItem><SelectItem value="B">B</SelectItem><SelectItem value="C">C</SelectItem><SelectItem value="D">D</SelectItem></SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Түсіндірме</Label>
+                    <Textarea value={manualQ.explanation} onChange={(e) => setManualQ({...manualQ, explanation: e.target.value})} className="rounded-xl h-20" />
+                  </div>
+                  <Button className="w-full h-12 rounded-xl font-bold" onClick={handleManualSave} disabled={isSavingQ}>
+                    {isSavingQ ? <Loader2 className="mr-2 size-4 animate-spin" /> : <PlusCircle className="mr-2 size-4" />} Сақтау
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <div className="lg:col-span-8 space-y-6">
+                <Card className="border-none shadow-xl bg-white rounded-[32px]">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Базаны көру</CardTitle>
+                      <CardDescription>Пән мен тақырыпты таңдап, сұрақтарды басқарыңыз.</CardDescription>
+                    </div>
+                    <div className="flex gap-2">
+                      <Select onValueChange={setSelectedViewSubject} value={selectedViewSubject}>
+                        <SelectTrigger className="w-[200px] rounded-xl"><SelectValue placeholder="Пән" /></SelectTrigger>
+                        <SelectContent>{availableSubjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Select onValueChange={setSelectedViewTopic} value={selectedViewTopic} disabled={!selectedViewSubject}>
+                        <SelectTrigger className="w-[200px] rounded-xl"><SelectValue placeholder="Тақырып" /></SelectTrigger>
+                        <SelectContent>{viewTopics.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Button size="icon" className="rounded-xl" onClick={fetchQuestionsForView} disabled={isFetchingQ || !selectedViewTopic}>
+                        <Search className="size-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="min-h-[400px]">
+                    {isFetchingQ ? (
+                      <div className="flex justify-center py-20"><Loader2 className="size-8 animate-spin text-primary" /></div>
+                    ) : fetchedQuestions.length > 0 ? (
+                      <div className="space-y-4">
+                        {fetchedQuestions.map((q) => (
+                          <div key={q.id} className="p-4 rounded-2xl bg-accent/5 border flex justify-between gap-4 group">
+                            <div className="space-y-2 flex-1">
+                              <p className="font-bold text-sm leading-relaxed">{q.text}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {q.options.map((opt: string, i: number) => (
+                                  <Badge key={i} variant="outline" className={`text-[9px] ${String.fromCharCode(65+i) === q.correctAnswer ? 'border-green-500 text-green-600 bg-green-50' : ''}`}>
+                                    {String.fromCharCode(65+i)}: {opt}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100" onClick={() => deleteQuestion(q.id)}>
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                        <LayoutGrid className="size-12 mb-4 opacity-20" />
+                        <p>Сұрақтар таңдалмаған немесе база бос.</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="import">
+            <div className="grid gap-8 lg:grid-cols-3">
+              <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-[32px]">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><FileJson className="size-5 text-primary" /> Базаны жаппай толтыру</CardTitle>
+                  <CardDescription>Мыңдаған сұрақтарды 1 минутта жүктеңіз.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs border border-destructive/20">{error}</div>}
+                  <Textarea placeholder='JSON кодын осы жерге қойыңыз...' className="min-h-[400px] font-mono text-xs rounded-2xl bg-accent/5 border-none" value={jsonInput} onChange={(e) => setJsonInput(e.target.value)} />
+                  <Button className="w-full gap-2 rounded-xl h-12 font-bold shadow-lg" onClick={handleBulkUpload} disabled={isUploading || !jsonInput.trim()}>
+                    {isUploading ? <><Loader2 className="size-4 animate-spin" /> {uploadProgress}</> : <><Upload className="size-4" /> Базаға жүктеу</>}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <div className="space-y-6">
+                <Card className="border-none shadow-xl bg-primary text-primary-foreground rounded-[32px] overflow-hidden p-6">
+                  <h3 className="font-bold flex items-center gap-2 mb-4"><CheckCircle2 className="size-5" /> Тез толтыру жолы:</h3>
+                  <div className="text-xs space-y-4 opacity-90 leading-relaxed">
+                    <p>1. AI-дан (ChatGPT) сұрақтарды біздің форматқа келтіріп беруді сұраңыз.</p>
+                    <p>2. Төмендегі "Импорт Үлгісін" AI-ға көрсетіңіз.</p>
+                  </div>
+                </Card>
+
+                <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
+                  <CardHeader className="pb-2 flex flex-row items-center justify-between">
+                    <CardTitle className="text-sm font-bold">Импорт Үлгісі</CardTitle>
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      navigator.clipboard.writeText(`{ "subject": "Математика", "topic": "Тригонометрия", "questions": [ { "text": "sin 90 тең?", "options": ["0", "1", "-1", "0.5"], "correctAnswer": "B", "explanation": "Кесте бойынша." } ] }`);
+                      toast({ title: "Көшірілді!" });
+                    }}><ClipboardCopy className="size-4" /></Button>
+                  </CardHeader>
+                  <CardContent>
+                    <pre className="p-4 rounded-xl bg-black text-[10px] text-green-400 overflow-x-auto">
+{`{
+  "subject": "Пән атауы",
+  "topic": "Тақырып",
+  "questions": [
+    {
+      "text": "Сұрақ?",
+      "options": ["A нұсқа", "B", "C", "D"],
+      "correctAnswer": "A",
+      "explanation": "Түсіндірме"
+    }
+  ]
+}`}
+                    </pre>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="register">
             <Card className="max-w-2xl mx-auto border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
               <CardHeader className="bg-primary/5 pb-6 border-b">
-                <CardTitle className="flex items-center gap-2"><UserPlus className="size-5 text-primary" /> Жаңа оқушыны тіркеу</CardTitle>
+                <CardTitle className="flex items-center gap-2"><PlusCircle className="size-5 text-primary" /> Жаңа оқушыны тіркеу</CardTitle>
                 <CardDescription>Оқушы үшін жаңа аккаунт жасау.</CardDescription>
               </CardHeader>
               <CardContent className="p-8 space-y-4">
@@ -309,70 +555,10 @@ export default function AdminPage() {
                   </Select>
                 </div>
                 <Button className="w-full h-12 rounded-xl font-bold" onClick={handleRegisterStudent} disabled={isRegistering}>
-                  {isRegistering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />} Оқушыны тіркеу
+                  {isRegistering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />} Оқушыны тіркеу
                 </Button>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="import">
-            <div className="grid gap-8 lg:grid-cols-3">
-              <Card className="lg:col-span-2 border-none shadow-xl bg-white rounded-[32px]">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><FileJson className="size-5 text-primary" /> Базаны жаппай толтыру</CardTitle>
-                  <CardDescription>Мыңдаған сұрақтарды 1 минутта жүктеңіз.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs border border-destructive/20">{error}</div>}
-                  <Textarea placeholder='JSON кодын осы жерге қойыңыз...' className="min-h-[400px] font-mono text-xs rounded-2xl bg-accent/5 border-none" value={jsonInput} onChange={(e) => setJsonInput(e.target.value)} />
-                  <Button className="w-full gap-2 rounded-xl h-12 font-bold shadow-lg" onClick={handleBulkUpload} disabled={isUploading || !jsonInput.trim()}>
-                    {isUploading ? <><Loader2 className="size-4 animate-spin" /> {uploadProgress}</> : <><Upload className="size-4" /> Базаға жүктеу</>}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <div className="space-y-6">
-                <Card className="border-none shadow-xl bg-primary text-primary-foreground rounded-[32px] overflow-hidden p-6">
-                  <h3 className="font-bold flex items-center gap-2 mb-4"><CheckCircle2 className="size-5" /> Тез толтыру жолы:</h3>
-                  <div className="text-xs space-y-4 opacity-90 leading-relaxed">
-                    <p>1. AI-дан (ChatGPT) сұрақтарды біздің форматқа келтіріп беруді сұраңыз.</p>
-                    <p>2. Төмендегі "Импорт Үлгісін" AI-ға көрсетіңіз.</p>
-                    <p>3. Дайын JSON кодын сол жақтағы терезеге қойып, "Жүктеу" батырмасын басыңыз.</p>
-                  </div>
-                </Card>
-
-                <Card className="border-none shadow-xl bg-white rounded-[32px] overflow-hidden">
-                  <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold">Импорт Үлгісі</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => {
-                      navigator.clipboard.writeText(`{ "subject": "Қазақстан тарихы", "topic": "Ежелгі Қазақстан", "questions": [ { "question": "Тас дәуірі қанша кезеңге бөлінеді?", "options": {"A": "2", "B": "3", "C": "4", "D": "5"}, "correct": "B", "explanation": "Палеолит, мезолит, неолит." } ] }`);
-                      toast({ title: "Көшірілді!" });
-                    }}><ClipboardCopy className="size-4" /></Button>
-                  </CardHeader>
-                  <CardContent>
-                    <pre className="p-4 rounded-xl bg-black text-[10px] text-green-400 overflow-x-auto">
-{`{
-  "subject": "Пән атауы",
-  "topic": "Тақырып",
-  "questions": [
-    {
-      "question": "Сұрақ?",
-      "options": {
-        "A": "Нұсқа 1",
-        "B": "Нұсқа 2",
-        "C": "Нұсқа 3",
-        "D": "Нұсқа 4"
-      },
-      "correct": "A",
-      "explanation": "Түсініктеме"
-    }
-  ]
-}`}
-                    </pre>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
           </TabsContent>
         </Tabs>
       </div>

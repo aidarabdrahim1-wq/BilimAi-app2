@@ -4,7 +4,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { AppShell } from "@/components/layout/shell";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, AlertTriangle, RefreshCcw, Info, Calendar, Lock } from "lucide-react";
+import { ClipboardCheck, Zap, History, Play, Loader2, ArrowRight, CheckCircle2, Trophy, Lock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { updateUserRating } from "@/lib/rating";
 import { db } from "@/lib/firebase/config";
-import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, onSnapshot, doc, setDoc, getDocs } from "firebase/firestore";
 import { format, isSameWeek, startOfWeek, addWeeks } from "date-fns";
 import { kk } from "date-fns/locale";
 import { errorEmitter } from "@/firebase/error-emitter";
@@ -71,7 +71,7 @@ export default function PracticePage() {
   }, []);
   
   const getSubjectConfigs = (): SubjectConfig[] => {
-    const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Мат. сауаттылық", "Математика", "Физика"];
+    const profileSubjects = profile?.selectedSubjects || ["Қазақстан тарихы", "Оқу сауаттылығы", "Математикалық сауаттылық", "Математика", "Физика"];
     
     return [
       { name: "Қазақстан тарихы", count: 20, threshold: 5 },
@@ -119,7 +119,7 @@ export default function PracticePage() {
     if (hasTakenTestThisWeek) {
       toast({
         title: "Апталық лимит",
-        description: "Сіз осы аптада тест тапсырып қойдыңыз. Келесі аптаны күтіңіз.",
+        description: "Сіз осы аптада тест тапсырып қойдыңыз.",
         variant: "destructive"
       });
       return;
@@ -134,29 +134,52 @@ export default function PracticePage() {
 
   const loadSubjectQuestions = async (config: SubjectConfig, subjectIdx: number) => {
     try {
-      const { questions: newQuestions } = await generateUntQuestions({ 
-        subject: config.name, 
-        count: config.count 
-      });
+      const subjectId = config.name.toLowerCase().replace(/\s+/g, '-');
+      // 1. Try to fetch from Firestore first (random sample from multiple topics if possible)
+      // For simplicity, we just fetch first available topic's questions or use AI
+      const topicsRef = collection(db, "subjects", subjectId, "topics");
+      const topicsSnap = await getDocs(topicsRef);
       
-      const updatedQuestions = (newQuestions || []).map((q, idx) => {
-        let points = 1;
-        if (subjectIdx >= 3) {
-          if (idx >= 30) points = 2; 
+      let dbQuestions: any[] = [];
+      if (!topicsSnap.empty) {
+        // Fetch questions from the first 2 topics to mix them
+        for (const topicDoc of topicsSnap.docs.slice(0, 2)) {
+          const qRef = collection(db, "subjects", subjectId, "topics", topicDoc.id, "questions");
+          const qSnap = await getDocs(query(qRef, limit(config.count)));
+          dbQuestions = [...dbQuestions, ...qSnap.docs.map(d => d.data())];
         }
-        return { ...q, points };
-      });
+      }
 
-      setQuestions(updatedQuestions);
+      let finalQuestions: Question[] = [];
+
+      if (dbQuestions.length >= config.count) {
+        finalQuestions = dbQuestions.slice(0, config.count).map((q, idx) => ({
+          id: idx.toString(),
+          text: q.text,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || "",
+          points: (subjectIdx >= 3 && idx >= 30) ? 2 : 1
+        }));
+      } else {
+        // 2. Use AI if not enough questions in DB
+        const { questions: aiQuestions } = await generateUntQuestions({ 
+          subject: config.name, 
+          count: config.count 
+        });
+        
+        finalQuestions = (aiQuestions || []).map((q, idx) => ({
+          ...q,
+          points: (subjectIdx >= 3 && idx >= 30) ? 2 : 1
+        }));
+      }
+
+      setQuestions(finalQuestions);
       setCurrentQuestionIndex(0);
       setAnswers({});
       setTestState("testing");
     } catch (error: any) {
-      let msg = "Сұрақтарды жүктеу мүмкін болмады.";
-      if (error.message?.includes("AI_QUOTA_EXCEEDED") || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
-        msg = "AI квотасы аяқталды. Сәлден соң (1-2 минут) қайта көріңіз.";
-      }
-      setErrorMessage(msg);
+      setErrorMessage("Сұрақтарды жүктеу мүмкін болмады.");
       setTestState("error");
     }
   };
@@ -255,7 +278,7 @@ export default function PracticePage() {
         
         toast({
           title: "Тест аяқталды!",
-          description: `Нәтиже: ${totalScore} балл. Қателер сақталды.`,
+          description: `Нәтиже: ${totalScore} балл.`,
         });
       } catch (e) {
         console.error(e);
@@ -344,90 +367,65 @@ export default function PracticePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-8 max-6xl mx-auto">
+      <div className="flex flex-col gap-8 max-w-6xl mx-auto">
         <div className="flex flex-col gap-2">
           <h1 className="text-4xl font-black tracking-tight font-headline flex items-center gap-3">
             <ClipboardCheck className="size-10 text-primary" />
-            ҰБТ Тестілеу (2026)
+            ҰБТ Тестілеу (Mock Test)
           </h1>
-          <p className="text-muted-foreground font-medium">Өз біліміңді жаңа форматтағы 140 балдық шкаламен тексер.</p>
+          <p className="text-muted-foreground font-medium">Ресми 140 балдық шкала бойынша біліміңізді тексеріңіз.</p>
         </div>
 
         {hasTakenTestThisWeek && clientDate && (
           <Alert className="bg-orange-50 border-orange-200 text-orange-800 rounded-3xl p-6">
             <Calendar className="h-5 w-5 text-orange-600" />
-            <AlertTitle className="font-black text-lg">Апталық лимит орындалды</AlertTitle>
+            <AlertTitle className="font-black text-lg">Апталық лимит</AlertTitle>
             <AlertDescription className="text-sm font-medium mt-1">
               Сіз осы аптада тест тапсырып қойдыңыз. Келесі мүмкіндік дүйсенбі күні ашылады.
-              <br />
-              <span className="font-bold text-orange-700">Келесі тестке: {format(addWeeks(startOfWeek(clientDate, { weekStartsOn: 1 }), 1), "d MMMM", { locale: kk })}</span>
             </AlertDescription>
           </Alert>
         )}
 
         <div className="grid gap-8">
-          <Card className={`border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group transition-all ${hasTakenTestThisWeek ? 'opacity-75 grayscale-[0.5]' : 'hover:ring-2 ring-primary/20'}`}>
+          <Card className={`border-none shadow-xl bg-white rounded-[40px] overflow-hidden flex flex-col group transition-all ${hasTakenTestThisWeek ? 'opacity-75' : 'hover:ring-2 ring-primary/20'}`}>
             <div className="h-3 bg-primary/10" />
             <CardHeader className="p-8">
-              <Badge variant="secondary" className="w-fit mb-4 font-black">АПТАСЫНА 1 РЕТ ТЕГІН</Badge>
+              <Badge variant="secondary" className="w-fit mb-4 font-black">АПТАСЫНА 1 РЕТ</Badge>
               <CardTitle className="text-3xl font-black font-headline">Толық ҰБТ нұсқасы</CardTitle>
               <CardDescription className="text-base font-medium mt-2">
-                AI арқылы құрастырылған 120 сұрақтан тұратын кешенді тест. Нәтижелер талдау бетінде сақталады.
+                Базадағы сұрақтар мен AI көмегімен құрастырылған 120 сұрақтан тұратын кешенді тест.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-8 pt-0">
-              <div className="flex items-center gap-4 text-sm font-bold text-muted-foreground p-4 bg-accent/20 rounded-2xl border-2 border-dashed border-accent/50">
-                <Zap className="size-5 text-primary" />
-                Тәртіп пен жүйелілік — табыс кепілі
-              </div>
-            </CardContent>
             <CardFooter className="p-8 pt-0">
               <Button 
                 size="lg" 
-                className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl shadow-primary/20"
+                className="w-full h-16 rounded-2xl font-black text-xl gap-3 shadow-xl"
                 onClick={initiateTest}
                 disabled={hasTakenTestThisWeek || !clientDate}
               >
-                {hasTakenTestThisWeek ? (
-                  <>
-                    <Lock className="size-6" />
-                    Келесі аптаны күтіңіз
-                  </>
-                ) : (
-                  <>
-                    Тестті бастау
-                    <Play className="size-6 fill-current" />
-                  </>
-                )}
+                {hasTakenTestThisWeek ? <><Lock className="size-6" /> Лимит орындалды</> : <><Play className="size-6 fill-current" /> Тестті бастау</>}
               </Button>
             </CardFooter>
           </Card>
         </div>
 
         <div className="space-y-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <History className="size-5 text-primary" />
-            Соңғы нәтижелер
-          </h2>
+          <h2 className="text-xl font-bold flex items-center gap-2"><History className="size-5 text-primary" /> Соңғы нәтижелер</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {recentSessions.length > 0 ? (
               recentSessions.map((item) => (
                 <Card key={item.id} className="border-none shadow-sm bg-white p-5 rounded-2xl flex justify-between items-center">
                   <div className="space-y-1">
                     <p className="font-bold text-sm">ҰБТ Тесті</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase">
+                    <p className="text-[10px] text-muted-foreground font-bold">
                       {item.createdAt?.seconds ? format(new Date(item.createdAt.seconds * 1000), "d MMMM", { locale: kk }) : "Жақында"}
                     </p>
                   </div>
-                  <span className={`text-xl font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>
-                    {item.score}/140
-                  </span>
+                  <span className={`text-xl font-black ${item.score >= 100 ? 'text-green-600' : 'text-orange-600'}`}>{item.score}/140</span>
                 </Card>
               ))
             ) : (
-              <div className="col-span-full py-12 text-center text-muted-foreground bg-accent/5 rounded-3xl border-2 border-dashed font-medium italic">
-                Әлі тест тапсырылмаған
-              </div>
+              <div className="col-span-full py-12 text-center text-muted-foreground bg-accent/5 rounded-3xl border-2 border-dashed">Әлі тест тапсырылмаған</div>
             )}
           </div>
         </div>

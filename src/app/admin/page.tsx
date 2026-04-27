@@ -162,7 +162,13 @@ export default function AdminPage() {
       const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
       const qRef = collection(firestore, "subjects", subjectId, "topics", topicId, "questions");
       const snap = await getDocs(qRef);
-      setFetchedQuestions(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Attach subjectId and topicId to each question for reliable deletion
+      setFetchedQuestions(snap.docs.map(d => ({ 
+        id: d.id, 
+        subjectId, 
+        topicId, 
+        ...d.data() 
+      })));
     } catch (err) {
       toast({ title: "Жүктеу қатесі", variant: "destructive" });
     } finally {
@@ -170,23 +176,26 @@ export default function AdminPage() {
     }
   };
 
-  const deleteQuestion = (id: string) => {
+  const deleteQuestion = (q: any) => {
     if (!confirm("Өшіргіңіз келе ме?")) return;
     
-    const subjectId = selectedViewSubject.toLowerCase().replace(/\s+/g, '-');
-    const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
-    const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", id);
+    // Use the document reference context stored in the question object itself
+    const qRef = doc(firestore, "subjects", q.subjectId, "topics", q.topicId, "questions", q.id);
 
-    // Optimistic UI update
-    setFetchedQuestions(prev => prev.filter(q => q.id !== id));
+    // Optimistic UI update: remove from screen immediately
+    setFetchedQuestions(prev => prev.filter(item => item.id !== q.id));
     toast({ title: "Өшірілді" });
 
+    // Non-blocking deletion
     deleteDoc(qRef).catch(async (err) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
+      // Create and emit contextual error if permission denied
+      const permissionError = new FirestorePermissionError({
         path: qRef.path,
         operation: 'delete'
-      }));
-      // If error occurs, we might want to refetch to restore the item
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      
+      // Optionally restore the item if deletion failed
       fetchQuestionsForView();
     });
   };
@@ -489,7 +498,7 @@ export default function AdminPage() {
                               variant="ghost" 
                               size="icon" 
                               className="text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" 
-                              onClick={() => deleteQuestion(q.id)}
+                              onClick={() => deleteQuestion(q)}
                             >
                               <Trash2 className="size-4" />
                             </Button>

@@ -641,7 +641,7 @@ export default function DiagnosticPage() {
                 </Button>
                 <Button variant="secondary" className="h-14 rounded-2xl px-10 font-bold bg-slate-100 hover:bg-slate-200 text-slate-600" onClick={() => setStep("history")}>
                   Тарихты көру
-                </Badge>
+                </Button>
                 <Button variant="ghost" className="h-14 rounded-2xl px-10 font-bold text-slate-400 hover:text-slate-900" asChild>
                   <a href="/dashboard">Дашбордқа қайту</a>
                 </Button>

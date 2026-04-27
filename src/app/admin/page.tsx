@@ -177,14 +177,14 @@ export default function AdminPage() {
   };
 
   const deleteQuestion = (q: any) => {
-    if (!confirm("Өшіргіңіз келе ме?")) return;
+    if (!confirm("Бұл сұрақты өшіргіңіз келе ме?")) return;
     
     // Use the document reference context stored in the question object itself
     const qRef = doc(firestore, "subjects", q.subjectId, "topics", q.topicId, "questions", q.id);
 
     // Optimistic UI update: remove from screen immediately
     setFetchedQuestions(prev => prev.filter(item => item.id !== q.id));
-    toast({ title: "Өшірілді" });
+    toast({ title: "Сұрақ өшірілді" });
 
     // Non-blocking deletion
     deleteDoc(qRef).catch(async (err) => {
@@ -483,7 +483,7 @@ export default function AdminPage() {
                     ) : fetchedQuestions.length > 0 ? (
                       <div className="space-y-4">
                         {fetchedQuestions.map((q) => (
-                          <div key={q.id} className="p-4 rounded-2xl bg-accent/5 border border-border/50 flex justify-between gap-4 group hover:bg-accent/10 transition-all">
+                          <div key={q.id} className="p-4 rounded-2xl bg-accent/5 border border-border/50 flex justify-between items-center gap-4 group hover:bg-accent/10 transition-all">
                             <div className="space-y-2 flex-1">
                               <p className="font-bold text-sm leading-relaxed">{q.text}</p>
                               <div className="flex flex-wrap gap-2">
@@ -496,11 +496,12 @@ export default function AdminPage() {
                             </div>
                             <Button 
                               variant="ghost" 
-                              size="icon" 
-                              className="text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" 
+                              size="sm" 
+                              className="text-destructive hover:bg-destructive/10 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity gap-1 px-2 h-8 font-bold text-[10px]" 
                               onClick={() => deleteQuestion(q)}
                             >
-                              <Trash2 className="size-4" />
+                              <Trash2 className="size-3" />
+                              Өшіру
                             </Button>
                           </div>
                         ))}

@@ -271,17 +271,31 @@ export default function AdminPage() {
       let rawData = JSON.parse(jsonInput);
       let subjectsToProcess = [];
 
-      if (rawData.subject && rawData.questions) {
+      const normalizeQ = (q: any) => ({
+        text: q.question || q.text,
+        options: Array.isArray(q.options) ? q.options : [q.options.A, q.options.B, q.options.C, q.options.D],
+        correctAnswer: q.correct || q.correctAnswer,
+        explanation: q.explanation || "",
+        bloom: q.bloom || "",
+        difficulty: q.difficulty || "",
+      });
+
+      if (rawData.subject && rawData.chapters) {
+        subjectsToProcess = [{
+          name: rawData.subject,
+          topics: rawData.chapters.flatMap((ch: any) =>
+            ch.topics.map((t: any) => ({
+              title: t.topic,
+              questions: t.questions.map(normalizeQ),
+            }))
+          ),
+        }];
+      } else if (rawData.subject && rawData.questions) {
         subjectsToProcess = [{
           name: rawData.subject,
           topics: [{
             title: rawData.topic || "Жалпы",
-            questions: rawData.questions.map((q: any) => ({
-              text: q.question || q.text,
-              options: Array.isArray(q.options) ? q.options : [q.options.A, q.options.B, q.options.C, q.options.D],
-              correctAnswer: q.correct || q.correctAnswer,
-              explanation: q.explanation || ""
-            }))
+            questions: rawData.questions.map(normalizeQ),
           }]
         }];
       } else if (rawData.subjects) {
@@ -290,24 +304,26 @@ export default function AdminPage() {
         throw new Error("JSON форматы танылмады.");
       }
       
-      subjectsToProcess.forEach((subject) => {
+      subjectsToProcess.forEach((subject: any) => {
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
         setDoc(doc(firestore, "subjects", subjectId), { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
 
-        subject.topics.forEach((topic) => {
+        subject.topics.forEach((topic: any) => {
           const topicId = topic.title.toLowerCase().replace(/\s+/g, '-');
           setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
 
           topic.questions.forEach((q: any) => {
             const qId = Math.random().toString(36).substring(7);
             const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
-            const qData = { 
+            const qData: any = {
               text: q.text,
               options: q.options,
               correctAnswer: q.correctAnswer,
               explanation: q.explanation || "",
-              updatedAt: serverTimestamp() 
+              updatedAt: serverTimestamp()
             };
+            if (q.bloom) qData.bloom = q.bloom;
+            if (q.difficulty) qData.difficulty = q.difficulty;
             setDoc(qRef, qData).catch(async (err) => {
               errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: qRef.path,
@@ -548,7 +564,13 @@ export default function AdminPage() {
                   <CardHeader className="pb-2 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold">Импорт Үлгісі</CardTitle>
                     <Button variant="ghost" size="sm" onClick={() => {
-                      navigator.clipboard.writeText(`{ "subject": "Математика", "topic": "Тригонометрия", "questions": [ { "text": "sin 90 тең?", "options": ["0", "1", "-1", "0.5"], "correctAnswer": "B", "explanation": "Кесте бойынша." } ] }`);
+                      navigator.clipboard.writeText(JSON.stringify({
+                        subject: "Биология", subjectKey: "biology",
+                        source: { textbook: "Биология 10-11", specification: "ҰБТ 2026", fetchedAt: "2026-04-28" },
+                        chapters: [{ chapter: "1. Генетика", topics: [{ topic: "Мендель заңдары", count: 2, questions: [
+                          { id: "bio_1", question: "Сұрақ мәтіні?", options: { A: "1-нұсқа", B: "2-нұсқа", C: "3-нұсқа", D: "4-нұсқа" }, correct: "B", explanation: "Түсіндірме", bloom: "remember", difficulty: "easy" }
+                        ]}]}]
+                      }, null, 2));
                       toast({ title: "Көшірілді!" });
                     }}><ClipboardCopy className="size-4" /></Button>
                   </CardHeader>
@@ -556,13 +578,28 @@ export default function AdminPage() {
                     <pre className="p-4 rounded-xl bg-black text-[10px] text-green-400 overflow-x-auto">
 {`{
   "subject": "Пән атауы",
-  "topic": "Тақырып",
-  "questions": [
+  "subjectKey": "biology",
+  "source": { "textbook": "...", "fetchedAt": "2026-04-28" },
+  "chapters": [
     {
-      "text": "Сұрақ?",
-      "options": ["A нұсқа", "B", "C", "D"],
-      "correctAnswer": "A",
-      "explanation": "Түсіндірме"
+      "chapter": "1. Тарау атауы",
+      "topics": [
+        {
+          "topic": "Тақырып атауы",
+          "count": 2,
+          "questions": [
+            {
+              "id": "bio_1",
+              "question": "Сұрақ?",
+              "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+              "correct": "B",
+              "explanation": "Түсіндірме",
+              "bloom": "remember",
+              "difficulty": "easy"
+            }
+          ]
+        }
+      ]
     }
   ]
 }`}

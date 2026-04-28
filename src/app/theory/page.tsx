@@ -58,6 +58,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const getSubjectIcon = (name: string) => {
   const n = name.toLowerCase();
   if (n.includes("тарих")) return GraduationCap;
+  if (n.includes("тарих")) return GraduationCap;
   if (n.includes("мат") && !n.includes("сауаттылық")) return Calculator;
   if (n.includes("сауаттылық") && n.includes("оқу")) return Languages;
   if (n.includes("математикалық сауаттылық")) return ListChecks;

@@ -257,15 +257,19 @@ export default function AdminPage() {
       let subjectsToProcess: any[] = [];
 
       const normalizeQ = (q: any) => {
-        const options = Array.isArray(q.options) 
-          ? q.options 
-          : q.options 
-            ? [q.options.A, q.options.B, q.options.C, q.options.D] 
-            : [];
+        if (!q) return null;
+        let options: string[] = [];
+        
+        if (Array.isArray(q.options)) {
+          options = q.options;
+        } else if (q.options && typeof q.options === 'object') {
+          // Handle {A: "", B: "", ...}
+          options = [q.options.A, q.options.B, q.options.C, q.options.D].map(o => String(o || "")).filter(Boolean);
+        }
         
         return {
           text: q.question || q.text || "",
-          options: options.filter(Boolean),
+          options: options,
           correctAnswer: q.correct || q.correctAnswer || "A",
           explanation: q.explanation || "",
           bloom: q.bloom || "",
@@ -274,52 +278,63 @@ export default function AdminPage() {
         };
       };
 
-      // Handle user's "chapters" format
+      // Improved structure detection with safety checks
       if (rawData.subject && rawData.chapters) {
         subjectsToProcess = [{
           name: rawData.subject,
-          topics: rawData.chapters.flatMap((ch: any) =>
-            ch.topics.map((t: any) => ({
+          topics: (rawData.chapters || []).flatMap((ch: any) =>
+            (ch.topics || []).map((t: any) => ({
               title: t.topic || t.title,
-              questions: (t.questions || []).map(normalizeQ),
+              questions: (t.questions || []).map(normalizeQ).filter(Boolean),
             }))
           ),
         }];
-      } else if (rawData.subject && rawData.questions) {
-        subjectsToProcess = [{
-          name: rawData.subject,
-          topics: [{
-            title: rawData.topic || "Жалпы",
-            questions: rawData.questions.map(normalizeQ),
-          }]
-        }];
       } else if (rawData.subjects) {
-        subjectsToProcess = rawData.subjects.map((s: any) => ({
+        subjectsToProcess = (rawData.subjects || []).map((s: any) => ({
           name: s.name || s.subject,
           topics: (s.topics || []).map((t: any) => ({
             title: t.title || t.topic,
-            questions: (t.questions || []).map(normalizeQ)
+            questions: (t.questions || []).map(normalizeQ).filter(Boolean)
           }))
         }));
+      } else if (rawData.subject && (rawData.questions || rawData.topics)) {
+        subjectsToProcess = [{
+          name: rawData.subject,
+          topics: Array.isArray(rawData.topics) 
+            ? rawData.topics.map((t: any) => ({
+                title: t.topic || t.title,
+                questions: (t.questions || []).map(normalizeQ).filter(Boolean)
+              }))
+            : [{
+                title: rawData.topic || "Жалпы",
+                questions: (rawData.questions || []).map(normalizeQ).filter(Boolean)
+              }]
+        }];
       } else {
-        throw new Error("JSON форматы танылмады. Мына форматтардың бірі болуы керек: {subject, chapters}, {subject, questions} немесе {subjects}.");
+        throw new Error("JSON форматы танылмады. Мәліметтердің дұрыстығын тексеріңіз.");
       }
       
       let totalQ = 0;
-      subjectsToProcess.forEach(s => s.topics.forEach((t: any) => totalQ += t.questions.length));
-      setUploadProgress(`Жүктеуде: 0 / ${totalQ} сұрақ...`);
+      subjectsToProcess.forEach(s => (s.topics || []).forEach((t: any) => totalQ += (t.questions || []).length));
+      
+      if (totalQ === 0) {
+        throw new Error("Бірде-бір жарамды сұрақ табылмады.");
+      }
 
+      setUploadProgress(`Жүктеуде: 0 / ${totalQ} сұрақ...`);
       let processedCount = 0;
       
       subjectsToProcess.forEach((subject: any) => {
+        if (!subject.name) return;
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
         setDoc(doc(firestore, "subjects", subjectId), { name: subject.name, updatedAt: serverTimestamp() }, { merge: true });
 
-        subject.topics.forEach((topic: any) => {
+        (subject.topics || []).forEach((topic: any) => {
+          if (!topic.title) return;
           const topicId = topic.title.toLowerCase().replace(/\s+/g, '-');
           setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
 
-          topic.questions.forEach((q: any) => {
+          (topic.questions || []).forEach((q: any) => {
             const qId = q.id || Math.random().toString(36).substring(7);
             const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
             

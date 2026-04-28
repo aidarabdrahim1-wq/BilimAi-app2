@@ -207,7 +207,7 @@ function SubjectCard({ subject }: { subject: string }) {
     if (dbTopics.length === 0) return null;
     const staticTopicNames = ubtInfo.sections.flatMap(s => s.topics);
     const newTopics = dbTopics
-      .filter(t => !staticTopicNames.includes(t.title))
+      .filter(t => t.title && !staticTopicNames.includes(t.title))
       .map(t => t.title);
     
     if (newTopics.length === 0) return null;

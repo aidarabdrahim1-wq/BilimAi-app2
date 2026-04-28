@@ -12,10 +12,18 @@ import {
   Quote,
   Sparkles,
   Zap,
-  Star
+  Star,
+  CheckCircle2,
+  Rocket,
+  ArrowRight,
+  ShieldQuestion,
+  GraduationCap
 } from "lucide-react";
 
 export default function LandingPage() {
+  const whatsappNumber = "77066895607";
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent("Сәлеметсіз бе! Мен BilimAI платформасына жазылғым келеді. Толық ақпарат бересіз бе?")}`;
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -25,13 +33,16 @@ export default function LandingPage() {
             <span className="text-xl font-bold tracking-tight text-primary font-headline">BilimAI</span>
           </div>
           <nav className="hidden md:flex gap-6">
-            <Link href="#features" className="text-sm font-medium hover:text-primary transition-colors">Мүмкіндіктер</Link>
-            <Link href="#subjects" className="text-sm font-medium hover:text-primary transition-colors">Пәндер</Link>
-            <Link href="#motivation" className="text-sm font-medium hover:text-primary transition-colors">Мотивация</Link>
+            <Link href="#features" className="text-sm font-semibold hover:text-primary transition-colors">Мүмкіндіктер</Link>
+            <Link href="#how-it-works" className="text-sm font-semibold hover:text-primary transition-colors">Қалай жұмыс істейді?</Link>
+            <Link href="#pricing" className="text-sm font-semibold hover:text-primary transition-colors">Бағасы</Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Button asChild variant="default">
+            <Button asChild variant="ghost" className="hidden sm:inline-flex font-bold">
               <Link href="/login">Кіру</Link>
+            </Button>
+            <Button asChild className="rounded-full px-6 font-bold shadow-lg shadow-primary/20">
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer">Жазылу</a>
             </Button>
           </div>
         </div>
@@ -39,185 +50,227 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden py-24 md:py-32 bg-accent/30">
+        <section className="relative overflow-hidden py-24 md:py-32 bg-gradient-to-b from-primary/5 via-background to-background">
           <div className="container relative z-10 px-4 md:px-8">
-            <div className="mx-auto max-w-3xl text-center">
-              <h1 className="text-4xl font-extrabold tracking-tight font-headline sm:text-6xl text-foreground">
-                AI куратордың көмегімен <span className="text-primary">ҰБТ-ға</span> сапалы дайындық
+            <div className="mx-auto max-w-4xl text-center space-y-8">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2">
+                <Sparkles className="size-3" />
+                ҰБТ-ға дайындықтың жаңа дәуірі
+              </div>
+              <h1 className="text-5xl font-black tracking-tight font-headline sm:text-7xl text-foreground leading-[1.1]">
+                AI куратормен <span className="text-primary">Грантқа</span> 
+                <br className="hidden sm:block" /> нық қадам бас!
               </h1>
-              <p className="mt-6 text-lg text-muted-foreground leading-relaxed">
-                BilimAI – бұл тек тест емес. Бұл сіздің әлсіз тұстарыңызды тауып, жеке оқу жоспарын құрып, 
-                күн сайын мотивация беретін ақылды платформа.
+              <p className="mx-auto max-w-2xl text-xl text-muted-foreground leading-relaxed font-medium">
+                BilimAI – бұл жай ғана сайт емес. Бұл сенің 24/7 қасыңда болатын, әлсіз тұстарыңды тауып, жеке оқу жоспарын құратын интеллектуалды ұстазың.
               </p>
-              <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-                <Button size="lg" className="h-12 px-8 text-base font-semibold" asChild>
-                  <Link href="/login">Дайындықты бастау</Link>
+              <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
+                <Button size="lg" className="h-16 px-10 text-lg font-black rounded-2xl shadow-2xl shadow-primary/30" asChild>
+                  <Link href="/login">Тегін бастау <ArrowRight className="ml-2 size-5" /></Link>
                 </Button>
+                <Button size="lg" variant="outline" className="h-16 px-10 text-lg font-black rounded-2xl border-2 hover:bg-accent" asChild>
+                  <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                    <Zap className="mr-2 size-5 text-yellow-500 fill-current" /> Толық доступ алу
+                  </a>
+                </Button>
+              </div>
+              
+              <div className="pt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto opacity-70">
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-black">140</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Макс балл</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-black">24/7</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">AI Көмек</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-black">100%</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Жаңа спецификация</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-black">5000+</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Сұрақтар</span>
+                </div>
               </div>
             </div>
           </div>
-          <div className="absolute -bottom-24 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none" />
         </section>
 
-        {/* Benefits Section */}
+        {/* The Problem Section */}
+        <section className="py-24 container px-4 md:px-8 bg-muted/30 rounded-[60px] my-12">
+          <div className="max-w-5xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <h2 className="text-4xl font-black font-headline tracking-tight">ҰБТ-ға дайындалуда <span className="text-destructive">неге қиналасың?</span></h2>
+              <div className="space-y-6">
+                {[
+                  "Қай тақырыптан бастауды білмейсің?",
+                  "Теория көп, бірақ есте ештеңе қалмайды?",
+                  "Пробныйларда балың бір орында тұрып қалды?",
+                  "Қатемен жұмыс істеуге ерінесің немесе түсінбейсің?"
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-white shadow-sm border border-border/50">
+                    <div className="size-8 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0 font-black">!</div>
+                    <p className="font-bold text-slate-700">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-10 bg-primary rounded-[40px] text-white space-y-6 relative overflow-hidden group">
+              <h3 className="text-3xl font-black font-headline">Біздің шешім:</h3>
+              <p className="text-lg opacity-90 font-medium leading-relaxed">
+                BilimAI – бұл әр оқушының жағдайын жеке зерттейтін жасанды интеллект. Ол сенің әлсіз тұстарыңды «рентген» секілді көріп, соған ғана басымдық береді.
+              </p>
+              <ul className="space-y-4 pt-4">
+                <li className="flex items-center gap-3 font-bold"><CheckCircle2 className="text-yellow-400" /> Уақытты 3 есе үнемдеу</li>
+                <li className="flex items-center gap-3 font-bold"><CheckCircle2 className="text-yellow-400" /> Тек қажетті тақырыптарды оқу</li>
+                <li className="flex items-center gap-3 font-bold"><CheckCircle2 className="text-yellow-400" /> Грантқа кепілдік (ережені сақтасаң)</li>
+              </ul>
+              <Zap className="absolute -bottom-10 -right-10 size-48 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
         <section id="features" className="py-24 container px-4 md:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold font-headline mb-4">Неге бізді таңдайды?</h2>
-            <p className="text-muted-foreground">Платформаның негізгі артықшылықтары</p>
+          <div className="text-center mb-20 space-y-4">
+            <h2 className="text-4xl md:text-5xl font-black font-headline">Платформа мүмкіндіктері</h2>
+            <p className="text-muted-foreground text-xl max-w-2xl mx-auto">Біз ҰБТ-ға дайындықтың әр қадамын жеңілдеттік</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { icon: Target, title: "Әлсіз тұсты анықтау", desc: "AI диагностика арқылы нақты қай тақырыптарды қайталау керек екенін білесіз." },
-              { icon: Calendar, title: "Жеке оқу жоспары", desc: "Сіздің деңгейіңе және мақсатты балыңызға сай құрастырылған апталық жоспар." },
-              { icon: MessageSquare, title: "AI куратор", desc: "Кез келген уақытта сұрақ қойып, қолдау мен мотивация алыңыз." },
-              { icon: ChartNoAxesColumnIncreasing, title: "Прогресс бақылауы", desc: "Әр күн сайын өсуіңізді бақылап, қателермен жұмыс жасаңыз." },
-              { icon: ShieldCheck, title: "Теория + Практика", desc: "Барлық тақырып бойынша құрылымдалған конспектілер мен ҰБТ форматындағы тесттер." },
-              { icon: Users, title: "Ұжымдық қолдау", desc: "Үздік оқушылар қауымдастығына қосылып, бірге дамыңыз." },
+              { icon: Target, title: "AI Диагностика", desc: "Дайындықты бастамас бұрын деңгейіңді анықтап, саған арналған жеке Start Roadmap-ті сызып береміз." },
+              { icon: MessageSquare, title: "Жеке AI Куратор", desc: "Түсінбеген тақырыбың бар ма? Сұра! Ол 24/7 желіде және кез келген есепті қарапайым тілде түсіндіреді." },
+              { icon: Calendar, title: "Ақылды оқу жоспары", desc: "Күнделікті не оқу керектігін ойланба. AI саған бүгінге нақты тапсырмалар беріп, орындалуын қадағалайды." },
+              { icon: ChartNoAxesColumnIncreasing, title: "Қателерді автоматты талдау", desc: "Жіберген қатеңді жүйе сақтап қалады және AI оны неге қате жібергеніңді түсіндіріп береді." },
+              { icon: ShieldCheck, title: "ҰБТ 2026 Спецификациясы", desc: "Барлық сұрақтар мен тақырыптар ең соңғы ресми бағдарламаға сай құрастырылған." },
+              { icon: Users, title: "Рейтинг және Мотивация", desc: "Басқа оқушылармен бәсекелес, ұпай жинап, Лидерлер тізіміне шық. Грант үшін жарыс басталды!" },
             ].map((feature, i) => (
-              <div key={i} className="p-8 rounded-2xl border bg-card hover:shadow-xl transition-all hover:-translate-y-1">
-                <div className="mb-4 inline-flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <feature.icon className="size-6" />
+              <div key={i} className="group p-10 rounded-[32px] border-2 bg-card hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/5 transition-all duration-300">
+                <div className="mb-6 inline-flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-inner">
+                  <feature.icon className="size-7" />
                 </div>
-                <h3 className="text-xl font-bold mb-2 font-headline">{feature.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{feature.desc}</p>
+                <h3 className="text-2xl font-black mb-4 font-headline tracking-tight">{feature.title}</h3>
+                <p className="text-muted-foreground font-medium leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Subjects Section */}
-        <section id="subjects" className="py-24 bg-muted/30">
-          <div className="container px-4 md:px-8">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
-              <div>
-                <h2 className="text-3xl font-bold font-headline">Дайындық пәндері</h2>
-                <p className="text-muted-foreground mt-2">Барлық негізгі және бейіндік пәндер қамтылған</p>
-              </div>
-              <Button variant="link" className="text-primary font-semibold">Барлық пәндерді көру</Button>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {['Математика', 'Физика', 'Химия', 'Биология', 'Қазақстан тарихы', 'Дүниежүзі тарихы', 'Қазақ тілі', 'Оқу сауаттылығы'].map((subject, i) => (
-                <div key={i} className="group cursor-pointer p-6 rounded-xl border bg-card text-center hover:bg-primary hover:text-primary-foreground transition-all">
-                  <div className="mb-3 mx-auto size-10 flex items-center justify-center rounded-lg bg-primary/5 group-hover:bg-white/10">
-                    <BookOpen className="size-5" />
-                  </div>
-                  <span className="font-semibold">{subject}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Motivation Section */}
-        <section id="motivation" className="py-24 container px-4 md:px-8 overflow-hidden">
-          <div className="flex flex-col items-center text-center mb-16 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="size-3" />
-              Жеңімпаздар рухы
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold font-headline">Сенің қолыңнан бәрі келеді</h2>
-            <p className="text-muted-foreground max-w-2xl">
-              ҰБТ — бұл тек емтихан емес, бұл сенің өз болашағыңды қалыптастыруға жасаған алғашқы үлкен қадамың.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            <div className="p-8 rounded-3xl bg-white border shadow-sm hover:shadow-md transition-all relative group overflow-hidden">
-              <Quote className="size-12 text-primary/10 absolute -top-2 -left-2" />
-              <div className="relative z-10 space-y-4">
-                <div className="size-12 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center">
-                  <Zap className="size-6" />
-                </div>
-                <p className="text-lg font-medium leading-relaxed italic">
-                  "Жетістіктің құпиясы — бастауда. Ал бүгінгі 1 сағаттық дайындық ертеңгі үлкен жеңістің негізі."
-                </p>
-                <div className="pt-4 border-t border-dashed">
-                  <p className="text-sm font-bold">BilimAI Мотивация</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 rounded-3xl bg-primary text-primary-foreground shadow-xl hover:scale-[1.02] transition-all relative overflow-hidden">
-              <Star className="size-32 text-white/5 absolute -bottom-8 -right-8 rotate-12" />
-              <div className="relative z-10 space-y-4">
-                <div className="size-12 rounded-2xl bg-white/20 text-white flex items-center justify-center">
-                  <Target className="size-6" />
-                </div>
-                <p className="text-lg font-bold leading-relaxed">
-                  "Сен бүгін шаршаған шығарсың, бірақ ертең грант иегері атанғанда бұл қиындықтардың бәрі тек жағымды естелікке айналады."
-                </p>
-                <div className="pt-4 border-t border-white/20">
-                  <p className="text-sm font-medium opacity-80">Сенімділік жолы</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 rounded-3xl bg-white border shadow-sm hover:shadow-md transition-all relative group overflow-hidden">
-              <Quote className="size-12 text-primary/10 absolute -top-2 -left-2" />
-              <div className="relative z-10 space-y-4">
-                <div className="size-12 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <Users className="size-6" />
-                </div>
-                <p className="text-lg font-medium leading-relaxed italic">
-                  "Ең үлкен бәсекелесің — кешегі өзің. Күн сайын 1%-ға болса да жақсару сені шыңға шығарады."
-                </p>
-                <div className="pt-4 border-t border-dashed">
-                  <p className="text-sm font-bold">Даму қағидасы</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="py-24 container px-4 md:px-8">
-          <div className="rounded-3xl bg-primary p-8 md:p-16 text-center text-primary-foreground relative overflow-hidden">
-            <div className="relative z-10 mx-auto max-w-2xl">
-              <h2 className="text-3xl font-bold font-headline md:text-5xl mb-6">Бүгіннен бастап ҰБТ-ға дайындықты жеңілдетіңіз</h2>
-              <p className="text-primary-foreground/80 mb-10 text-lg">
-                Жеке оқу жоспарыңызды тегін алыңыз және AI куратордың қолдауын сезініңіз. 
-                Мақсатыңызға бір қадам жақындаңыз!
+        {/* Pricing/Conversion Section */}
+        <section id="pricing" className="py-24 container px-4 md:px-8">
+          <div className="max-w-4xl mx-auto bg-slate-900 rounded-[50px] p-12 md:p-20 text-white text-center space-y-10 relative overflow-hidden">
+            <div className="relative z-10 space-y-6">
+              <Badge className="bg-yellow-400 text-black border-none font-black px-4 py-1">Limited Offer</Badge>
+              <h2 className="text-4xl md:text-6xl font-black font-headline tracking-tight">Болашағыңа бүгін <span className="text-primary-foreground underline decoration-primary underline-offset-8">инвестиция жаса</span></h2>
+              <p className="text-xl text-slate-400 font-medium max-w-2xl mx-auto">
+                Бір айлық дайындық құны – бір реттік тамақтанудың бағасымен тең. Бірақ бұл грантқа түсу арқылы миллиондаған теңгені үнемдеуге мүмкіндік береді.
               </p>
-              <Button size="lg" variant="secondary" className="h-12 px-10 text-base font-bold shadow-lg" asChild>
-                <Link href="/login">Кіру</Link>
-              </Button>
+              
+              <div className="flex flex-col md:flex-row items-center justify-center gap-8 pt-8">
+                <Card className="bg-white/10 backdrop-blur-xl border-white/20 p-8 rounded-[32px] w-full max-w-xs text-left group hover:bg-white/20 transition-all">
+                  <h4 className="text-xl font-black mb-2">Стандарт пакет</h4>
+                  <p className="text-xs text-slate-400 mb-6">Барлық негізгі мүмкіндіктер</p>
+                  <div className="text-4xl font-black mb-8">9 900 ₸ <span className="text-sm font-normal text-slate-500">/ай</span></div>
+                  <Button className="w-full h-12 rounded-xl font-bold bg-white text-black hover:bg-slate-200" asChild>
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer">Сатып алу</a>
+                  </Button>
+                </Card>
+                
+                <Card className="bg-primary p-8 rounded-[32px] w-full max-w-xs text-left ring-4 ring-primary/30 relative transform md:scale-110 shadow-2xl">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Хит</div>
+                  <h4 className="text-xl font-black mb-2">Грант пакеті</h4>
+                  <p className="text-xs text-white/70 mb-6">Толық AI доступ + Жеке қолдау</p>
+                  <div className="text-4xl font-black mb-8">14 900 ₸ <span className="text-sm font-normal text-white/50">/ай</span></div>
+                  <Button variant="secondary" className="w-full h-12 rounded-xl font-bold shadow-xl" asChild>
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer">Сатып алу</a>
+                  </Button>
+                </Card>
+              </div>
+
+              <div className="pt-10 flex items-center justify-center gap-6">
+                <p className="text-sm font-bold flex items-center gap-2">
+                   <ShieldCheck className="text-primary-foreground size-5" /> Қауіпсіз төлем
+                </p>
+                <div className="h-4 w-px bg-white/20" />
+                <p className="text-sm font-bold flex items-center gap-2">
+                   <GraduationCap className="text-primary-foreground size-5" /> Грант иегерлері таңдайды
+                </p>
+              </div>
             </div>
-            <div className="absolute top-0 right-0 size-64 bg-white/5 rounded-full blur-3xl" />
-            <div className="absolute bottom-0 left-0 size-64 bg-white/5 rounded-full blur-3xl" />
+            
+            {/* Background elements */}
+            <div className="absolute -bottom-20 -left-20 size-80 bg-primary/10 rounded-full blur-[100px]" />
+            <div className="absolute -top-20 -right-20 size-80 bg-indigo-500/10 rounded-full blur-[100px]" />
           </div>
+        </section>
+
+        {/* FAQ / Support Section */}
+        <section className="py-24 container px-4 md:px-8 text-center space-y-12">
+          <div className="space-y-4">
+            <h2 className="text-3xl md:text-4xl font-black font-headline">Сұрақтарыңыз бар ма?</h2>
+            <p className="text-muted-foreground font-medium">Біздің команда сізге көмектесуге дайын</p>
+          </div>
+          <Card className="max-w-2xl mx-auto p-10 rounded-[40px] border-none shadow-xl bg-white flex flex-col items-center gap-6">
+             <div className="size-20 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
+                <MessageSquare className="size-10 text-green-600" />
+             </div>
+             <div className="space-y-2">
+                <h4 className="text-2xl font-black">WhatsApp-қа жазыңыз</h4>
+                <p className="text-muted-foreground font-medium leading-relaxed">
+                  Төлем жасау, платформаны қосу немесе ынтымақтастық туралы барлық сұрақтар бойынша бізбен тікелей байланысыңыз.
+                </p>
+             </div>
+             <Button size="lg" className="h-16 px-12 rounded-2xl font-black text-xl bg-green-600 hover:bg-green-700 shadow-xl shadow-green-200 gap-3" asChild>
+                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+                   <Users className="size-6" /> Жазу: 87066895607
+                </a>
+             </Button>
+          </Card>
         </section>
       </main>
 
-      <footer className="border-t py-12 bg-card">
+      <footer className="border-t py-16 bg-white">
         <div className="container px-4 md:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <BrainCircuit className="h-5 w-5 text-primary" />
-                <span className="text-lg font-bold tracking-tight text-primary font-headline">BilimAI</span>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            <div className="col-span-1 md:col-span-2 space-y-6">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="h-6 w-6 text-primary" />
+                <span className="text-2xl font-bold tracking-tight text-primary font-headline">BilimAI</span>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Қазақстандағы ең заманауи ҰБТ-ға дайындық платформасы. AI көмегімен биік белестерді бағындырыңыз.
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-sm font-medium">
+                Қазақстандағы ең заманауи ҰБТ-ға дайындық платформасы. Жасанды интеллект арқылы грантқа жету жолыңды қысқарт.
               </p>
+              <div className="flex items-center gap-4">
+                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Zap className="size-5" /></div>
+                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Star className="size-5" /></div>
+                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Users className="size-5" /></div>
+              </div>
             </div>
             <div>
-              <h4 className="font-bold mb-4">Платформа</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/" className="hover:text-primary">Басты бет</Link></li>
-                <li><Link href="/login" className="hover:text-primary">Кіру</Link></li>
+              <h4 className="font-black text-slate-900 mb-6 uppercase tracking-widest text-xs">Платформа</h4>
+              <ul className="space-y-4 text-sm font-bold text-muted-foreground">
+                <li><Link href="/" className="hover:text-primary transition-colors">Басты бет</Link></li>
+                <li><Link href="/login" className="hover:text-primary transition-colors">Кіру</Link></li>
+                <li><Link href="/signup" className="hover:text-primary transition-colors">Тіркелу</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-bold mb-4">Көмек</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-primary">Жиі қойылатын сұрақтар</Link></li>
-                <li><Link href="#" className="hover:text-primary">Қолдау көрсету</Link></li>
-                <li><Link href="#" className="hover:text-primary">Байланыс</Link></li>
+              <h4 className="font-black text-slate-900 mb-6 uppercase tracking-widest text-xs">Көмек</h4>
+              <ul className="space-y-4 text-sm font-bold text-muted-foreground">
+                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Қолдау көрсету</a></li>
+                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Байланыс</a></li>
+                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Төлем мәселесі</a></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t text-center text-sm text-muted-foreground">
-            © 2024 BilimAI. Барлық құқықтар қорғалған.
+          <div className="pt-12 border-t flex flex-col md:flex-row items-center justify-between gap-6 text-sm font-bold text-muted-foreground/60">
+            <p>© 2025 BilimAI. Барлық құқықтар қорғалған.</p>
+            <div className="flex items-center gap-8">
+               <span className="hover:text-primary cursor-pointer transition-all">Құпиялылық саясаты</span>
+               <span className="hover:text-primary cursor-pointer transition-all">Пайдалану шарттары</span>
+            </div>
           </div>
         </div>
       </footer>

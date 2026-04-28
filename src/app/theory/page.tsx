@@ -47,7 +47,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/accordion";
+} from "@/components/ui/accordion";
 import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";

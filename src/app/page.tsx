@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { 
   BrainCircuit, 
   Target, 
@@ -10,14 +11,11 @@ import {
   Users, 
   MessageSquare, 
   BookOpen,
-  Quote,
   Sparkles,
   Zap,
   Star,
   CheckCircle2,
-  Rocket,
   ArrowRight,
-  ShieldQuestion,
   GraduationCap
 } from "lucide-react";
 
@@ -159,7 +157,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Pricing/Conversion Section */}
+        {/* Pricing Section */}
         <section id="pricing" className="py-24 container px-4 md:px-8">
           <div className="max-w-4xl mx-auto bg-slate-900 rounded-[50px] p-12 md:p-20 text-white text-center space-y-10 relative overflow-hidden">
             <div className="relative z-10 space-y-6">
@@ -200,73 +198,13 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-            
-            {/* Background elements */}
-            <div className="absolute -bottom-20 -left-20 size-80 bg-primary/10 rounded-full blur-[100px]" />
-            <div className="absolute -top-20 -right-20 size-80 bg-indigo-500/10 rounded-full blur-[100px]" />
           </div>
-        </section>
-
-        {/* FAQ / Support Section */}
-        <section className="py-24 container px-4 md:px-8 text-center space-y-12">
-          <div className="space-y-4">
-            <h2 className="text-3xl md:text-4xl font-black font-headline">Сұрақтарыңыз бар ма?</h2>
-            <p className="text-muted-foreground font-medium">Біздің команда сізге көмектесуге дайын</p>
-          </div>
-          <Card className="max-w-2xl mx-auto p-10 rounded-[40px] border-none shadow-xl bg-white flex flex-col items-center gap-6">
-             <div className="size-20 rounded-full bg-green-100 flex items-center justify-center shadow-inner">
-                <MessageSquare className="size-10 text-green-600" />
-             </div>
-             <div className="space-y-2">
-                <h4 className="text-2xl font-black">WhatsApp-қа жазыңыз</h4>
-                <p className="text-muted-foreground font-medium leading-relaxed">
-                  Төлем жасау, платформаны қосу немесе ынтымақтастық туралы барлық сұрақтар бойынша бізбен тікелей байланысыңыз.
-                </p>
-             </div>
-             <Button size="lg" className="h-16 px-12 rounded-2xl font-black text-xl bg-green-600 hover:bg-green-700 shadow-xl shadow-green-200 gap-3" asChild>
-                <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                   <Users className="size-6" /> Жазу: 87066895607
-                </a>
-             </Button>
-          </Card>
         </section>
       </main>
 
       <footer className="border-t py-16 bg-white">
         <div className="container px-4 md:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-            <div className="col-span-1 md:col-span-2 space-y-6">
-              <div className="flex items-center gap-2">
-                <BrainCircuit className="h-6 w-6 text-primary" />
-                <span className="text-2xl font-bold tracking-tight text-primary font-headline">BilimAI</span>
-              </div>
-              <p className="text-muted-foreground text-lg leading-relaxed max-w-sm font-medium">
-                Қазақстандағы ең заманауи ҰБТ-ға дайындық платформасы. Жасанды интеллект арқылы грантқа жету жолыңды қысқарт.
-              </p>
-              <div className="flex items-center gap-4">
-                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Zap className="size-5" /></div>
-                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Star className="size-5" /></div>
-                <div className="size-10 rounded-xl bg-accent flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all cursor-pointer"><Users className="size-5" /></div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-black text-slate-900 mb-6 uppercase tracking-widest text-xs">Платформа</h4>
-              <ul className="space-y-4 text-sm font-bold text-muted-foreground">
-                <li><Link href="/" className="hover:text-primary transition-colors">Басты бет</Link></li>
-                <li><Link href="/login" className="hover:text-primary transition-colors">Кіру</Link></li>
-                <li><Link href="/signup" className="hover:text-primary transition-colors">Тіркелу</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-black text-slate-900 mb-6 uppercase tracking-widest text-xs">Көмек</h4>
-              <ul className="space-y-4 text-sm font-bold text-muted-foreground">
-                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Қолдау көрсету</a></li>
-                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Байланыс</a></li>
-                <li><a href={whatsappLink} className="hover:text-primary transition-colors">Төлем мәселесі</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="pt-12 border-t flex flex-col md:flex-row items-center justify-between gap-6 text-sm font-bold text-muted-foreground/60">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 text-sm font-bold text-muted-foreground/60">
             <p>© 2025 BilimAI. Барлық құқықтар қорғалған.</p>
             <div className="flex items-center gap-8">
                <span className="hover:text-primary cursor-pointer transition-all">Құпиялылық саясаты</span>

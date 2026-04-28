@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -188,19 +187,24 @@ export default function CuratorPage() {
         batch.delete(doc(db, "studentProfiles", user.uid, "curatorInteractions", d.id));
       });
       
-      await batch.commit();
-
-      toast({
-        title: "Жаңа чат",
-        description: "Жаңа диалог сәтті басталды. AI куратор дайын!",
-      });
+      batch.commit()
+        .then(() => {
+          toast({
+            title: "Жаңа чат",
+            description: "Жаңа диалог сәтті басталды. AI куратор дайын!",
+          });
+        })
+        .catch(async (error: any) => {
+          const permissionError = new FirestorePermissionError({
+            path: `studentProfiles/${user.uid}/curatorInteractions`,
+            operation: 'delete',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        })
+        .finally(() => {
+          setIsClearing(false);
+        });
     } catch (error: any) {
-      const permissionError = new FirestorePermissionError({
-        path: `studentProfiles/${user.uid}/curatorInteractions`,
-        operation: 'delete',
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    } finally {
       setIsClearing(false);
     }
   };

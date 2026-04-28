@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
@@ -48,7 +47,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/accordion";
 import { generateUntQuestions } from "@/ai/flows/run-unt-test-flow";
 import { updateUserRating } from "@/lib/rating";
 import { STATIC_TESTS, UBT_TOPICS } from "@/lib/ubt-data";
@@ -176,8 +175,47 @@ export default function TheoryPage() {
 
 function SubjectCard({ subject }: { subject: string }) {
   const Icon = getSubjectIcon(subject);
-  const ubtInfo = UBT_TOPICS[subject] || { description: "Кәсіби дайындалған базалық пән.", sections: [] };
   const [isOpen, setIsOpen] = useState(false);
+  const [dbTopics, setDbTopics] = useState<any[]>([]);
+  const [loadingTopics, setLoadingTopics] = useState(false);
+
+  // Fetch topics from Firestore when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      const fetchDbTopics = async () => {
+        setLoadingTopics(true);
+        try {
+          const subjectId = subject.toLowerCase().replace(/\s+/g, '-');
+          const topicsRef = collection(db, "subjects", subjectId, "topics");
+          const snap = await getDocs(topicsRef);
+          setDbTopics(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoadingTopics(false);
+        }
+      };
+      fetchDbTopics();
+    }
+  }, [isOpen, subject]);
+
+  const ubtInfo = UBT_TOPICS[subject] || { description: "Кәсіби дайындалған базалық пән.", sections: [] };
+
+  // Merge static sections with dynamic topics from DB that aren't in sections
+  const dynamicSection = useMemo(() => {
+    if (dbTopics.length === 0) return null;
+    const staticTopicNames = ubtInfo.sections.flatMap(s => s.topics);
+    const newTopics = dbTopics
+      .filter(t => !staticTopicNames.includes(t.title))
+      .map(t => t.title);
+    
+    if (newTopics.length === 0) return null;
+    return { title: "Жүктелген тақырыптар", topics: newTopics };
+  }, [dbTopics, ubtInfo.sections]);
+
+  const allSections = useMemo(() => {
+    return dynamicSection ? [...ubtInfo.sections, dynamicSection] : ubtInfo.sections;
+  }, [ubtInfo.sections, dynamicSection]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -197,7 +235,7 @@ function SubjectCard({ subject }: { subject: string }) {
             <div className="flex items-center justify-between mt-2">
               <div className="flex flex-col">
                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Құрылымы</span>
-                <span className="text-base font-black text-primary">{ubtInfo.sections.length} бөлім</span>
+                <span className="text-base font-black text-primary">{allSections.length} бөлім</span>
               </div>
               <div className="size-10 rounded-full bg-accent/50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
                 <ChevronRight className="size-5" />
@@ -222,27 +260,31 @@ function SubjectCard({ subject }: { subject: string }) {
         </div>
         <ScrollArea className="flex-1 px-8 py-4">
           <div className="py-4">
-            <Accordion type="single" collapsible className="w-full space-y-4">
-              {ubtInfo.sections.map((section, sIdx) => (
-                <AccordionItem key={sIdx} value={`section-${sIdx}`} className="border-2 rounded-2xl bg-accent/5 px-6 border-transparent data-[state=open]:border-primary/20 data-[state=open]:bg-white transition-all">
-                  <AccordionTrigger className="hover:no-underline py-6">
-                    <div className="flex items-center gap-4 text-left">
-                      <div className="size-10 rounded-xl bg-white flex items-center justify-center text-xs font-black text-primary shadow-sm border">
-                        {sIdx + 1}
+            {loadingTopics ? (
+              <div className="flex justify-center py-20"><Loader2 className="size-8 animate-spin text-primary opacity-20" /></div>
+            ) : (
+              <Accordion type="single" collapsible className="w-full space-y-4">
+                {allSections.map((section, sIdx) => (
+                  <AccordionItem key={sIdx} value={`section-${sIdx}`} className="border-2 rounded-2xl bg-accent/5 px-6 border-transparent data-[state=open]:border-primary/20 data-[state=open]:bg-white transition-all">
+                    <AccordionTrigger className="hover:no-underline py-6">
+                      <div className="flex items-center gap-4 text-left">
+                        <div className="size-10 rounded-xl bg-white flex items-center justify-center text-xs font-black text-primary shadow-sm border">
+                          {sIdx + 1}
+                        </div>
+                        <span className="font-black text-lg">{section.title}</span>
                       </div>
-                      <span className="font-black text-lg">{section.title}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-6">
-                    <div className="grid gap-3 pt-2">
-                      {section.topics.map((topic, tIdx) => (
-                        <TopicItem key={tIdx} topic={topic} subject={subject} />
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-6">
+                      <div className="grid gap-3 pt-2">
+                        {section.topics.map((topic, tIdx) => (
+                          <TopicItem key={tIdx} topic={topic} subject={subject} />
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
           </div>
         </ScrollArea>
         <div className="p-4 bg-muted/20 border-t flex justify-center shrink-0">

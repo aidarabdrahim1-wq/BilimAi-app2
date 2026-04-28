@@ -24,7 +24,8 @@ import {
   Plus,
   CheckCircle2,
   ClipboardCopy,
-  LayoutGrid
+  LayoutGrid,
+  AlertCircle
 } from "lucide-react";
 import { doc, setDoc, collection, query, orderBy, serverTimestamp, getDocs, deleteDoc } from "firebase/firestore";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -93,7 +94,6 @@ export default function AdminPage() {
   }, [isAdmin, loading, router]);
 
   const usersQuery = useMemoFirebase(() => {
-    // Рұқсат қателігін болдырмау үшін тек админ болса ғана сұраныс жасау
     if (!firestore || !isAdmin) return null;
     return query(collection(firestore, "studentProfiles"), orderBy("rating", "desc"));
   }, [firestore, isAdmin]);
@@ -150,7 +150,6 @@ export default function AdminPage() {
         }));
       });
 
-    // Ensure subject and topic docs exist
     setDoc(doc(firestore, "subjects", subjectId), { name: manualQ.subject, updatedAt: serverTimestamp() }, { merge: true });
     setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: manualQ.topic || "Жалпы", updatedAt: serverTimestamp() }, { merge: true });
   };
@@ -163,7 +162,6 @@ export default function AdminPage() {
       const topicId = selectedViewTopic.toLowerCase().replace(/\s+/g, '-');
       const qRef = collection(firestore, "subjects", subjectId, "topics", topicId, "questions");
       const snap = await getDocs(qRef);
-      // Attach subjectId and topicId to each question for reliable deletion
       setFetchedQuestions(snap.docs.map(d => ({ 
         id: d.id, 
         subjectId, 
@@ -179,25 +177,12 @@ export default function AdminPage() {
 
   const deleteQuestion = (q: any) => {
     if (!confirm("Бұл сұрақты өшіргіңіз келе ме?")) return;
-    
-    // Use the document reference context stored in the question object itself
     const qRef = doc(firestore, "subjects", q.subjectId, "topics", q.topicId, "questions", q.id);
-
-    // Optimistic UI update: remove from screen immediately
     setFetchedQuestions(prev => prev.filter(item => item.id !== q.id));
     toast({ title: "Сұрақ өшірілді" });
-
-    // Non-blocking deletion
     deleteDoc(qRef).catch(async (err) => {
-      // Create and emit contextual error if permission denied
-      const permissionError = new FirestorePermissionError({
-        path: qRef.path,
-        operation: 'delete'
-      });
+      const permissionError = new FirestorePermissionError({ path: qRef.path, operation: 'delete' });
       errorEmitter.emit('permission-error', permissionError);
-      
-      // Optionally restore the item if deletion failed
-      fetchQuestionsForView();
     });
   };
 
@@ -265,28 +250,38 @@ export default function AdminPage() {
     if (!jsonInput.trim() || !firestore) return;
     setIsUploading(true);
     setError(null);
-    setUploadProgress("Деректер талдануда...");
+    setUploadProgress("Талдау жүріп жатыр...");
 
     try {
       let rawData = JSON.parse(jsonInput);
-      let subjectsToProcess = [];
+      let subjectsToProcess: any[] = [];
 
-      const normalizeQ = (q: any) => ({
-        text: q.question || q.text,
-        options: Array.isArray(q.options) ? q.options : [q.options.A, q.options.B, q.options.C, q.options.D],
-        correctAnswer: q.correct || q.correctAnswer,
-        explanation: q.explanation || "",
-        bloom: q.bloom || "",
-        difficulty: q.difficulty || "",
-      });
+      const normalizeQ = (q: any) => {
+        const options = Array.isArray(q.options) 
+          ? q.options 
+          : q.options 
+            ? [q.options.A, q.options.B, q.options.C, q.options.D] 
+            : [];
+        
+        return {
+          text: q.question || q.text || "",
+          options: options.filter(Boolean),
+          correctAnswer: q.correct || q.correctAnswer || "A",
+          explanation: q.explanation || "",
+          bloom: q.bloom || "",
+          difficulty: q.difficulty || "",
+          updatedAt: serverTimestamp()
+        };
+      };
 
+      // Handle user's "chapters" format
       if (rawData.subject && rawData.chapters) {
         subjectsToProcess = [{
           name: rawData.subject,
           topics: rawData.chapters.flatMap((ch: any) =>
             ch.topics.map((t: any) => ({
-              title: t.topic,
-              questions: t.questions.map(normalizeQ),
+              title: t.topic || t.title,
+              questions: (t.questions || []).map(normalizeQ),
             }))
           ),
         }];
@@ -299,10 +294,22 @@ export default function AdminPage() {
           }]
         }];
       } else if (rawData.subjects) {
-        subjectsToProcess = rawData.subjects;
+        subjectsToProcess = rawData.subjects.map((s: any) => ({
+          name: s.name || s.subject,
+          topics: (s.topics || []).map((t: any) => ({
+            title: t.title || t.topic,
+            questions: (t.questions || []).map(normalizeQ)
+          }))
+        }));
       } else {
-        throw new Error("JSON форматы танылмады.");
+        throw new Error("JSON форматы танылмады. Мына форматтардың бірі болуы керек: {subject, chapters}, {subject, questions} немесе {subjects}.");
       }
+      
+      let totalQ = 0;
+      subjectsToProcess.forEach(s => s.topics.forEach((t: any) => totalQ += t.questions.length));
+      setUploadProgress(`Жүктеуде: 0 / ${totalQ} сұрақ...`);
+
+      let processedCount = 0;
       
       subjectsToProcess.forEach((subject: any) => {
         const subjectId = subject.name.toLowerCase().replace(/\s+/g, '-');
@@ -313,31 +320,30 @@ export default function AdminPage() {
           setDoc(doc(firestore, "subjects", subjectId, "topics", topicId), { title: topic.title, updatedAt: serverTimestamp() }, { merge: true });
 
           topic.questions.forEach((q: any) => {
-            const qId = Math.random().toString(36).substring(7);
+            const qId = q.id || Math.random().toString(36).substring(7);
             const qRef = doc(firestore, "subjects", subjectId, "topics", topicId, "questions", qId);
-            const qData: any = {
-              text: q.text,
-              options: q.options,
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation || "",
-              updatedAt: serverTimestamp()
-            };
-            if (q.bloom) qData.bloom = q.bloom;
-            if (q.difficulty) qData.difficulty = q.difficulty;
-            setDoc(qRef, qData).catch(async (err) => {
-              errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: qRef.path,
-                operation: 'create',
-                requestResourceData: qData
-              }));
-            });
+            
+            setDoc(qRef, q)
+              .then(() => {
+                processedCount++;
+                setUploadProgress(`Жүктеуде: ${processedCount} / ${totalQ} сұрақ...`);
+                if (processedCount === totalQ) {
+                  toast({ title: "Жүктеу аяқталды!", description: `${totalQ} сұрақ базаға қосылды.` });
+                  setIsUploading(false);
+                  setJsonInput("");
+                }
+              })
+              .catch(async (err) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                  path: qRef.path,
+                  operation: 'create',
+                  requestResourceData: q
+                }));
+              });
           });
         });
       });
       
-      toast({ title: "Жүктеу басталды!", description: "Сұрақтар базаға қосылуда." });
-      setJsonInput("");
-      setIsUploading(false);
     } catch (err: any) {
       setError(err.message);
       setIsUploading(false);
@@ -543,8 +549,18 @@ export default function AdminPage() {
                   <CardDescription>Мыңдаған сұрақтарды 1 минутта жүктеңіз.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {error && <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs border border-destructive/20">{error}</div>}
-                  <Textarea placeholder='JSON кодын осы жерге қойыңыз...' className="min-h-[400px] font-mono text-xs rounded-2xl bg-accent/5 border-none" value={jsonInput} onChange={(e) => setJsonInput(e.target.value)} />
+                  {error && (
+                    <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-xs border border-destructive/20 flex items-center gap-3">
+                      <AlertCircle className="size-4 shrink-0" />
+                      {error}
+                    </div>
+                  )}
+                  <Textarea 
+                    placeholder='JSON кодын осы жерге қойыңыз...' 
+                    className="min-h-[400px] font-mono text-xs rounded-2xl bg-accent/5 border-none" 
+                    value={jsonInput} 
+                    onChange={(e) => setJsonInput(e.target.value)} 
+                  />
                   <Button className="w-full gap-2 rounded-xl h-12 font-bold shadow-lg" onClick={handleBulkUpload} disabled={isUploading || !jsonInput.trim()}>
                     {isUploading ? <><Loader2 className="size-4 animate-spin" /> {uploadProgress}</> : <><Upload className="size-4" /> Базаға жүктеу</>}
                   </Button>
@@ -565,11 +581,26 @@ export default function AdminPage() {
                     <CardTitle className="text-sm font-bold">Импорт Үлгісі</CardTitle>
                     <Button variant="ghost" size="sm" onClick={() => {
                       navigator.clipboard.writeText(JSON.stringify({
-                        subject: "Биология", subjectKey: "biology",
-                        source: { textbook: "Биология 10-11", specification: "ҰБТ 2026", fetchedAt: "2026-04-28" },
-                        chapters: [{ chapter: "1. Генетика", topics: [{ topic: "Мендель заңдары", count: 2, questions: [
-                          { id: "bio_1", question: "Сұрақ мәтіні?", options: { A: "1-нұсқа", B: "2-нұсқа", C: "3-нұсқа", D: "4-нұсқа" }, correct: "B", explanation: "Түсіндірме", bloom: "remember", difficulty: "easy" }
-                        ]}]}]
+                        subject: "Биология",
+                        chapters: [
+                          {
+                            chapter: "1. Генетика",
+                            topics: [
+                              {
+                                topic: "Мендель заңдары",
+                                questions: [
+                                  {
+                                    question: "Мендельдің бірінші заңы қалай аталады?",
+                                    options: { A: "Ажырау", B: "Біртектілік", C: "Тәуелсіз тұқым қуалау", D: "Тіркес" },
+                                    correct: "B",
+                                    explanation: "Бірінші ұрпақ будандарының біртектілік заңы.",
+                                    difficulty: "easy"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
                       }, null, 2));
                       toast({ title: "Көшірілді!" });
                     }}><ClipboardCopy className="size-4" /></Button>
@@ -577,25 +608,19 @@ export default function AdminPage() {
                   <CardContent>
                     <pre className="p-4 rounded-xl bg-black text-[10px] text-green-400 overflow-x-auto">
 {`{
-  "subject": "Пән атауы",
-  "subjectKey": "biology",
-  "source": { "textbook": "...", "fetchedAt": "2026-04-28" },
+  "subject": "Биология",
   "chapters": [
     {
-      "chapter": "1. Тарау атауы",
+      "chapter": "1. Генетика",
       "topics": [
         {
-          "topic": "Тақырып атауы",
-          "count": 2,
+          "topic": "Мендель заңдары",
           "questions": [
             {
-              "id": "bio_1",
               "question": "Сұрақ?",
-              "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
+              "options": { "A": "..", "B": "..", "C": "..", "D": ".." },
               "correct": "B",
-              "explanation": "Түсіндірме",
-              "bloom": "remember",
-              "difficulty": "easy"
+              "explanation": "Түсіндірме"
             }
           ]
         }

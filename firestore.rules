@@ -2,6 +2,30 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /**
+     * CORE PHILOSOPHY:
+     * This ruleset enforces a strict User-Ownership model combined with Database-backed Access Control (DBAC) for administrative roles.
+     * 
+     * DATA STRUCTURE:
+     * 1. User Scoped: All private student data (profiles, sessions, plans, chats) is nested under `/studentProfiles/{studentProfileId}`.
+     *    Ownership is determined by comparing the document's path ID with the authenticated user's UID.
+     * 2. Global Content: Educational materials (subjects, topics, questions) are stored in root-level or parent-topic collections.
+     *    These are readable by all authenticated students and writable only by administrators.
+     * 
+     * KEY SECURITY DECISIONS:
+     * - Authorization Independence: The `studentProfileId` is denormalized into the path of all child collections (e.g., testSessions). 
+     *   This allows rules to verify ownership instantly using the path wildcard without expensive `get()` calls to parent documents.
+     * - Prototyping Flexibility: Schema validation is ignored for general fields, focusing exclusively on relational integrity 
+     *   (ensuring `studentProfileId` in data matches the path) and authorization.
+     * - Admin Management: A dedicated `/roles_admin` collection acts as the source of truth for administrative privileges.
+     * 
+     * RELATIONAL INTEGRITY:
+     * Critical relational fields (like `studentProfileId`) are validated on creation and enforced as immutable on updates 
+     * to prevent users from "moving" data between accounts or orphaning documents.
+     */
+
+    // --- Global Helper Functions ---
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -10,55 +34,163 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isAdmin() {
-      let adminEmails = [
-        'admin@bilimai.kz',
-        'aaidarabdrahim1@gmail.com',
-        'aidarabdrahim1@gmail.com',
-        'abdrahimaidar1@gmail.com'
-      ];
-      return isSignedIn() && (
-        request.auth.token.email in adminEmails ||
-        (exists(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/studentProfiles/$(request.auth.uid)).data.get('role', 'student') == 'admin')
-      );
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    match /studentProfiles/{studentId} {
-      // Тізімдеуге және жеке оқуға рұқсат (Рейтинг және Админ панель үшін)
-      // Барлық кірген пайдаланушыларға профильдерді көруге рұқсат береміз
-      allow read: if isSignedIn();
-      
-      allow create: if isSignedIn() && (request.auth.uid == studentId || isAdmin());
-      
-      // Иесіне профилін жаңартуға рұқсат, бірақ рөл мен email-ді қорғау.
-      allow update: if isSignedIn() && (request.auth.uid == studentId || isAdmin()) && 
-        (isAdmin() || (
-          request.resource.data.get('role', resource.data.get('role', 'student')) == resource.data.get('role', 'student') &&
-          request.resource.data.get('email', resource.data.get('email', '')) == resource.data.get('email', '')
-        ));
-      
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    // --- Rules ---
+
+    /**
+     * @description Administrative roles definitions.
+     * @path /roles_admin/{uid}
+     * @allow (get) If the user is the admin themselves.
+     * @deny (write) No client-side writes allowed to the admin roles collection.
+     * @principle Existence-based authorization for administrative access.
+     */
+    match /roles_admin/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    /**
+     * @description Student profile documents containing personal KPIs and preferences.
+     * @path /studentProfiles/{studentProfileId}
+     * @allow (create) If the studentProfileId matches the authenticated user's UID.
+     * @deny (update) If a user tries to change another student's profile information.
+     * @principle Self-creation and ownership-based write access.
+     */
+    match /studentProfiles/{studentProfileId} {
+      allow get, list: if isOwner(studentProfileId) || isAdmin();
+      allow create: if isOwner(studentProfileId) && request.resource.data.id == studentProfileId;
+      allow update: if isExistingOwner(studentProfileId) && request.resource.data.id == resource.data.id;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Global academic subjects.
+     * @path /subjects/{subjectId}
+     * @allow (get, list) Any authenticated user can browse subjects.
+     * @deny (write) Non-admin users cannot modify subject definitions.
+     * @principle Public read with admin-only writes for global configuration.
+     */
+    match /subjects/{subjectId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+
+      /**
+       * @description Topics within a subject.
+       * @path /subjects/{subjectId}/topics/{topicId}
+       */
+      match /topics/{topicId} {
+        allow get, list: if isSignedIn();
+        allow create, update, delete: if isAdmin();
+
+        /**
+         * @description Theoretical learning content for a topic.
+         */
+        match /theoryContent/{theoryContentId} {
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if isAdmin();
+        }
+
+        /**
+         * @description Practice and test questions for a topic.
+         */
+        match /questions/{questionId} {
+          allow get, list: if isSignedIn();
+          allow create, update, delete: if isAdmin();
+        }
+      }
+    }
+
+    /**
+     * @description Student test sessions and attempt history.
+     * @path /studentProfiles/{studentProfileId}/testSessions/{testSessionId}
+     * @allow (list) The owner can list all their own test attempts.
+     * @deny (create) If the internal studentProfileId field does not match the path.
+     * @principle Authorization independence through path-based denormalization.
+     */
+    match /studentProfiles/{studentProfileId}/testSessions/{testSessionId} {
+      allow get, list: if isOwner(studentProfileId) || isAdmin();
+      allow create: if isOwner(studentProfileId) && request.resource.data.studentProfileId == studentProfileId;
+      allow update: if isExistingOwner(studentProfileId) && request.resource.data.studentProfileId == resource.data.studentProfileId;
       allow delete: if isAdmin();
 
-      match /{allSubcollections=**} {
-        allow read: if isOwner(studentId) || isAdmin();
-        allow write: if isOwner(studentId) || isAdmin();
+      /**
+       * @description Detailed answer recording for each question in a session.
+       */
+      match /testAttemptDetails/{testAttemptDetailId} {
+        allow get, list: if isOwner(studentProfileId) || isAdmin();
+        allow create: if isOwner(studentProfileId) && request.resource.data.testSessionId == testSessionId;
+        allow update: if isExistingOwner(studentProfileId) && request.resource.data.testSessionId == resource.data.testSessionId;
+        allow delete: if isAdmin();
       }
     }
 
-    match /announcements/{annId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+    /**
+     * @description Personalized study plans generated for students.
+     * @path /studentProfiles/{studentProfileId}/studyPlans/{studyPlanId}
+     */
+    match /studentProfiles/{studentProfileId}/studyPlans/{studyPlanId} {
+      allow get, list: if isOwner(studentProfileId) || isAdmin();
+      allow create: if isOwner(studentProfileId) && request.resource.data.studentProfileId == studentProfileId;
+      allow update: if isExistingOwner(studentProfileId) && request.resource.data.studentProfileId == resource.data.studentProfileId;
+      allow delete: if isAdmin();
+
+      /**
+       * @description Individual activities/tasks within a study plan.
+       */
+      match /activities/{activityId} {
+        allow get, list: if isOwner(studentProfileId) || isAdmin();
+        allow create: if isOwner(studentProfileId) && request.resource.data.studyPlanId == studyPlanId;
+        allow update: if isExistingOwner(studentProfileId) && request.resource.data.studyPlanId == resource.data.studyPlanId;
+        allow delete: if isAdmin();
+      }
     }
 
-    match /subjects/{subjectId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
-      
-      match /{allSubcollections=**} {
-        allow read: if isSignedIn();
-        allow write: if isAdmin();
-      }
+    /**
+     * @description Daily snapshots of student progress.
+     * @path /studentProfiles/{studentProfileId}/progressRecords/{progressRecordId}
+     */
+    match /studentProfiles/{studentProfileId}/progressRecords/{progressRecordId} {
+      allow get, list: if isOwner(studentProfileId) || isAdmin();
+      allow create: if isOwner(studentProfileId) && request.resource.data.studentProfileId == studentProfileId;
+      allow update: if isExistingOwner(studentProfileId) && request.resource.data.studentProfileId == resource.data.studentProfileId;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Conversation messages between student and AI curator.
+     * @path /studentProfiles/{studentProfileId}/curatorChats/{conversationId}/messages/{messageId}
+     */
+    match /studentProfiles/{studentProfileId}/curatorChats/{conversationId}/messages/{messageId} {
+      allow get, list: if isOwner(studentProfileId) || isAdmin();
+      allow create: if isOwner(studentProfileId) && request.resource.data.studentProfileId == studentProfileId && request.resource.data.conversationId == conversationId;
+      allow update: if isExistingOwner(studentProfileId) && request.resource.data.studentProfileId == resource.data.studentProfileId;
+      allow delete: if isAdmin();
+    }
+
+    /**
+     * @description Common mistake patterns and conceptual confusions.
+     * @path /mistakePatterns/{mistakePatternId}
+     */
+    match /mistakePatterns/{mistakePatternId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Predefined motivational content for students.
+     * @path /motivationContent/{motivationContentId}
+     */
+    match /motivationContent/{motivationContentId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isAdmin();
     }
   }
 }

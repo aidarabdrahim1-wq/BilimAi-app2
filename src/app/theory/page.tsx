@@ -205,7 +205,7 @@ function SubjectCard({ subject }: { subject: string }) {
   // Merge static sections with dynamic topics from DB that aren't in sections
   const dynamicSection = useMemo(() => {
     if (dbTopics.length === 0) return null;
-    const staticTopicNames = ubtInfo.sections.flatMap(s => s.topics);
+    const staticTopicNames = (ubtInfo.sections || []).flatMap(s => s.topics || []);
     const newTopics = dbTopics
       .filter(t => t.title && !staticTopicNames.includes(t.title))
       .map(t => t.title);
@@ -215,7 +215,8 @@ function SubjectCard({ subject }: { subject: string }) {
   }, [dbTopics, ubtInfo.sections]);
 
   const allSections = useMemo(() => {
-    return dynamicSection ? [...ubtInfo.sections, dynamicSection] : ubtInfo.sections;
+    const base = ubtInfo.sections || [];
+    return dynamicSection ? [...base, dynamicSection] : base;
   }, [ubtInfo.sections, dynamicSection]);
 
   return (
@@ -277,7 +278,7 @@ function SubjectCard({ subject }: { subject: string }) {
                     </AccordionTrigger>
                     <AccordionContent className="pb-6">
                       <div className="grid gap-3 pt-2">
-                        {section.topics.map((topic, tIdx) => (
+                        {(section.topics || []).map((topic: string, tIdx: number) => (
                           <TopicItem key={tIdx} topic={topic} subject={subject} />
                         ))}
                       </div>
@@ -364,7 +365,7 @@ function TopicItem({ topic, subject }: { topic: string, subject: string }) {
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
   };
 
-  const finishPractice = async () => {
+  const finishPractice = () => {
     let correct = 0;
     questions.forEach((q, idx) => {
       if (answers[idx] === q.correctAnswer) correct++;

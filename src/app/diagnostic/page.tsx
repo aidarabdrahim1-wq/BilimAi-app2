@@ -82,6 +82,11 @@ export default function DiagnosticPage() {
     );
     const unsub = onSnapshot(q, (snap) => {
       setHistory(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: `studentProfiles/${user.uid}/startingRoutes`,
+        operation: 'list'
+      }));
     });
     return () => unsub();
   }, [user]);
@@ -228,11 +233,40 @@ export default function DiagnosticPage() {
               </div>
               <div className="flex justify-center gap-6 pt-12">
                 <Button variant="outline" className="h-14 rounded-2xl px-10 font-bold border-2" onClick={() => setStep("start")}>Жаңа сауалнама</Button>
-                <Button variant="secondary" className="h-14 rounded-2xl px-10 font-bold bg-slate-100 text-slate-600" onClick={() => setStep("history")}>Тарихты көру</Button>
-                <Button variant="ghost" className="h-14 rounded-2xl px-10 font-bold text-slate-400" asChild>
+                <Button variant="secondary" className="h-14 rounded-2xl px-10 font-bold bg-slate-100 hover:bg-slate-200 text-slate-600" onClick={() => setStep("history")}>Тарихты көру</Button>
+                <Button variant="ghost" className="h-14 rounded-2xl px-10 font-bold text-slate-400 hover:text-slate-900" asChild>
                   <a href="/dashboard">Дашбордқа қайту</a>
                 </Button>
               </div>
+            </div>
+          )}
+
+          {step === "history" && (
+            <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-top-4 duration-700">
+               <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black font-headline">Сақтаулы маршруттар</h2>
+                <Button variant="ghost" onClick={() => setStep("start")} className="gap-2">
+                  <ArrowLeft className="size-4" /> Артқа
+                </Button>
+               </div>
+               <div className="grid gap-4">
+                  {history.map((item) => (
+                    <Card key={item.id} className="p-6 cursor-pointer hover:bg-accent/5 transition-all rounded-3xl" onClick={() => loadFromHistory(item)}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                            <Compass className="size-6" />
+                          </div>
+                          <div>
+                            <p className="font-black text-lg">{item.segment}</p>
+                            <p className="text-xs text-muted-foreground">{item.createdAt ? format(item.createdAt.toDate(), 'd MMMM, HH:mm', { locale: kk }) : 'Жүктелуде...'}</p>
+                          </div>
+                        </div>
+                        <ArrowRight className="size-5 text-muted-foreground" />
+                      </div>
+                    </Card>
+                  ))}
+               </div>
             </div>
           )}
         </div>

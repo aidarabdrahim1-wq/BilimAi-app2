@@ -105,14 +105,14 @@ export default function AdminPage() {
     if (!manualQ.subject) return [];
     const info = UBT_TOPICS[manualQ.subject];
     if (!info) return [];
-    return info.sections.flatMap(s => s.topics);
+    return info.sections.flatMap(s => s.topics || []);
   }, [manualQ.subject]);
 
   const viewTopics = useMemo(() => {
     if (!selectedViewSubject) return [];
     const info = UBT_TOPICS[selectedViewSubject];
     if (!info) return [];
-    return info.sections.flatMap(s => s.topics);
+    return info.sections.flatMap(s => s.topics || []);
   }, [selectedViewSubject]);
 
   const handleManualSave = () => {
@@ -263,7 +263,6 @@ export default function AdminPage() {
         if (Array.isArray(q.options)) {
           options = q.options;
         } else if (q.options && typeof q.options === 'object') {
-          // Handle {A: "", B: "", ...}
           options = [q.options.A, q.options.B, q.options.C, q.options.D].map(o => String(o || "")).filter(Boolean);
         }
         
@@ -278,7 +277,6 @@ export default function AdminPage() {
         };
       };
 
-      // Improved structure detection with safety checks
       if (rawData.subject && rawData.chapters) {
         subjectsToProcess = [{
           name: rawData.subject,

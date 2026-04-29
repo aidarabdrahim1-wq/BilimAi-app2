@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -61,7 +60,7 @@ export default function Dashboard() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDateDialogOpen, setIsDateDialogOpen] = useState(false);
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
-  const [randomQuote, setRandomQuote] = useState(MOTIVATION_QUOTES[0]);
+  const [randomQuote, setRandomQuote] = useState<{text: string; author: string} | null>(null);
   const [todayStr, setTodayStr] = useState("");
   
   // Timer states
@@ -146,14 +145,16 @@ export default function Dashboard() {
     return `${hh} сағ ${mm} мин`;
   };
 
-  const completeTaskFromTimer = async () => {
+  const completeTaskFromTimer = () => {
     if (!activeTimerTask || !user) return;
     const planId = activeTimerTask.planId;
     const fullPlan = activeTimerTask.fullPlan;
     const updatedTasks = fullPlan.tasks.map((t: any) => t.id === activeTimerTask.id ? { ...t, status: "completed" } : t);
     const completedCount = updatedTasks.filter((t: any) => t.status === "completed").length;
     const planRef = doc(db, "studentProfiles", user.uid, "studyPlans", planId);
+    
     updateDoc(planRef, { tasks: updatedTasks, completedCount, updatedAt: serverTimestamp() });
+    
     if (completedCount === fullPlan.totalCount) {
       updateUserRating(user.uid, 'PLAN_COMPLETED');
       updateDoc(planRef, { status: 'completed' });
@@ -163,7 +164,7 @@ export default function Dashboard() {
     setActiveTimerTask(null);
   };
 
-  const handleUpdateDate = async () => {
+  const handleUpdateDate = () => {
     if (!user || !isAdmin) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
@@ -172,7 +173,7 @@ export default function Dashboard() {
       .finally(() => setIsUpdating(false));
   };
 
-  const handleUpdateScore = async () => {
+  const handleUpdateScore = () => {
     if (!user || !isAdmin) return;
     setIsUpdating(true);
     const userRef = doc(db, "studentProfiles", user.uid);
@@ -202,7 +203,7 @@ export default function Dashboard() {
   return (
     <AppShell>
       <div className="flex flex-col gap-6">
-        {todayTasks.length === 0 && (
+        {todayTasks.length === 0 && todayStr !== "" && (
           <Alert className="bg-orange-50 border-orange-200 border-l-4 border-l-orange-500 animate-in fade-in slide-in-from-top-4 duration-500">
             <BellRing className="h-4 w-4 text-orange-600" />
             <AlertTitle className="text-orange-800 font-bold">Бүгінге жоспар бос!</AlertTitle>
@@ -393,8 +394,12 @@ export default function Dashboard() {
                 <CardTitle className="text-xl font-headline flex items-center gap-2"><Quote className="size-6 opacity-50" />Сенің қолыңнан келеді!</CardTitle>
               </CardHeader>
               <CardContent className="p-0 mt-4 space-y-4">
-                <p className="text-lg font-medium leading-relaxed italic opacity-95">"{randomQuote.text}"</p>
-                <div className="flex items-center justify-between pt-4 border-t border-white/10"><span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">— {randomQuote.author}</span><Star className="size-5 fill-yellow-300 text-yellow-300" /></div>
+                {randomQuote && (
+                  <>
+                    <p className="text-lg font-medium leading-relaxed italic opacity-95">"{randomQuote.text}"</p>
+                    <div className="flex items-center justify-between pt-4 border-t border-white/10"><span className="text-[10px] font-bold opacity-70 uppercase tracking-wider">— {randomQuote.author}</span><Star className="size-5 fill-yellow-300 text-yellow-300" /></div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
